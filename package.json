@@ -1,0 +1,46 @@
+{
+  "name": "hanoigo-workspace",
+  "version": "1.0.0",
+  "description": "HaNoiGo - Smart Place Discovery Platform for Hanoi",
+  "scripts": {
+    "install:all": "npm run install:server && npm run install:admin && npm run install:client && npm run install:ai",
+    "install:server": "cd server && npm install",
+    "install:admin": "cd admin && npm install", 
+    "install:client": "cd client && npm install",
+    "install:ai": "cd ai-service && pip install -r requirements.txt",
+    "dev:server": "cd server && npm run dev",
+    "dev:admin": "cd admin && npm run dev",
+    "dev:client": "cd client && npm run dev", 
+    "dev:ai": "cd ai-service && python main.py",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:admin\" \"npm run dev:client\" \"npm run dev:ai\"",
+    "build:admin": "cd admin && npm run build",
+    "build:client": "cd client && npm run build",
+    "start:production": "cd server && npm start",
+    "test": "echo \"Run tests for all services\"",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "eslint": "^8.57.0",
+    "prettier": "^3.1.0"
+  },
+  "workspaces": [
+    "server",
+    "admin", 
+    "client"
+  ],
+  "keywords": [
+    "hanoi",
+    "places",
+    "ai",
+    "chatbot",
+    "visual-search",
+    "mern",
+    "react",
+    "nodejs",
+    "mongodb"
+  ],
+  "author": "HaNoiGo Team",
+  "license": "MIT"
+}
