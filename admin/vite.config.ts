@@ -12,5 +12,9 @@ export default defineConfig({
   },
   esbuild: {
     jsx: 'automatic'
+  },
+  server: {
+    port: 3001,
+    host: true
   }
 })

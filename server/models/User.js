@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
   email: {
@@ -150,6 +150,13 @@ userSchema.methods.isBannedUser = function() {
   }
   
   return true;
+};
+
+// Method to update last login time
+userSchema.methods.updateLastLogin = async function() {
+  this.lastLoginAt = new Date();
+  this.loginCount += 1;
+  return this.save();
 };
 
 // Virtual for full user info (excluding sensitive data)

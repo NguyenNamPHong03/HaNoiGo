@@ -1,5 +1,6 @@
-import { Outlet, Link, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import styles from './Layout.module.css'
+import UserMenu from './UserMenu'
 
 function Layout() {
   const location = useLocation()
@@ -34,9 +35,7 @@ function Layout() {
           </nav>
           
           <div className={styles.userMenu}>
-            <Link to="/login" className="btn btn-primary">
-              Login
-            </Link>
+            <UserMenu />
           </div>
         </div>
       </header>
