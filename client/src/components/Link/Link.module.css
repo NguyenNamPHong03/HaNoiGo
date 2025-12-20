@@ -1,0 +1,41 @@
+.link {
+    cursor: pointer;
+    position: relative;
+    white-space: nowrap;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.link>span {
+    transition: 0.3s;
+}
+
+.link:hover>span {
+    color: var(--yellow);
+}
+
+.link span {
+    display: inline-block;
+}
+
+/* SVG Arc Graphic */
+.linkGraphic {
+    position: absolute;
+    top: 73%;
+    left: -23%;
+    pointer-events: none;
+    fill: none;
+    stroke-width: 1px;
+}
+
+.linkGraphic path {
+    stroke-dashoffset: 1;
+    stroke-dasharray: 1;
+    transition: stroke-dashoffset 0.4s cubic-bezier(0.7, 0, 0.3, 1);
+}
+
+.link:hover .linkGraphic path {
+    stroke-dashoffset: 0;
+    transition-timing-function: cubic-bezier(0.8, 1, 0.7, 1);
+    transition-duration: 0.3s;
+}

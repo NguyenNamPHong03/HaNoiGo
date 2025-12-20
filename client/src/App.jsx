@@ -1,28 +1,41 @@
 import { Route, Routes } from 'react-router-dom'
-import Layout from './components/Layout'
+import { Suspense, lazy } from 'react'
 import { UserProvider } from './contexts/UserContext'
-import Chat from './pages/Chat'
-import Home from './pages/Home'
-import Login from './pages/Login'
-import PlaceDetail from './pages/PlaceDetail'
-import Places from './pages/Places'
-import Profile from './pages/Profile'
-import Register from './pages/Register'
+import { CursorProvider } from './contexts/CursorContext'
+import Layout from './components/Layout/Layout.jsx'
+import { LenisProvider } from './hooks/useLenis'
+
+// Optimization: Lazy load pages (Rules.md §7 Code Splitting)
+const Home = lazy(() => import('./pages/Home/Home'))
+const Login = lazy(() => import('./pages/Authentication/Login'))
+const Register = lazy(() => import('./pages/Authentication/Register'))
+
+// Simple Loading Fallback
+const LoadingFallback = () => (
+  <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    Loading...
+  </div>
+);
+
+import { Toaster } from 'react-hot-toast'
 
 function App() {
   return (
     <UserProvider>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Home />} />
-          <Route path="places" element={<Places />} />
-          <Route path="places/:id" element={<PlaceDetail />} />
-          <Route path="chat" element={<Chat />} />
-          <Route path="profile" element={<Profile />} />
-        </Route>
-      </Routes>
+      <CursorProvider>
+        <LenisProvider>
+          <Toaster position="top-right" />
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Home />} />
+              </Route>
+            </Routes>
+          </Suspense>
+        </LenisProvider>
+      </CursorProvider>
     </UserProvider>
   )
 }

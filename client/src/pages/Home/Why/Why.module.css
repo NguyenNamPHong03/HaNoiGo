@@ -1,0 +1,72 @@
+.title {
+    padding: var(--padding);
+}
+
+.item {
+    cursor: pointer;
+    position: relative;
+    /* Context if needed, though img is fixed */
+    border-bottom: 1px solid #000;
+
+}
+
+.swipeimage {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 350px;
+    height: 450px;
+    object-fit: cover;
+    z-index: 99;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    border-radius: 10px;
+    will-change: transform, opacity;
+}
+
+.why {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    padding-bottom: 100px
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    transition: padding 0.3s ease;
+}
+
+
+.content>h3 {
+    font-size: 20px;
+    font-weight: 500;
+}
+
+.content>p {
+    font-size: 16px;
+}
+
+.count {
+    padding: var(--padding);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.countBox {
+    padding: 20px;
+    width: fit-content;
+    background-color: var(--yellow);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.countBox>p {
+    font-size: 20px;
+    font-weight: 500;
+}

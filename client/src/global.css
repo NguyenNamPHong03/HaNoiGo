@@ -1,101 +1,94 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap');
+
 :root {
-  --primary-color: #dc2626;
-  --secondary-color: #f97316;
-  --accent-color: #059669;
-  --text-primary: #1f2937;
-  --text-secondary: #6b7280;
-  --background-primary: #ffffff;
-  --background-secondary: #f9fafb;
-  --border-color: #e5e7eb;
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  --radius: 8px;
-  
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  
-  color-scheme: light;
-  color: var(--text-primary);
-  background-color: var(--background-primary);
-  
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --yellow: #f9efa7;
+  --cursor-fill: #000;
+  --cursor-stroke: #000;
+  --cursor-stroke-width: 1px;
+  --padding: 20px 50px;
+  --padding-container: 100px 50px;
+  --light-grey: #f4f8f9;
+  --dark-green: #004549;
+  --body: #EBF4DD;
+  --green: #B8DB80;
+}
+
+body {
+  font-family: 'Google Sans Flex', sans-serif;
+  background-color: var(--body);
 }
 
 * {
   box-sizing: border-box;
-}
-
-body {
   margin: 0;
-  display: flex;
-  min-width: 320px;
-  min-height: 100vh;
+  padding: 0;
 }
 
-#root {
+ul {
+  list-style: none;
+}
+
+img {
   width: 100%;
 }
 
-/* Base styles */
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
+.liquid {
+  background: rgba(255, 255, 255, 0.1);
+  /* Nền trong suốt */
+  backdrop-filter: blur(10px);
+  /* Blur phần phía sau */
+  -webkit-backdrop-filter: blur(10px);
+  /* Safari */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* Viền mờ */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  /* Đổ bóng nhẹ */
 }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: var(--radius);
+.titleSection {
+  font-size: 23px;
+  opacity: 0;
+  letter-spacing: 0.04rem;
+  will-change: transform;
+  line-height: 1.4;
   font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
 }
 
-.btn-primary {
-  background-color: var(--primary-color);
-  color: white;
+/* Custom Scrollbar - Overlay Style */
+html {
+  overflow-y: overlay;
+  /* WebKit only: make scrollbar overlay content */
+  scrollbar-width: thin;
+  /* Firefox */
+  scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+  /* Firefox */
 }
 
-.btn-primary:hover {
-  background-color: #b91c1c;
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-.btn-secondary {
-  background-color: var(--secondary-color);
-  color: white;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.btn-secondary:hover {
-  background-color: #ea580c;
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
 }
 
-.card {
-  background: var(--background-primary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  padding: 1.5rem;
-  box-shadow: var(--shadow);
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
-.input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  font-size: 0.875rem;
-  transition: border-color 0.2s;
-}
 
-.input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgb(220 38 38 / 0.1);
+@media (max-width: 768px) {
+  .titleSection {
+    padding: 20px;
+    font-size: 20px;
+  }
+
+  :root {
+    --padding-container: 50px 20px;
+  }
 }

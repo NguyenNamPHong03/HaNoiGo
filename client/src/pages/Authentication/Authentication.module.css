@@ -1,0 +1,275 @@
+.authentication {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    background-color: #fff;
+    overflow: hidden;
+}
+
+.leftSide {
+    flex: 1;
+    background-image: url('https://images.unsplash.com/photo-1588776873617-51922b5885f8?q=80&w=1365&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 40px;
+    color: white;
+}
+
+.leftSide::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    /* Overlay for text readability */
+    z-index: 1;
+}
+
+.leftContent {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.quote {
+    max-width: 80%;
+}
+
+.quote h2 {
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 20px;
+}
+
+.author {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.author span {
+    display: block;
+    font-size: 12px;
+    opacity: 0.7;
+    margin-top: 5px;
+}
+
+.rightSide {
+    flex: 1;
+    /* Or generic width like 50% or fixed 600px */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px;
+    overflow-y: auto;
+}
+
+.formContainer {
+    width: 100%;
+    max-width: 450px;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.header h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #1a1a1a;
+}
+
+.header p {
+    color: #666;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.inputGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.inputWrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.inputWrapper label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+}
+
+.inputWrapper input {
+    padding: 12px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.inputWrapper input:focus {
+    border-color: #6c5ce7;
+    box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.1);
+}
+
+.actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+}
+
+.remember {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #666;
+    cursor: pointer;
+}
+
+.forgot {
+    color: #6c5ce7;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Custom Toggle Switch for 'Remember me' */
+.toggleSwitch {
+    position: relative;
+    width: 40px;
+    height: 24px;
+    background-color: #ccc;
+    border-radius: 20px;
+    transition: 0.3s;
+}
+
+.toggleCheckbox {
+    display: none;
+}
+
+.toggleCheckbox:checked+.toggleSwitch {
+    background-color: #6c5ce7;
+}
+
+.toggleSwitch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+
+.toggleCheckbox:checked+.toggleSwitch::after {
+    transform: translateX(16px);
+}
+
+
+.loginBtn {
+    background-color: #6c5ce7;
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 30px;
+    /* Pill shape */
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    width: 100%;
+}
+
+.loginBtn:hover {
+    background-color: #5b4cc4;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    color: #999;
+    font-size: 12px;
+    margin: 10px 0;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background-color: #e0e0e0;
+}
+
+.googleBtn {
+    background-color: #f5f5f5;
+    color: #333;
+    border: none;
+    padding: 12px;
+    border-radius: 30px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: background-color 0.2s;
+    width: 100%;
+}
+
+.googleIcon {
+    width: 20px;
+    height: 20px;
+}
+
+.googleBtn:hover {
+    background-color: #ebebeb;
+}
+
+.footer {
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+    margin-top: 10px;
+}
+
+.signUp {
+    color: #6c5ce7;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    margin-left: 5px;
+}
+
+@media (max-width: 900px) {
+    .leftSide {
+        display: none;
+    }
+}
