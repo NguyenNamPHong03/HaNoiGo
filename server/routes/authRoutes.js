@@ -6,7 +6,7 @@ import {
     registerUser,
     updateProfile
 } from '../controllers/authController.js';
-import { uploadAvatar, uploadAvatarController } from '../controllers/uploadController.js';
+import { getUploadAvatar, uploadAvatarController } from '../controllers/uploadController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -18,7 +18,11 @@ router.post('/login', loginUser);
 // Protected routes
 router.get('/profile', authenticateToken, getProfile);
 router.put('/profile', authenticateToken, updateProfile);
-router.post('/upload-avatar', authenticateToken, uploadAvatar.single('avatar'), uploadAvatarController);
+// Dynamic multer upload route
+router.post('/upload-avatar', authenticateToken, (req, res, next) => {
+  const uploadAvatar = getUploadAvatar();
+  uploadAvatar.single('avatar')(req, res, next);
+}, uploadAvatarController);
 router.post('/logout', authenticateToken, logout);
 
 export default router;

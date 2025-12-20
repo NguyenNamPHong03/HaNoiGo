@@ -27,13 +27,13 @@ const createStorage = () => {
   const isCloudinaryConfigured = checkCloudinaryConfig();
   
   if (isCloudinaryConfigured) {
-  console.log('✅ Using Cloudinary storage');
-  // Configure Cloudinary
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-  });
+    console.log('✅ Using Cloudinary storage');
+    // Configure Cloudinary
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
 
     // Configure Cloudinary storage for Multer
     return new CloudinaryStorage({
@@ -46,9 +46,9 @@ const createStorage = () => {
         ]
       }
     });
-} else {
-  console.log('⚠️ Using LOCAL storage (Cloudinary not configured)');
-  // Fallback to local storage
+  } else {
+    console.log('⚠️ Using LOCAL storage (Cloudinary not configured)');
+    // Fallback to local storage
     return multer.diskStorage({
       destination: (req, file, cb) => {
         const uploadPath = path.join(__dirname, '../uploads/avatars');
@@ -62,21 +62,23 @@ const createStorage = () => {
   }
 };
 
-// Create multer upload middleware with dynamic storage
-export const uploadAvatar = multer({
-  storage: createStorage(), // Use dynamic storage function
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    // Check file type
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed!'), false);
+// Create function to get multer upload with dynamic storage
+export const getUploadAvatar = () => {
+  return multer({
+    storage: createStorage(),
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      // Check file type
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed!'), false);
+      }
     }
-  }
-});
+  });
+};
 
 // Upload avatar controller
 export const uploadAvatarController = async (req, res, next) => {
@@ -90,22 +92,25 @@ export const uploadAvatarController = async (req, res, next) => {
 
     let avatarUrl;
     
+    // Check if using Cloudinary by checking if file.path contains cloudinary
+    const isCloudinaryUrl = req.file.path && req.file.path.includes('cloudinary.com');
+    
     // Debug log
-    console.log('Cloudinary configured:', isCloudinaryConfigured);
     console.log('File info:', {
       filename: req.file.filename,
       path: req.file.path,
-      originalname: req.file.originalname
+      originalname: req.file.originalname,
+      isCloudinaryUrl
     });
     
-    if (isCloudinaryConfigured) {
-      // Cloudinary URL
+    if (isCloudinaryUrl) {
+      // Cloudinary URL (already complete URL from Cloudinary)
       avatarUrl = req.file.path;
-      console.log('Using Cloudinary URL:', avatarUrl);
+      console.log('✅ Using Cloudinary URL:', avatarUrl);
     } else {
       // Local file URL
       avatarUrl = `${req.protocol}://${req.get('host')}/uploads/avatars/${req.file.filename}`;
-      console.log('Using local URL:', avatarUrl);
+      console.log('⚠️ Using local URL:', avatarUrl);
     }
 
     res.status(200).json({
