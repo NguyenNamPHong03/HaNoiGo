@@ -8,9 +8,9 @@ const TitleSection = ({ children, className = "", triggerStart = "top 80%" }) =>
     });
 
     return (
-        <p className={`titleSection ${className}`} ref={textRef}>
+        <div className={`titleSection ${className}`} ref={textRef}>
             {children}
-        </p>
+        </div>
     );
 };
 
