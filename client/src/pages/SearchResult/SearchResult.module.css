@@ -5,6 +5,7 @@
     margin-top: 85px;
     box-sizing: border-box;
     border-top: 1px solid #eee;
+    border-bottom: 1px solid #eee;
 }
 
 /* --- Sidebar --- */
@@ -251,50 +252,141 @@
     flex: 1;
     padding: 30px;
     overflow-y: auto;
-    background-color: #f8f9fa;
+    background-color: var(--light-grey);
+}
+
+/* Search Section */
+.searchSection {
+    margin-bottom: 30px;
+}
+
+.searchInputWrapper {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #dfe1e5;
+    border-radius: 24px;
+    padding: 10px 20px;
+    box-shadow: 0 1px 6px rgba(32, 33, 36, 0.1);
+    margin-bottom: 20px;
+}
+
+.searchInputWrapper:hover {
+    box-shadow: 0 1px 6px rgba(32, 33, 36, 0.2);
+}
+
+.searchInput {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    font-family: 'Google Sans Flex', sans-serif;
+    background: transparent;
+}
+
+.searchClearBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: #70757a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.searchClearBtn:hover {
+    color: #202124;
+}
+
+.searchActions {
+    display: flex;
+    gap: 5px;
+    margin-left: 10px;
+    padding-left: 15px;
+    border-left: 1px solid #dfe1e5;
+}
+
+.searchActionBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: #4285f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.searchActionBtn:hover {
+    background: rgba(66, 133, 244, 0.1);
+}
+
+/* AI Summary */
+.aiSummary {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+    padding: 20px;
+}
+
+.aiSummaryHeader {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #4285F4;
+}
+
+.aiSummaryContent p {
+    font-size: 14px;
+    line-height: 1.7;
+    color: #202124;
+    margin-bottom: 12px;
+}
+
+.aiSummaryContent p:last-child {
+    margin-bottom: 0;
+}
+
+.aiSummaryContent strong {
+    font-weight: 600;
 }
 
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 20px;
 }
 
 .card {
-    background: #fff;
-    border-radius: 16px;
+    position: relative;
+    border-radius: 20px;
     overflow: hidden;
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
-    border: 1px solid transparent;
+    height: 350px;
 }
 
 .noResults {
     grid-column: 1 / -1;
     text-align: center;
     padding: 50px;
-    color: #888;
 }
 
 .noResults h3 {
-    font-size: 18px;
-    color: #333;
+    font-size: 22px;
+    font-weight: 500;
     margin-bottom: 10px;
 }
 
-.card:hover {
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
-    transform: translateY(-2px);
-}
 
 .selectedCard {
-    border-color: #0066FF;
-    box-shadow: 0 0 0 2px rgba(0, 102, 255, 0.1);
-}
-
-.cardImageWrapper {
-    position: relative;
-    height: 200px;
+    box-shadow: 0 0 0 3px #0066FF;
 }
 
 .cardImage {
@@ -307,45 +399,71 @@
     position: absolute;
     top: 15px;
     left: 15px;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 6px 12px;
+    padding: 6px 16px;
     border-radius: 20px;
     font-size: 12px;
     font-weight: 600;
-    color: #0066FF;
+    color: #000;
+    background-color: #A8E6CF;
+}
+
+.typeBadge[data-type="Apartment"] {
+    background-color: #FFEAA7;
+}
+
+.typeBadge[data-type="Villa"] {
+    background-color: #81ECEC;
+}
+
+.typeBadge[data-type="Condo"] {
+    background-color: #DFE6E9;
+}
+
+.cardContent {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 15px 20px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 15px 15px 20px 20px;
+    margin: 10px;
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 5px;
+}
+
+.cardTitle {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a1a;
+    flex: 1;
 }
 
 .bookmarkBtn {
-    position: absolute;
-    top: 15px;
-    right: 15px;
     background: #fff;
     width: 32px;
     height: 32px;
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: none;
     cursor: pointer;
     color: #0066FF;
-}
-
-.cardContent {
-    padding: 20px;
-}
-
-.cardTitle {
-    font-size: 16px;
-    font-weight: 700;
-    margin-bottom: 8px;
-    color: #1a1a1a;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
 }
 
 .cardAddress {
-    font-size: 13px;
-    color: #888;
-    margin-bottom: 20px;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 12px;
     display: flex;
     align-items: center;
     gap: 5px;
@@ -373,6 +491,9 @@
     font-size: 13px;
     font-weight: 600;
     color: #333;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 /* --- Detail Panel --- */
@@ -380,7 +501,7 @@
     width: 400px;
     background: #fff;
     border-left: 1px solid #eee;
-    padding: 30px;
+    padding: 20px;
     overflow-y: auto;
     flex-shrink: 0;
     position: sticky;
@@ -388,56 +509,38 @@
     height: 100vh;
 }
 
-.detailHeader {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    height: 200px;
-}
-
-.mainDetailImage {
-    flex: 2;
-    border-radius: 12px;
+.detailImage {
+    width: 100%;
+    height: 250px;
+    border-radius: 16px;
     overflow: hidden;
+    margin-bottom: 20px;
 }
 
-.mainDetailImage img {
+.detailImage img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-}
-
-.smallDetailImages {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.smallDetailImages img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 12px;
 }
 
 .detailTitleRow {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
 }
 
 .detailTitleRow h2 {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
-    max-width: 60%;
+    margin-bottom: 5px;
 }
 
 .detailPrice {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     color: #0066FF;
+    white-space: nowrap;
 }
 
 .detailPrice span {
@@ -447,15 +550,18 @@
 }
 
 .detailAddress {
-    color: #888;
-    font-size: 14px;
-    margin-bottom: 20px;
+    color: #666;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .tabs {
     display: flex;
-    gap: 30px;
-    margin-bottom: 10px;
+    gap: 0;
+    margin-bottom: 0;
+    border-bottom: 1px solid #eee;
 }
 
 .tabs span {
@@ -463,19 +569,74 @@
     font-weight: 600;
     color: #888;
     cursor: pointer;
-    padding-bottom: 10px;
+    padding: 12px 20px;
+    transition: all 0.2s;
+}
+
+.tabs span:hover {
+    color: #333;
 }
 
 .activeTab {
-    color: #0066FF !important;
-    border-bottom: 2px solid #0066FF;
+    color: #1a1a1a !important;
+    border-bottom: 2px solid #1a1a1a;
+    margin-bottom: -1px;
 }
 
 .tabLine {
-    height: 1px;
-    background: #eee;
+    height: 0;
+    margin-bottom: 15px;
+}
+
+.tabContent {
     margin-bottom: 20px;
 }
+
+.label {
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.descriptionText {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #555;
+}
+
+.reviewItem {
+    padding: 15px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.reviewItem:last-child {
+    border-bottom: none;
+}
+
+.reviewHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.reviewHeader strong {
+    font-size: 14px;
+    color: #1a1a1a;
+}
+
+.reviewRating {
+    font-size: 12px;
+    color: #666;
+}
+
+.reviewItem p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #555;
+}
+
 
 .description p {
     font-size: 14px;
@@ -604,17 +765,87 @@
 @media (max-width: 768px) {
     .pageWrapper {
         flex-direction: column;
-        padding-top: 80px;
+        margin-top: 70px;
     }
 
     .sidebar {
         width: 100%;
         height: auto;
+        max-height: 50vh;
         border-right: none;
         border-bottom: 1px solid #eee;
+        padding: 15px 20px;
+        position: relative;
+    }
+
+    .sidebarHeader {
+        margin-bottom: 20px;
+    }
+
+    .sidebarHeader h2 {
+        font-size: 16px;
+    }
+
+    .filtersContainer {
+        gap: 15px;
+    }
+
+    .filterSection {
+        padding-bottom: 15px;
+    }
+
+    .filterHeader h3 {
+        font-size: 14px;
+    }
+
+    .mainContent {
+        padding: 20px 15px;
+    }
+
+    .searchSection {
+        margin-bottom: 20px;
+    }
+
+    .searchInputWrapper {
+        padding: 8px 15px;
+    }
+
+    .searchInput {
+        font-size: 14px;
+    }
+
+    .searchActions {
+        margin-left: 8px;
+        padding-left: 10px;
+    }
+
+    .searchActionBtn {
+        padding: 6px;
+    }
+
+    .aiSummary {
+        padding: 15px;
+    }
+
+    .aiSummaryHeader {
+        font-size: 13px;
+    }
+
+    .aiSummaryContent p {
+        font-size: 13px;
+        line-height: 1.6;
     }
 
     .grid {
         grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .noResults {
+        padding: 30px;
+    }
+
+    .noResults h3 {
+        font-size: 18px;
     }
 }
