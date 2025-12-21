@@ -10,10 +10,6 @@
     transition: 0.3s;
 }
 
-.link:hover>span {
-    color: var(--yellow);
-}
-
 .link span {
     display: inline-block;
 }

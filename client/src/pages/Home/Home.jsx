@@ -7,13 +7,19 @@ import Introduction from "./Introduction/Introduction";
 import useLenis from "../../hooks/useLenis";
 import Why from "./Why/Why";
 
+// Track preloader state across component remounts (client-side navigation)
+let hasPlayedPreloader = false;
+
 const Home = () => {
-    const [showPreloader, setShowPreloader] = useState(true);
-    const [preloaderComplete, setPreloaderComplete] = useState(false);
+    // If it has played before, don't show it again, and consider it complete
+    const [showPreloader, setShowPreloader] = useState(!hasPlayedPreloader);
+    const [preloaderComplete, setPreloaderComplete] = useState(hasPlayedPreloader);
     const lenisRef = useLenis();
 
-    // Lock scroll initially
+    // Lock scroll initially ONLY if preloader is showing
     useEffect(() => {
+        if (!showPreloader) return;
+
         const lockScroll = () => {
             if (lenisRef.current) {
                 lenisRef.current.stop();
@@ -22,9 +28,10 @@ const Home = () => {
             }
         };
         lockScroll();
-    }, []); // Run once on mount
+    }, [showPreloader]); // Run when showPreloader changes (or just on mount if true)
 
     const handlePreloaderComplete = () => {
+        hasPlayedPreloader = true;
         setShowPreloader(false);
         setPreloaderComplete(true);
         // Scroll is still locked here, waiting for Hero animation

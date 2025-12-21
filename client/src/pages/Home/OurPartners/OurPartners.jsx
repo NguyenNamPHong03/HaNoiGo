@@ -30,9 +30,7 @@ const OurPartners = () => {
         <section className={styles.ourPartners}>
             <TitleSection className={styles.titleReveal}>
                 We proudly collaborate with a trusted network of partners who share our
-                commitment to quality, reliability, and innovation. Together, we work
-                closely to deliver exceptional value, expand opportunities, and create
-                meaningful experiences for our customers.
+                commitment to quality, reliability, and innovation.
             </TitleSection>
             <div
                 className={styles.partners}

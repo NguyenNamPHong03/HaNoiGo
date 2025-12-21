@@ -37,8 +37,9 @@ const Why = () => {
     const cursorRef = useCursor();
 
     useGSAP(() => {
-        // Initial setup for images
-        gsap.set(`.${styles.swipeimage}`, { yPercent: -50, xPercent: -50, force3D: true });
+        gsap.set(`.${styles.swipeimage}`, { yPercent: -50, xPercent: -50 });
+
+        let firstEnter;
 
         const items = gsap.utils.toArray(`.${styles.item}`);
 
@@ -46,36 +47,36 @@ const Why = () => {
             const image = el.querySelector(`.${styles.swipeimage}`);
             if (!image) return;
 
-            // use quickTo for high performance mouse following
-            // use quickTo for high performance mouse following with force3D
-            const setX = gsap.quickTo(image, "x", { duration: 0.6, ease: "power3" });
-            const setY = gsap.quickTo(image, "y", { duration: 0.6, ease: "power3" });
+            const setX = gsap.quickTo(image, "x", { duration: 0.4, ease: "power3" });
+            const setY = gsap.quickTo(image, "y", { duration: 0.4, ease: "power3" });
 
             const align = (e) => {
-                setX(e.clientX);
-                setY(e.clientY);
+                if (firstEnter) {
+                    setX(e.clientX, e.clientX);
+                    setY(e.clientY, e.clientY);
+                    firstEnter = false;
+                } else {
+                    setX(e.clientX);
+                    setY(e.clientY);
+                }
             };
 
-            const startFollow = () => window.addEventListener("mousemove", align);
-            const stopFollow = () => window.removeEventListener("mousemove", align);
+            const startFollow = () => document.addEventListener("mousemove", align);
+            const stopFollow = () => document.removeEventListener("mousemove", align);
 
             const fade = gsap.to(image, {
                 autoAlpha: 1,
-                ease: "power1.inOut",
+                ease: "none",
                 paused: true,
-                duration: 0.4,
-                onReverseComplete: stopFollow // stop following when hidden
+                duration: 0.1,
+                onReverseComplete: stopFollow
             });
 
             el.addEventListener("mouseenter", (e) => {
-                // Initial positioning to avoid jump
-                // We could set it immediately, but quickTo handles it reasonably well.
-                // For a perfect start, we might want to setX/Y immediately without tween on first enter
-                setX(e.clientX);
-                setY(e.clientY);
-
-                startFollow();
+                firstEnter = true;
                 fade.play();
+                startFollow();
+                align(e);
             });
 
             el.addEventListener("mouseleave", () => {

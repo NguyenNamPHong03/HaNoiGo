@@ -15,7 +15,6 @@
 
 body {
   font-family: 'Google Sans Flex', sans-serif;
-  background-color: var(--body);
 }
 
 * {
@@ -79,6 +78,10 @@ html {
 
 ::-webkit-scrollbar-thumb:hover {
   background-color: rgba(0, 0, 0, 0.5);
+}
+
+.container {
+  padding: 100px 50px;
 }
 
 

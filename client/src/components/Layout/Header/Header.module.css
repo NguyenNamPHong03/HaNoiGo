@@ -30,6 +30,10 @@
     transition: all 0.3s ease-in-out;
 }
 
+.darkHeader .links>li {
+    color: #000;
+}
+
 /* Hamburger Button - Hidden on desktop */
 .hamburger {
     display: none;

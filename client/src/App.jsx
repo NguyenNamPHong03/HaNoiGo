@@ -9,6 +9,7 @@ import { LenisProvider } from './hooks/useLenis'
 const Home = lazy(() => import('./pages/Home/Home'))
 const Login = lazy(() => import('./pages/Authentication/Login'))
 const Register = lazy(() => import('./pages/Authentication/Register'))
+const SearchResult = lazy(() => import('./pages/SearchResult/SearchResult'))
 
 // Simple Loading Fallback
 const LoadingFallback = () => (
@@ -31,6 +32,7 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/" element={<Layout />}>
                 <Route index element={<Home />} />
+                <Route path="/search" element={<SearchResult />} />
               </Route>
             </Routes>
           </Suspense>
