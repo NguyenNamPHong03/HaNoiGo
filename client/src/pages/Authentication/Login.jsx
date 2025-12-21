@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import styles from "./Authentication.module.css";
+import { Link, useNavigate } from 'react-router-dom';
+import Icon from '../../components/common/Icon/Icon';
 import { useUser } from '../../contexts/UserContext';
 import { authAPI } from '../../services/api';
-import HanoiGo from '../../components/HanoiGo/HanoiGo';
-import Icon from '../../components/common/Icon/Icon';
+import styles from "./Authentication.module.css";
 
 const Login = () => {
     const navigate = useNavigate();
@@ -23,10 +22,16 @@ const Login = () => {
             const response = await authAPI.login({ email, password });
 
             if (response.success) {
-                const { user, token } = response.data;
+                const { user, token, role } = response.data;
                 login(user, token);
                 toast.success('Login successfully!');
-                navigate('/');
+                
+                // Redirect to admin panel if user is admin
+                if (role === 'admin' || user.role === 'admin') {
+                    window.location.href = 'http://localhost:3001';
+                } else {
+                    navigate('/');
+                }
             }
         } catch (error) {
             console.error('Login failed:', error);

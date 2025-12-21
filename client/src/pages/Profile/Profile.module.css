@@ -1,0 +1,56 @@
+.profileContainer {
+  min-height: 100vh;
+  background: var(--body);
+  padding-top: 80px;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  font-size: 1.2rem;
+  color: var(--dark-green);
+}
+
+.profileContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--padding-container);
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.successMessage {
+  background: var(--green);
+  color: var(--dark-green);
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 500;
+  text-align: center;
+  animation: slideDown 0.3s ease-out;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .profileContainer {
+    padding-top: 60px;
+  }
+  
+  .profileContent {
+    padding: 20px;
+    gap: 20px;
+  }
+}

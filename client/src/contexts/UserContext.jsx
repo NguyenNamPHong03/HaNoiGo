@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { authAPI } from '../services/api';
 
 const UserContext = createContext();
@@ -38,7 +38,12 @@ export const UserProvider = ({ children }) => {
 
   const login = (userData, token) => {
     localStorage.setItem('userToken', token);
-    setUser(userData);
+    // Ensure role is saved with user data
+    const userWithRole = {
+      ...userData,
+      role: userData.role || 'user'
+    };
+    setUser(userWithRole);
   };
 
   const logout = () => {

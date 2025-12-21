@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react';
-import styles from "./Header.module.css";
-import Icon from "../../common/Icon/Icon";
-import HanoiGo from "../../HanoiGo/HanoiGo";
-import MagneticButton from "../../common/MagneticButton/MagneticButton";
-import Link from "../../Link/Link";
 import { useCursor } from "../../../contexts/CursorContext";
+import Icon from "../../common/Icon/Icon";
+import MagneticButton from "../../common/MagneticButton/MagneticButton";
+import HanoiGo from "../../HanoiGo/HanoiGo";
+import Link from "../../Link/Link";
+import UserMenu from "../../UserMenu";
+import styles from "./Header.module.css";
 
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from "../../../contexts/UserContext";
 
 const Header = () => {
@@ -37,11 +38,9 @@ const Header = () => {
         setIsMenuOpen(false);
     }, []);
 
-    const handleLoginClick = () => {
-        if (!user) {
-            navigate('/login');
-        }
-    };
+    const handleLoginClick = useCallback(() => {
+        navigate('/login');
+    }, [navigate]);
 
     return (
         <header className={`${styles.header} ${!isHomePage ? styles.darkHeader : ''}`}>
@@ -64,18 +63,22 @@ const Header = () => {
             </ul>
 
             <div className={styles.loginBtn}>
-                <MagneticButton
-                    bg="transparent"
-                    color={textColor}
-                    borderColor={textColor}
-                    hoverBg="var(--yellow)"
-                    hoverColor="#000"
-                    hoverBorderColor="var(--yellow)"
-                    padding="10px 30px"
-                    onClick={handleLoginClick}
-                >
-                    {user ? `Hi, ${user.displayName}` : 'Login'}
-                </MagneticButton>
+                {user ? (
+                    <UserMenu />
+                ) : (
+                    <MagneticButton
+                        bg="transparent"
+                        color={textColor}
+                        borderColor={textColor}
+                        hoverBg="var(--yellow)"
+                        hoverColor="#000"
+                        hoverBorderColor="var(--yellow)"
+                        padding="10px 30px"
+                        onClick={handleLoginClick}
+                    >
+                        Login
+                    </MagneticButton>
+                )}
             </div>
 
             {/* Hamburger Menu Button (Mobile) */}

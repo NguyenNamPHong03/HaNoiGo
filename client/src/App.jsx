@@ -1,8 +1,8 @@
-import { Route, Routes } from 'react-router-dom'
 import { Suspense, lazy } from 'react'
-import { UserProvider } from './contexts/UserContext'
-import { CursorProvider } from './contexts/CursorContext'
+import { Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout/Layout.jsx'
+import { CursorProvider } from './contexts/CursorContext'
+import { UserProvider } from './contexts/UserContext'
 import { LenisProvider } from './hooks/useLenis'
 
 // Optimization: Lazy load pages (Rules.md §7 Code Splitting)
@@ -10,6 +10,7 @@ const Home = lazy(() => import('./pages/Home/Home'))
 const Login = lazy(() => import('./pages/Authentication/Login'))
 const Register = lazy(() => import('./pages/Authentication/Register'))
 const SearchResult = lazy(() => import('./pages/SearchResult/SearchResult'))
+const Profile = lazy(() => import('./pages/Profile/Profile'))
 
 // Simple Loading Fallback
 const LoadingFallback = () => (
@@ -33,6 +34,7 @@ function App() {
               <Route path="/" element={<Layout />}>
                 <Route index element={<Home />} />
                 <Route path="/search" element={<SearchResult />} />
+                <Route path="/profile" element={<Profile />} />
               </Route>
             </Routes>
           </Suspense>
