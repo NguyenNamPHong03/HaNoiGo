@@ -23,11 +23,11 @@ const checkCloudinaryConfig = () => {
 };
 
 // Create storage configuration function
-const createStorage = () => {
+const createStorage = (uploadType = 'avatars') => {
   const isCloudinaryConfigured = checkCloudinaryConfig();
   
   if (isCloudinaryConfigured) {
-    console.log('✅ Using Cloudinary storage');
+    console.log(`✅ Using Cloudinary storage for ${uploadType}`);
     // Configure Cloudinary
     cloudinary.config({
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -36,22 +36,37 @@ const createStorage = () => {
     });
 
     // Configure Cloudinary storage for Multer
+    const folderMap = {
+      'avatars': 'hanoigo/avatars',
+      'places': 'hanoigo/places'
+    };
+
+    const transformMap = {
+      'avatars': [{ width: 200, height: 200, crop: 'fill', gravity: 'face' }],
+      'places': [{ width: 800, height: 600, crop: 'limit', quality: 'auto' }]
+    };
+
     return new CloudinaryStorage({
       cloudinary: cloudinary,
       params: {
-        folder: 'hanoigo/avatars',
+        folder: folderMap[uploadType] || folderMap['avatars'],
         allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-        transformation: [
-          { width: 200, height: 200, crop: 'fill', gravity: 'face' }
-        ]
+        transformation: transformMap[uploadType] || transformMap['avatars']
       }
     });
   } else {
-    console.log('⚠️ Using LOCAL storage (Cloudinary not configured)');
+    console.log(`⚠️ Using LOCAL storage for ${uploadType} (Cloudinary not configured)`);
     // Fallback to local storage
     return multer.diskStorage({
       destination: (req, file, cb) => {
-        const uploadPath = path.join(__dirname, '../uploads/avatars');
+        const uploadPath = path.join(__dirname, `../uploads/${uploadType}`);
+        // Tạo thư mục nếu chưa có
+        import('fs').then(fs => {
+          if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+            console.log(`📁 Created directory: ${uploadPath}`);
+          }
+        });
         cb(null, uploadPath);
       },
       filename: (req, file, cb) => {
@@ -65,7 +80,7 @@ const createStorage = () => {
 // Create function to get multer upload with dynamic storage
 export const getUploadAvatar = () => {
   return multer({
-    storage: createStorage(),
+    storage: createStorage('avatars'),
     limits: {
       fileSize: 5 * 1024 * 1024, // 5MB limit
     },
@@ -125,4 +140,73 @@ export const uploadAvatarController = async (req, res, next) => {
     console.error('Upload Avatar Error:', error);
     next(error);
   }
+};
+
+// Upload place image controller (không cần auth cho admin)
+export const uploadPlaceImageController = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No image file provided'
+      });
+    }
+
+    let imageUrl;
+    
+    // Check if using Cloudinary by checking if file.path contains cloudinary
+    const isCloudinaryUrl = req.file.path && req.file.path.includes('cloudinary.com');
+    
+    // Debug log
+    console.log('Place image upload info:', {
+      filename: req.file.filename,
+      path: req.file.path,
+      originalname: req.file.originalname,
+      isCloudinaryUrl
+    });
+    
+    if (isCloudinaryUrl) {
+      // Cloudinary URL (already complete URL from Cloudinary)
+      imageUrl = req.file.path;
+      console.log('✅ Using Cloudinary URL for place image:', imageUrl);
+    } else {
+      // Local file URL for places
+      imageUrl = `${req.protocol}://${req.get('host')}/uploads/places/${req.file.filename}`;
+      console.log('⚠️ Using local URL for place image:', imageUrl);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Place image uploaded successfully',
+      data: {
+        imageUrl
+      }
+    });
+
+  } catch (error) {
+    console.error('Upload Place Image Error:', error);
+    next(error);
+  }
+};
+
+// Get upload function cho place images
+export const getUploadPlaceImage = () => {
+  return multer({ 
+    storage: createStorage('places'),
+    limits: { 
+      fileSize: 10 * 1024 * 1024 // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      // Check file type - allow common image formats including jfif
+      const allowedTypes = /jpeg|jpg|png|gif|webp|jfif/;
+      const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+      const mimetype = allowedTypes.test(file.mimetype);
+
+      if (mimetype && extname) {
+        return cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed!'));
+      }
+    }
+  });
 };

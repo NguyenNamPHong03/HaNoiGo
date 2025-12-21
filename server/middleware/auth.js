@@ -28,6 +28,52 @@ export const authenticateToken = async (req, res, next) => {
 
     // Attach user info to request
     req.user = userData;
+    next();
+
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid or expired token'
+    });
+  }
+};
+
+// @desc    Admin authentication middleware
+export const authenticateAdmin = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Access token required'
+      });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Find user and check if admin
+    const userData = await User.findById(decoded.id);
+    if (!userData || !userData.isActive || userData.isBanned) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token or account deactivated'
+      });
+    }
+
+    // Check if user is admin
+    if (userData.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin access required'
+      });
+    }
+
+    // Attach user info to request
+    req.user = userData;
     req.userType = 'user';
 
     next();

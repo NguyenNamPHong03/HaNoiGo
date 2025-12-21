@@ -45,6 +45,14 @@ const AdminLayout: React.FC = () => {
             </div>
             <div className="flex items-center">
               <div className="flex items-center space-x-4">
+                <a
+                  href="http://localhost:5173"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-600 bg-indigo-100 hover:bg-indigo-200 transition-colors"
+                  title="Về trang chủ"
+                >
+                  <span className="mr-2">🏠</span>
+                  Về trang chủ
+                </a>
                 <span className="text-sm text-gray-700">Admin Panel</span>
               </div>
             </div>
@@ -54,6 +62,14 @@ const AdminLayout: React.FC = () => {
         {/* Mobile menu */}
         <div className="sm:hidden">
           <div className="pt-2 pb-3 space-y-1">
+            {/* Home button for mobile */}
+            <a
+              href="http://localhost:5173"
+              className="block px-3 py-2 rounded-md text-base font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100"
+            >
+              <span className="mr-2">🏠</span>
+              Về trang chủ
+            </a>
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (

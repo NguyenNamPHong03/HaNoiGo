@@ -1,12 +1,97 @@
-import React from 'react'
+import React, { useState } from 'react';
+import PlaceDetail from '../components/PlaceDetail';
+import PlaceForm from '../components/PlaceForm';
+import PlacesList from '../components/PlacesList';
 
-const Places: React.FC = () => {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Places Management</h1>
-      <p>Places management will be implemented here</p>
-    </div>
-  )
+type ViewMode = 'list' | 'create' | 'edit' | 'detail';
+
+interface PlacesState {
+  mode: ViewMode;
+  selectedPlaceId?: string;
 }
 
-export default Places
+const Places: React.FC = () => {
+  const [state, setState] = useState<PlacesState>({ mode: 'list' });
+
+  const handleCreatePlace = () => {
+    setState({ mode: 'create' });
+  };
+
+  const handleEditPlace = (placeId: string) => {
+    setState({ mode: 'edit', selectedPlaceId: placeId });
+  };
+
+  const handleViewPlace = (placeId: string) => {
+    setState({ mode: 'detail', selectedPlaceId: placeId });
+  };
+
+  const handleBackToList = () => {
+    setState({ mode: 'list' });
+  };
+
+  const handlePlaceSaved = (place: any) => {
+    // Show success message (could use toast/notification)
+    console.log('Place saved:', place);
+    
+    // Navigate back to list or to detail view
+    setState({ mode: 'list' });
+  };
+
+  const renderContent = () => {
+    switch (state.mode) {
+      case 'create':
+        return (
+          <PlaceForm
+            onBack={handleBackToList}
+            onSave={handlePlaceSaved}
+          />
+        );
+      
+      case 'edit':
+        return (
+          <PlaceForm
+            placeId={state.selectedPlaceId}
+            onBack={handleBackToList}
+            onSave={handlePlaceSaved}
+          />
+        );
+      
+      case 'detail':
+        return state.selectedPlaceId ? (
+          <PlaceDetail
+            placeId={state.selectedPlaceId}
+            onBack={handleBackToList}
+            onEdit={() => handleEditPlace(state.selectedPlaceId!)}
+          />
+        ) : (
+          <div className="p-6">
+            <p className="text-red-500">Không tìm thấy địa điểm</p>
+            <button
+              onClick={handleBackToList}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Quay lại danh sách
+            </button>
+          </div>
+        );
+      
+      case 'list':
+      default:
+        return (
+          <PlacesList
+            onCreatePlace={handleCreatePlace}
+            onEditPlace={handleEditPlace}
+            onViewPlace={handleViewPlace}
+          />
+        );
+    }
+  };
+
+  return (
+    <div className="p-6">
+      {renderContent()}
+    </div>
+  );
+};
+
+export default Places;

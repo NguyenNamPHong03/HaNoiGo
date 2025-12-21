@@ -28,6 +28,17 @@ const userSchema = new mongoose.Schema({
     trim: true,
     maxlength: [50, 'Display name cannot exceed 50 characters']
   },
+  role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user'
+  },
+  // Account status following the recommended structure
+  status: {
+    type: String,
+    enum: ['active', 'banned', 'deleted'],
+    default: 'active'
+  },
   avatarUrl: {
     type: String,
     validate: {
@@ -67,6 +78,17 @@ const userSchema = new mongoose.Schema({
   },
   banReason: String,
   banExpiresAt: Date,
+  
+  // Soft delete support
+  deletedAt: {
+    type: Date,
+    default: null
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   
   // Email verification
   isEmailVerified: {
@@ -156,6 +178,29 @@ userSchema.methods.isBannedUser = function() {
 userSchema.methods.updateLastLogin = async function() {
   this.lastLoginAt = new Date();
   this.loginCount += 1;
+  return this.save();
+};
+
+// Soft delete method
+userSchema.methods.softDelete = async function(deletedBy = null) {
+  this.deletedAt = new Date();
+  this.deletedBy = deletedBy;
+  this.status = 'deleted';
+  this.isActive = false;
+  return this.save();
+};
+
+// Static method to find non-deleted users
+userSchema.statics.findActive = function(query = {}) {
+  return this.find({ ...query, deletedAt: null });
+};
+
+// Restore method
+userSchema.methods.restore = async function() {
+  this.deletedAt = null;
+  this.deletedBy = null;
+  this.status = 'active';
+  this.isActive = true;
   return this.save();
 };
 

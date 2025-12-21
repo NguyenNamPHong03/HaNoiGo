@@ -35,7 +35,15 @@ function Login() {
         // Update user context
         login(response.data.user, response.data.token);
         alert('Đăng nhập thành công!');
-        navigate('/'); // Navigate to home page
+        
+        // Redirect based on role
+        if (response.data.role === 'admin') {
+          // Redirect to admin panel
+          window.location.href = 'http://localhost:3001';
+        } else {
+          // Redirect to home page for regular users
+          navigate('/');
+        }
       }
     } catch (error) {
       console.error('Login error:', error);

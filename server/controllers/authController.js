@@ -52,12 +52,13 @@ export const registerUser = async (req, res, next) => {
     const user = await User.create({
       email,
       password,
-      displayName
+      displayName,
+      role: 'user'
     });
 
     // Generate tokens
-    const token = generateToken(user._id, 'user');
-    const refreshToken = generateRefreshToken(user._id, 'user');
+    const token = generateToken(user._id, user.role);
+    const refreshToken = generateRefreshToken(user._id, user.role);
 
     res.status(201).json({
       success: true,
@@ -139,9 +140,9 @@ export const loginUser = async (req, res, next) => {
     // Update last login
     await user.updateLastLogin();
 
-    // Generate tokens
-    const token = generateToken(user._id, 'user');
-    const refreshToken = generateRefreshToken(user._id, 'user');
+    // Generate tokens based on user role
+    const token = generateToken(user._id, user.role || 'user');
+    const refreshToken = generateRefreshToken(user._id, user.role || 'user');
 
     res.status(200).json({
       success: true,
@@ -149,7 +150,8 @@ export const loginUser = async (req, res, next) => {
       data: {
         user,
         token,
-        refreshToken
+        refreshToken,
+        role: user.role || 'user'
       }
     });
 
@@ -244,6 +246,60 @@ export const logout = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Logout Error:', error);
+    next(error);
+  }
+};
+
+// @desc    Create admin account
+// @route   POST /api/auth/create-admin
+// @access  Private (for development only)
+export const createAdmin = async (req, res, next) => {
+  try {
+    const { email, password, displayName } = req.body;
+
+    // Validation
+    if (!email || !password || !displayName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email, password, and display name'
+      });
+    }
+
+    // Check if admin already exists
+    const existingAdmin = await User.findOne({ email });
+
+    if (existingAdmin) {
+      return res.status(400).json({
+        success: false,
+        message: 'Admin already exists with this email'
+      });
+    }
+
+    // Create admin
+    const admin = await User.create({
+      email,
+      password,
+      displayName,
+      role: 'admin'
+    });
+
+    // Generate tokens
+    const token = generateToken(admin._id, admin.role);
+    const refreshToken = generateRefreshToken(admin._id, admin.role);
+
+    res.status(201).json({
+      success: true,
+      message: 'Admin created successfully',
+      data: {
+        user: admin,
+        token,
+        refreshToken,
+        role: admin.role
+      }
+    });
+
+  } catch (error) {
+    console.error('Create Admin Error:', error);
     next(error);
   }
 };

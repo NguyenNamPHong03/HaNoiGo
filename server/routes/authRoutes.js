@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+    createAdmin,
     getProfile,
     loginUser,
     logout,
@@ -14,6 +15,9 @@ const router = express.Router();
 // User routes
 router.post('/register', registerUser);
 router.post('/login', loginUser);
+
+// Admin routes (development only)
+router.post('/create-admin', createAdmin);
 
 // Protected routes
 router.get('/profile', authenticateToken, getProfile);

@@ -1,18 +1,22 @@
 import express from 'express';
+import {
+  banUser,
+  deleteUser,
+  getUserById,
+  getUsers,
+  getUserStats,
+  updateUser
+} from '../controllers/userController.js';
+import { authenticateAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// User routes placeholder
-router.get('/', (req, res) => {
-  res.json({ message: 'Get users endpoint - to be implemented' });
-});
-
-router.get('/:id', (req, res) => {
-  res.json({ message: 'Get user by ID endpoint - to be implemented' });
-});
-
-router.put('/:id', (req, res) => {
-  res.json({ message: 'Update user endpoint - to be implemented' });
-});
+// Admin-only routes
+router.get('/stats', authenticateAdmin, getUserStats);
+router.get('/', authenticateAdmin, getUsers);
+router.get('/:id', authenticateAdmin, getUserById);
+router.patch('/:id', authenticateAdmin, updateUser);
+router.post('/:id/ban', authenticateAdmin, banUser);
+router.delete('/:id', authenticateAdmin, deleteUser);
 
 export default router;
