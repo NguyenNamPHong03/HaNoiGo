@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { authAPI } from '../services/api';
 
 const UserContext = createContext();
@@ -50,14 +50,15 @@ export const UserProvider = ({ children }) => {
     setUser(prev => ({ ...prev, ...updatedData }));
   };
 
-  const value = {
+  // Optimization: Memoize context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
     user,
     loading,
     login,
     logout,
     updateUser,
     checkAuthStatus
-  };
+  }), [user, loading]);
 
   return (
     <UserContext.Provider value={value}>

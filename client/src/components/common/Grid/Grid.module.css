@@ -1,0 +1,107 @@
+.grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 400px);
+    grid-column-gap: 10px;
+    grid-row-gap: 10px;
+    overflow: hidden;
+}
+
+.grid>div>img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: 0.5s;
+}
+
+.grid>div:hover>img {
+    transform: scale(1.1);
+}
+
+.grid>div {
+    border-radius: 15px;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+}
+
+.grid1 {
+    grid-area: 1 / 1 / 2 / 3;
+}
+
+.grid2 {
+    grid-area: 1 / 3 / 2 / 4;
+}
+
+.grid3 {
+    grid-area: 2 / 1 / 3 / 2;
+}
+
+.grid4 {
+    grid-area: 2 / 2 / 3 / 3;
+}
+
+.grid5 {
+    grid-area: 2 / 3 / 3 / 4;
+}
+
+.content {
+    z-index: 20;
+    position: absolute;
+    width: 100%;
+    bottom: 0;
+    left: 0;
+    padding: 0 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: all 0.5s ease;
+}
+
+.grid>div:hover .content {
+    max-height: 200px;
+    opacity: 1;
+    padding: 15px;
+}
+
+.content h2 {
+    color: #fff;
+    font-weight: 500;
+    font-size: 20px;
+}
+
+.content p {
+    color: #fff;
+}
+
+@media (max-width: 768px) {
+    .grid {
+        display: flex;
+        flex-direction: column;
+        grid-template-columns: none;
+        grid-template-rows: none;
+        gap: 20px;
+    }
+
+    .grid>div {
+        height: 300px;
+        width: 100%;
+    }
+
+    /* Reset grid-area */
+    .grid1,
+    .grid2,
+    .grid3,
+    .grid4 {
+        grid-area: auto;
+    }
+
+    /* Ensure content is always visible or easier to access on mobile */
+    .content h2 {
+        font-size: 18px;
+    }
+}

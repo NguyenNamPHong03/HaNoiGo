@@ -1,0 +1,137 @@
+.hero {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.heroVideo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -2;
+}
+
+.heroOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: -1;
+}
+
+.heroContent {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #fff;
+    text-align: center;
+    padding: 0 20px;
+}
+
+.heroContent h1 {
+    font-size: 4rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.layerImg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.hanoiGoWrapper {
+    position: absolute;
+    top: -10%;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    overflow: hidden;
+}
+
+.hanoiGoInner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+.layerBackgroundImg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
+
+.content {
+    position: absolute;
+    top: 55%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 20;
+    width: fit-content;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 100px;
+}
+
+.description {
+    font-size: 20px;
+    margin: 0;
+    text-align: center;
+    color: #fff;
+    opacity: 0;
+    /* Important for reveal animation */
+    will-change: transform;
+}
+
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+    .hanoiGoWrapper {
+        top: -10%;
+    }
+
+    .hanoiGoInner svg {
+        height: 80px !important;
+    }
+
+    .content {
+        top: 50%;
+        width: 90%;
+        gap: 50px;
+        padding: 0 15px;
+    }
+
+    .description {
+        font-size: 16px;
+        line-height: 1.6;
+    }
+
+    .layerImg {
+        object-position: center;
+    }
+}

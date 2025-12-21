@@ -1,0 +1,144 @@
+.why {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    padding-bottom: 100px;
+}
+
+.title {
+    padding: var(--padding);
+}
+
+.whyContent {
+    display: flex;
+    width: 100%;
+    padding: var(--padding);
+    align-items: stretch;
+}
+
+.leftColumn {
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+}
+
+.rightColumn {
+    width: 50%;
+    padding-left: 50px;
+    position: relative;
+    display: flex;
+}
+
+.imageWrapper {
+    position: absolute;
+    top: 0;
+    left: 50px;
+    right: 0;
+    bottom: 0;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.featureImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.3s ease;
+}
+
+.item {
+    cursor: pointer;
+    position: relative;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease;
+}
+
+.item:hover {
+    background-color: #f9f9f9;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.content>h3 {
+    font-size: 24px;
+    font-weight: 500;
+}
+
+.content>p {
+    font-size: 16px;
+    color: #666;
+    line-height: 1.5;
+}
+
+.count {
+    padding: 30px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.countBox {
+    padding: 15px;
+    min-width: 60px;
+    height: 60px;
+    background-color: var(--green);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.countBox>p {
+    font-size: 20px;
+    font-weight: 500;
+    color: #000;
+}
+
+@media (max-width: 1024px) {
+    .leftColumn {
+        width: 100%;
+    }
+
+    .rightColumn {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .title {
+        padding: 20px;
+    }
+
+    .whyContent {
+        padding: 20px;
+    }
+
+    .count {
+        padding: 20px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .content>h3 {
+        font-size: 20px;
+    }
+
+    .content>p {
+        font-size: 16px;
+    }
+
+    .countBox {
+        padding: 15px;
+    }
+
+    .why {
+        padding-bottom: 50px;
+        gap: 20px;
+    }
+}

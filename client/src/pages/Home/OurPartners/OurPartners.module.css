@@ -1,0 +1,57 @@
+.ourPartners {
+    width: 100%;
+    margin: 0 auto;
+    overflow: hidden;
+    padding: 100px 0 50px 0;
+
+}
+
+.partners {
+    width: 100%;
+    height: 150px;
+    /* Tall enough for logos */
+    position: relative;
+    overflow: hidden;
+    cursor: grab;
+}
+
+.partners:active {
+    cursor: grabbing;
+}
+
+.partner {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 250px;
+    height: 100%;
+}
+
+.partner>img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+    transition: opacity 0.3s ease;
+}
+
+.titleReveal {
+    padding: 50px;
+}
+
+/* Animation styles from user request */
+@media (max-width: 768px) {
+    .ourPartners {
+        padding: 40px 0;
+    }
+
+    .partners {
+        height: 100px;
+    }
+
+    .partner {
+        width: 150px;
+    }
+}

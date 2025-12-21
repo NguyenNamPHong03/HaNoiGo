@@ -1,0 +1,153 @@
+/* Search Section */
+.searchSection {
+    margin-bottom: 30px;
+}
+
+.searchInputWrapper {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #dfe1e5;
+    border-radius: 24px;
+    padding: 10px 20px;
+    box-shadow: 0 1px 6px rgba(32, 33, 36, 0.1);
+    margin-bottom: 20px;
+}
+
+.searchInputWrapper:hover {
+    box-shadow: 0 1px 6px rgba(32, 33, 36, 0.2);
+}
+
+.searchInput {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    font-family: 'Google Sans Flex', sans-serif;
+    background: transparent;
+}
+
+.searchClearBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: #70757a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.searchClearBtn:hover {
+    color: #202124;
+}
+
+.searchActions {
+    display: flex;
+    gap: 5px;
+    margin-left: 10px;
+    padding-left: 15px;
+    border-left: 1px solid #dfe1e5;
+}
+
+.searchActionBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: #4285f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.searchActionBtn:hover {
+    background: rgba(66, 133, 244, 0.1);
+}
+
+/* AI Summary */
+.aiSummary {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+    padding: 20px;
+}
+
+.aiSummaryHeader {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #4285F4;
+}
+
+.aiSummaryContent p {
+    font-size: 14px;
+    line-height: 1.7;
+    color: #202124;
+    margin-bottom: 12px;
+}
+
+.aiSummaryContent p:last-child {
+    margin-bottom: 0;
+}
+
+.aiSummaryContent strong {
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .searchSection {
+        margin-bottom: 20px;
+    }
+
+    .searchInputWrapper {
+        padding: 8px 15px;
+        margin-bottom: 15px;
+    }
+
+    .searchInput {
+        font-size: 14px;
+    }
+
+    .searchActions {
+        margin-left: 8px;
+        padding-left: 10px;
+        gap: 2px;
+    }
+
+    .searchActionBtn {
+        padding: 6px;
+    }
+
+    .searchActionBtn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .aiSummary {
+        padding: 15px;
+        border-radius: 10px;
+    }
+
+    .aiSummaryHeader {
+        font-size: 13px;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .aiSummaryHeader svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .aiSummaryContent p {
+        font-size: 13px;
+        line-height: 1.6;
+        margin-bottom: 10px;
+    }
+}

@@ -1,0 +1,134 @@
+.chatInput {
+    width: 55%;
+    padding: 15px;
+    z-index: 20;
+    position: absolute;
+    top: 90%;
+    left: 50%;
+    transform: translate(-50%, -100%);
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.fong>p {
+    font-size: 14px;
+}
+
+.fong {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    background-color: var(--green);
+    width: fit-content;
+    padding: 10px;
+    border-radius: 30px;
+    margin-inline: auto;
+    cursor: pointer;
+}
+
+.inputBox {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    width: 100%;
+}
+
+.inputBox input {
+    flex: 1;
+    padding: 15px;
+    outline: none;
+    border: none;
+    background-color: var(--light-grey);
+    font-size: 16px;
+    color: #000;
+    font-family: 'Google Sans Flex', sans-serif;
+    border-radius: 30px;
+}
+
+.inputBox input::placeholder {
+    color: #000;
+}
+
+.inputBox input:focus {
+    color: #000;
+}
+
+.inputBox input:focus::placeholder {
+    opacity: 0.5;
+}
+
+.suggestionItem {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    background-color: var(--yellow);
+    width: fit-content;
+    padding: 10px;
+    border-radius: 30px;
+    cursor: pointer;
+}
+
+.suggestionItem svg {
+    transition: rotate 0.3s ease;
+}
+
+.suggestionItem:hover svg {
+    rotate: 180deg;
+}
+
+.suggestions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.suggestionItem p {
+    font-size: 13px;
+    cursor: pointer;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+    .chatInput {
+        width: 90%;
+        padding: 12px;
+        top: 90%;
+        gap: 12px;
+    }
+
+    .fong {
+        padding: 8px 12px;
+    }
+
+    .fong>p {
+        font-size: 12px;
+    }
+
+    .inputBox {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .inputBox input {
+        width: 100%;
+        padding: 12px 15px;
+        font-size: 14px;
+    }
+
+    .suggestions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .suggestionItem {
+        justify-content: center;
+        padding: 8px 12px;
+    }
+
+    .suggestionItem p {
+        font-size: 12px;
+    }
+}
