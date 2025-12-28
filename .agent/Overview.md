@@ -8,7 +8,7 @@ Người dùng trẻ tại Hà Nội gặp khó khăn khi tìm địa điểm ă
 
 HANOIGO là nền tảng web tích hợp AI Chatbot thông minh sử dụng công nghệ RAG (Retrieval-Augmented Generation) để người dùng có thể tìm kiếm địa điểm bằng ngôn ngữ tự nhiên, nhận gợi ý cá nhân hóa dựa trên sở thích và ngữ cảnh, đồng thời hệ thống liên tục học hỏi từ phản hồi người dùng.
 
-## 🛠️ CÔNG NGHỆ SỬ DỤNG
+## 🛠️ CÔNG NGHỆ SỬ DỤNG     
 
 ### **Nền tảng chính**
 
