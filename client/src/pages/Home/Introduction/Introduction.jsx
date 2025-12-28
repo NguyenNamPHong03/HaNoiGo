@@ -6,7 +6,7 @@ const Introduction = () => {
     return (
         <section className={styles.introduction}>
             <TitleSection>
-                Extraordinary natural beauty, enjoy the rich culture, and experience the friendliness of the local people.
+               Trải nghiệm vẻ đẹp của Hà Nội với các tour du lịch được thiết kế tỉ mỉ của chúng tôi, khám phá nền văn hóa phong phú, các địa danh nổi tiếng và cuộc sống địa phương sôi động.
             </TitleSection>
             <Grid />
         </section>

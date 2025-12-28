@@ -42,6 +42,20 @@ const Login = () => {
         }
     };
 
+    const handleGoogleLogin = async () => {
+        try {
+            const response = await authAPI.getGoogleAuthUrl();
+            if (response.success && response.url) {
+                window.location.href = response.url;
+            } else {
+                toast.error('Failed to initialize Google login');
+            }
+        } catch (error) {
+            console.error('Google login error:', error);
+            toast.error('Failed to initialize Google login');
+        }
+    };
+
     return (
         <section className={styles.authentication}>
             <div className={styles.leftSide}>
@@ -110,7 +124,7 @@ const Login = () => {
 
                     <div className={styles.divider}>OR</div>
 
-                    <button className={styles.googleBtn}>
+                    <button type="button" className={styles.googleBtn} onClick={handleGoogleLogin}>
                         <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className={styles.googleIcon} />
                         Continue with Google
                     </button>

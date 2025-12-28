@@ -73,6 +73,12 @@ export const authAPI = {
       },
     });
     return response.data;
+  },
+
+  // Google OAuth
+  getGoogleAuthUrl: async () => {
+    const response = await api.get('/auth/google/url');
+    return response.data;
   }
 };
 
@@ -90,6 +96,11 @@ export const placesAPI = {
   
   search: async (query) => {
     const response = await api.get('/places/search', { params: { q: query } });
+    return response.data;
+  },
+
+  getLatest: async (limit = 5) => {
+    const response = await api.get('/places/latest', { params: { limit } });
     return response.data;
   }
 };

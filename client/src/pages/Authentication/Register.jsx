@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import styles from "./Authentication.module.css";
+import { Link, useNavigate } from 'react-router-dom';
+import Icon from '../../components/common/Icon/Icon';
 import { useUser } from '../../contexts/UserContext';
 import { authAPI } from '../../services/api';
-import HanoiGo from '../../components/HanoiGo/HanoiGo';
-import Icon from '../../components/common/Icon/Icon';
+import styles from "./Authentication.module.css";
 
 const Register = () => {
     const navigate = useNavigate();
@@ -14,7 +13,8 @@ const Register = () => {
     const [formData, setFormData] = useState({
         displayName: '',
         email: '',
-        password: ''
+        password: '',
+        confirmPassword: ''
     });
 
     const handleChange = (e) => {
@@ -26,10 +26,19 @@ const Register = () => {
 
     const handleRegister = async (e) => {
         e.preventDefault();
+        
+        // Validate password match
+        if (formData.password !== formData.confirmPassword) {
+            toast.error('Passwords do not match!');
+            return;
+        }
+
         setLoading(true);
 
         try {
-            const response = await authAPI.register(formData);
+            // Send only required fields to API
+            const { displayName, email, password } = formData;
+            const response = await authAPI.register({ displayName, email, password });
 
             if (response.success) {
                 const { user, token } = response.data;
@@ -43,6 +52,20 @@ const Register = () => {
             toast.error(message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleGoogleRegister = async () => {
+        try {
+            const response = await authAPI.getGoogleAuthUrl();
+            if (response.success && response.url) {
+                window.location.href = response.url;
+            } else {
+                toast.error('Failed to initialize Google sign up');
+            }
+        } catch (error) {
+            console.error('Google sign up error:', error);
+            toast.error('Failed to initialize Google sign up');
         }
     };
 
@@ -107,14 +130,26 @@ const Register = () => {
                             />
                         </div>
 
-                        <button type="submit" className={styles.loginBtn}>
-                            Sign up
+                        <div className={styles.inputWrapper}>
+                            <label>Confirm Password</label>
+                            <input
+                                type="password"
+                                name="confirmPassword"
+                                value={formData.confirmPassword}
+                                onChange={handleChange}
+                                required
+                                minLength={6}
+                            />
+                        </div>
+
+                        <button type="submit" className={styles.loginBtn} disabled={loading}>
+                            {loading ? 'Signing up...' : 'Sign up'}
                         </button>
                     </form>
 
                     <div className={styles.divider}>OR</div>
 
-                    <button className={styles.googleBtn}>
+                    <button type="button" className={styles.googleBtn} onClick={handleGoogleRegister}>
                         <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className={styles.googleIcon} />
                         Continue with Google
                     </button>

@@ -1,6 +1,10 @@
 import express from 'express';
+import { getLatestPlaces } from '../controllers/placesController.js';
 
 const router = express.Router();
+
+// Public endpoint - Get latest places for homepage
+router.get('/latest', getLatestPlaces);
 
 // Places routes placeholder
 router.get('/', (req, res) => {

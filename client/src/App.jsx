@@ -9,6 +9,7 @@ import { LenisProvider } from './hooks/useLenis'
 const Home = lazy(() => import('./pages/Home/Home'))
 const Login = lazy(() => import('./pages/Authentication/Login'))
 const Register = lazy(() => import('./pages/Authentication/Register'))
+const OAuthSuccess = lazy(() => import('./pages/Authentication/OAuthSuccess'))
 const SearchResult = lazy(() => import('./pages/SearchResult/SearchResult'))
 const Profile = lazy(() => import('./pages/Profile/Profile'))
 
@@ -31,6 +32,7 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/oauth-success" element={<OAuthSuccess />} />
               <Route path="/" element={<Layout />}>
                 <Route index element={<Home />} />
                 <Route path="/search" element={<SearchResult />} />

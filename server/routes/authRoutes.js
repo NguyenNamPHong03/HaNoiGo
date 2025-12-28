@@ -2,6 +2,8 @@ import express from 'express';
 import {
     createAdmin,
     getProfile,
+    googleAuthUrl,
+    googleCallback,
     loginUser,
     logout,
     registerUser,
@@ -15,6 +17,10 @@ const router = express.Router();
 // User routes
 router.post('/register', registerUser);
 router.post('/login', loginUser);
+
+// Google OAuth routes
+router.get('/google/url', googleAuthUrl);
+router.get('/google/callback', googleCallback);
 
 // Admin routes (development only)
 router.post('/create-admin', createAdmin);

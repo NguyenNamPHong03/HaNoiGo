@@ -29,8 +29,8 @@ const OurPartners = () => {
     return (
         <section className={styles.ourPartners}>
             <TitleSection className={styles.titleReveal}>
-                We proudly collaborate with a trusted network of partners who share our
-                commitment to quality, reliability, and innovation.
+               Chúng tôi tự hào hợp tác với mạng lưới đối tác đáng tin cậy, 
+               những người cùng chia sẻ cam kết về chất lượng, độ tin cậy và sự đổi mới..
             </TitleSection>
             <div
                 className={styles.partners}

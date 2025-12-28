@@ -506,6 +506,33 @@ export const getPlaceStats = async (req, res) => {
   }
 };
 
+// Get latest places for homepage (public endpoint)
+export const getLatestPlaces = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 5;
+    
+    const places = await Place.find({ 
+      status: 'Published',
+      isActive: true 
+    })
+      .sort({ createdAt: -1 }) // Sắp xếp theo thời gian tạo mới nhất
+      .limit(limit)
+      .select('name description images priceRange category district')
+      .lean();
+    
+    res.json({
+      success: true,
+      data: places
+    });
+  } catch (error) {
+    console.error('Get latest places error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lấy địa điểm mới nhất'
+    });
+  }
+};
+
 // Get districts list (for dropdown)
 export const getDistricts = (req, res) => {
   const districts = [

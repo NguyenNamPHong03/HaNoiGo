@@ -1,31 +1,31 @@
-import { useRef, useState } from "react";
-import styles from "./Why.module.css";
+import { useState } from "react";
 import TitleSection from "../../../components/common/TitleSection/TitleSection";
 import { useCursor } from "../../../contexts/CursorContext";
+import styles from "./Why.module.css";
 
 const WHY_ITEMS = [
     {
         id: 1,
-        title: "Trip transfer",
-        description: "Comfortable transfers between your hotel and the main attractions, so you spend less time on the road and more time exploring.",
+        title: "Dịch vụ đưa đón",
+        description: "Dịch vụ đưa đón thoải mái giữa khách sạn và các điểm tham quan chính, giúp bạn tiết kiệm thời gian di chuyển và có nhiều thời gian khám phá hơn.",
         image: "https://images.unsplash.com/photo-1561842951-2f960156a061?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
         id: 2,
-        title: "Easy booking",
-        description: "Fast, flexible reservations for tours and activities in just a few clicks, with options that adapt to your plans.",
+        title: "Đặt chỗ dễ dàng",
+        description: "Đặt chỗ nhanh chóng và linh hoạt cho các tour và hoạt động chỉ với vài cú nhấp chuột, với các tùy chọn phù hợp với kế hoạch của bạn.",
         image: "https://images.unsplash.com/photo-1609412058473-c199497c3c5d?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
         id: 3,
-        title: "Local guides",
-        description: "Friendly local experts who know the region inside out and are ready to show you the best viewpoints, hidden spots, and stories.",
+        title: "Hướng dẫn viên địa phương",
+        description: "Những chuyên gia địa phương thân thiện, hiểu rõ vùng miền và sẵn sàng giới thiệu cho bạn những điểm ngắm cảnh đẹp nhất, những địa điểm bí mật và những câu chuyện thú vị.",
         image: "https://images.unsplash.com/photo-1570559120097-e6c3388329e6?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     },
     {
         id: 4,
-        title: "Exclusive offers",
-        description: "Special prices on ski passes, cosy chalets, and selected excursions available only for our travelers.",
+        title: "Ưu đãi độc quyền",
+        description: "Giá đặc biệt cho vé trượt tuyết, chalet ấm cúng và các chuyến tham quan được chọn chỉ dành riêng cho khách du lịch của chúng tôi.",
         image: "https://images.unsplash.com/photo-1603269231725-4ea1da7d02fd?q=80&w=2531&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     }
 ];
@@ -46,7 +46,8 @@ const Why = () => {
         <section className={styles.why}>
             <div className={styles.title}>
                 <TitleSection>
-                    Traveling with us means you don’t have to worry about the details. We handle your transfers, bookings, and on-site arrangements so you can simply relax and enjoy your holiday from the very first day.
+                    Đi du lịch cùng chúng tôi nghĩa là bạn không cần phải lo lắng về các chi tiết.
+Chúng tôi lo liệu việc đưa đón, đặt chỗ và sắp xếp tại chỗ để bạn có thể thư giãn và tận hưởng kỳ nghỉ của mình ngay từ ngày đầu tiên.
                 </TitleSection>
             </div>
 

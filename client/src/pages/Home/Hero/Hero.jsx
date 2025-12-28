@@ -1,14 +1,14 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import styles from "./Hero.module.css";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import HanoiGo from "../../../components/HanoiGo/HanoiGo";
 import ChatInput from "../../../components/common/ChatInput/ChatInput";
+import styles from "./Hero.module.css";
 
 gsap.registerPlugin(ScrollTrigger);
 
-import useTextReveal from "../../../hooks/useTextReveal";
 import useParallax from "../../../hooks/useParallax";
+import useTextReveal from "../../../hooks/useTextReveal";
 
 const Hero = ({ preloaderComplete, onAnimationComplete }) => {
     const heroRef = useRef(null);
@@ -120,8 +120,7 @@ const Hero = ({ preloaderComplete, onAnimationComplete }) => {
 
             <div className={styles.content} ref={layer4Ref}>
                 <p className={styles.description} ref={descriptionRef}>
-                    Experience the beauty of Hanoi with our carefully crafted tours,
-                    exploring its rich culture, iconic landmarks, and vibrant local life.
+                    Khám phá vẻ đẹp của Hà Nội với các tour du lịch được thiết kế tỉ mỉ của chúng tôi, khám phá nền văn hóa phong phú, những địa danh nổi tiếng và cuộc sống địa phương sôi động.
                 </p>
             </div>
             <ChatInput ref={chatInputRef} />

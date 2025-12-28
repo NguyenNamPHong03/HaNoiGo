@@ -43,7 +43,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     validate: {
       validator: function(url) {
-        return !url || /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+        if (!url) return true;
+        // Allow Google avatar URLs (lh3.googleusercontent.com) and standard image URLs
+        return /^https?:\/\/lh3\.googleusercontent\.com\/.+/i.test(url) || 
+               /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i.test(url);
       },
       message: 'Invalid avatar URL'
     }

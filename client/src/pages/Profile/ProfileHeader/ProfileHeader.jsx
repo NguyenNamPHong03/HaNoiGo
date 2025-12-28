@@ -115,11 +115,7 @@ const ProfileHeader = ({ user }) => {
             <div className={styles.stat}>
               <span className={styles.statValue}>{user.totalReviews || 0}</span>
               <span className={styles.statLabel}>Đánh giá</span>
-            </div>
-            <div className={styles.stat}>
-              <span className={styles.statValue}>{user.totalChatSessions || 0}</span>
-              <span className={styles.statLabel}>Trò chuyện</span>
-            </div>
+            </div>           
           </div>
         </div>
       </div>

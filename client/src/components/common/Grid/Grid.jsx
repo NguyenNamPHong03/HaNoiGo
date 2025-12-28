@@ -1,8 +1,8 @@
-import { useRef } from "react";
 import gsap from "gsap";
-import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useEffect, useRef, useState } from "react";
 import { useCursor } from "../../../contexts/CursorContext";
+import { placesAPI } from "../../../services/api";
 import styles from "./Grid.module.css";
 
 // Register ScrollTrigger
@@ -10,7 +10,8 @@ if (typeof window !== "undefined") {
     gsap.registerPlugin(ScrollTrigger);
 }
 
-const GRID_DATA = [
+// Fallback data nếu API lỗi
+const FALLBACK_DATA = [
     {
         id: 1,
         src: "https://images.unsplash.com/photo-1499678329028-101435549a4e?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0",
@@ -46,6 +47,40 @@ const GRID_DATA = [
 const Grid = () => {
     const containerRef = useRef(null);
     const cursorRef = useCursor();
+    const [gridData, setGridData] = useState(FALLBACK_DATA);
+    const [loading, setLoading] = useState(true);
+
+    // Fetch latest places from API
+    useEffect(() => {
+        const fetchLatestPlaces = async () => {
+            try {
+                const response = await placesAPI.getLatest(5);
+                
+                if (response.success && response.data && response.data.length > 0) {
+                    // Transform API data to grid format
+                    const transformedData = response.data.map((place, index) => ({
+                        id: place._id,
+                        src: place.images && place.images.length > 0 
+                            ? place.images[0] 
+                            : FALLBACK_DATA[index % FALLBACK_DATA.length].src,
+                        title: place.name,
+                        description: place.description.length > 100 
+                            ? place.description.substring(0, 97) + '...' 
+                            : place.description
+                    }));
+                    
+                    setGridData(transformedData);
+                }
+            } catch (error) {
+                console.error('Error fetching latest places:', error);
+                // Giữ nguyên fallback data nếu có lỗi
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchLatestPlaces();
+    }, []);
 
     const handleMouseEnter = () => {
         if (cursorRef?.current) cursorRef.current.enter();
@@ -55,9 +90,13 @@ const Grid = () => {
         if (cursorRef?.current) cursorRef.current.leave();
     };
 
+    if (loading) {
+        return <div className={styles.grid}>Loading...</div>;
+    }
+
     return (
         <div className={styles.grid} ref={containerRef}>
-            {GRID_DATA.map((item, index) => (
+            {gridData.map((item, index) => (
                 <div
                     key={item.id}
                     className={styles[`grid${index + 1}`]}
