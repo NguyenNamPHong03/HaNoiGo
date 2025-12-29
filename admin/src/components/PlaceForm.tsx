@@ -97,13 +97,25 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
         const placeRes = await placesAPI.getById(placeId);
         const place = placeRes.data;
         
+        // ✅ Đảm bảo priceRange luôn có cả min và max
+        const priceRange = place.priceRange || {};
+        const validPriceRange = {
+          min: Number(priceRange.min) >= 0 ? Number(priceRange.min) : 0,
+          max: Number(priceRange.max) >= 0 ? Number(priceRange.max) : 0
+        };
+        
+        console.log('📝 Loaded place data:', { 
+          name: place.name, 
+          priceRange: validPriceRange 
+        });
+        
         setFormData({
           name: place.name || '',
           address: place.address || '',
           district: place.district || '',
           category: place.category || '',
           description: place.description || '',
-          priceRange: place.priceRange || { min: 0, max: 0 },
+          priceRange: validPriceRange,
           images: place.images || [],
           menu: place.menu || [],
           aiTags: place.aiTags || {
@@ -334,16 +346,42 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
 
     setLoading(true);
     try {
-      // Chuẩn hóa dữ liệu trước khi gửi
-      const submitData = {
+      // ✅ Validate priceRange trước - CRITICAL để tránh lỗi backend
+      const minPrice = Number(formData.priceRange?.min);
+      const maxPrice = Number(formData.priceRange?.max);
+      
+      if (isNaN(minPrice) || isNaN(maxPrice)) {
+        setErrors({ minPrice: 'Giá không hợp lệ', maxPrice: 'Giá không hợp lệ' });
+        setActiveTab(0);
+        setLoading(false);
+        return;
+      }
+      
+      if (minPrice < 0 || maxPrice < 0) {
+        setErrors({ minPrice: 'Giá phải >= 0', maxPrice: 'Giá phải >= 0' });
+        setActiveTab(0);
+        setLoading(false);
+        return;
+      }
+      
+      if (maxPrice < minPrice) {
+        setErrors({ maxPrice: 'Giá tối đa phải >= giá tối thiểu' });
+        setActiveTab(0);
+        setLoading(false);
+        return;
+      }
+
+      // Chuẩn hóa dữ liệu trước khi gửi - phải khớp 100% với backend schema
+      const submitData: any = {
         name: formData.name.trim(),
         address: formData.address.trim(),
         district: formData.district,
         category: formData.category,
         description: formData.description.trim(),
+        // ✅ CRITICAL: Luôn gửi cả min VÀ max để tránh lỗi validator
         priceRange: {
-          min: Number(formData.priceRange.min) || 0,
-          max: Number(formData.priceRange.max) || 0
+          min: minPrice,
+          max: maxPrice
         },
         images: formData.images || [],
         menu: formData.menu.map(item => ({
@@ -352,25 +390,44 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
           description: item.description?.trim() || '',
           category: item.category?.trim() || 'Khác'
         })),
-        // Sửa aiTags structure - bỏ specialFeatures nếu gây lỗi
+        // ✅ Fix: Thêm đầy đủ tất cả fields trong aiTags
         aiTags: {
           space: formData.aiTags.space || [],
           mood: formData.aiTags.mood || [],
           suitability: formData.aiTags.suitability || [],
           crowdLevel: formData.aiTags.crowdLevel || [],
           music: formData.aiTags.music || [],
-          parking: formData.aiTags.parking || []
-          // Tạm bỏ specialFeatures để test
+          parking: formData.aiTags.parking || [],
+          specialFeatures: formData.aiTags.specialFeatures || [] // ✅ CRITICAL: Thiếu field này gây lỗi
         },
-        // Đưa phone, website lên top-level thay vì nested trong contact
+        // Backend map phone/website từ top-level về contact object
         phone: formData.contact.phone?.trim() || '',
         website: formData.contact.website?.trim() || '',
-        // Normalize status về lowercase
-        status: normalizedStatus
+        // ✅ Fix: Thêm các fields bắt buộc
+        status: normalizedStatus,
+        isActive: true,
+        featured: false
       };
+
+      // ✅ Fix: Chỉ gửi coordinates nếu có giá trị hợp lệ
+      if (formData.coordinates?.latitude && formData.coordinates?.longitude) {
+        const lat = Number(formData.coordinates.latitude);
+        const lng = Number(formData.coordinates.longitude);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          submitData.coordinates = { latitude: lat, longitude: lng };
+        }
+      }
 
       // Log payload để debug
       console.log('🚀 Payload gửi lên backend:', JSON.stringify(submitData, null, 2));
+      console.log('💰 PriceRange details:', {
+        min: submitData.priceRange.min,
+        max: submitData.priceRange.max,
+        minType: typeof submitData.priceRange.min,
+        maxType: typeof submitData.priceRange.max,
+        minIsNumber: !isNaN(submitData.priceRange.min),
+        maxIsNumber: !isNaN(submitData.priceRange.max)
+      });
 
       let response;
       if (placeId) {
@@ -383,7 +440,15 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
       onSave(response.data);
     } catch (error: any) {
       console.error('❌ Save error:', error);
-      console.error('❌ Error response:', error.response?.data);
+      console.error('❌ Error response:', error?.response?.data);
+      console.error('❌ Error message:', error?.response?.data?.message);
+      console.error('❌ Error details:', error?.response?.data?.details);
+      console.error('❌ Full error object:', JSON.stringify(error?.response?.data, null, 2));
+      
+      // Alert để user thấy lỗi ngay
+      if (error?.response?.data?.message) {
+        alert('Lỗi: ' + error.response.data.message + '\n\nChi tiết: ' + JSON.stringify(error.response.data.details || error.response.data.errors, null, 2));
+      }
       
       if (error.response?.data?.errors) {
         const errorMap: Record<string, string> = {};

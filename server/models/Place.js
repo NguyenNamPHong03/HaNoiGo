@@ -42,6 +42,10 @@ const placeSchema = new mongoose.Schema({
       required: true,
       validate: {
         validator: function(value) {
+          // ✅ Fix: Check null safety để tránh lỗi "Cannot read properties of undefined"
+          if (this.priceRange == null || this.priceRange.min == null) {
+            return true; // Skip validation nếu min chưa được set
+          }
           return value >= this.priceRange.min;
         },
         message: 'Maximum price must be greater than or equal to minimum price'
