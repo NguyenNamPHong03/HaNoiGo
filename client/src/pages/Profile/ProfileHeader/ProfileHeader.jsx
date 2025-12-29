@@ -28,12 +28,25 @@ const ProfileHeader = ({ user }) => {
     setUploading(true);
 
     try {
+      console.log('📤 Uploading avatar...');
       const response = await authAPI.uploadAvatar(file);
+      console.log('📥 Upload response:', response);
+      
       if (response.success) {
-        updateUser({ avatarUrl: response.data.avatarUrl });
+        // ✅ FIX: Cập nhật toàn bộ user object từ backend (đã có avatarUrl mới từ DB)
+        if (response.data.user) {
+          console.log('✅ Updating user context with full user object from backend');
+          updateUser(response.data.user);
+        } else {
+          // Fallback: chỉ update avatarUrl nếu backend không trả user
+          console.log('⚠️ Backend không trả user object, chỉ update avatarUrl');
+          updateUser({ avatarUrl: response.data.avatarUrl });
+        }
+        
+        alert('✅ Đã cập nhật ảnh đại diện thành công!');
       }
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('❌ Upload error:', error);
       alert(error.response?.data?.message || 'Upload ảnh thất bại. Vui lòng thử lại.');
     } finally {
       setUploading(false);

@@ -14,12 +14,17 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('userToken');
+    console.log('🔐 API Interceptor - Token exists:', !!token);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('✅ API Interceptor - Token attached to request:', config.url);
+    } else {
+      console.log('⚠️ API Interceptor - No token found for request:', config.url);
     }
     return config;
   },
   (error) => {
+    console.error('❌ API Interceptor Request Error:', error);
     return Promise.reject(error);
   }
 );

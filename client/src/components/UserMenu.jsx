@@ -37,10 +37,20 @@ function UserMenu() {
   }
 
   const getAvatarUrl = () => {
-    if (user.avatarUrl) return user.avatarUrl;
+    console.log('🎨 UserMenu - Getting avatar URL for user:', user);
+    console.log('🎨 UserMenu - user.avatarUrl:', user?.avatarUrl);
+    console.log('🎨 UserMenu - user.displayName:', user?.displayName);
+    
+    if (user?.avatarUrl) {
+      console.log('✅ Using user avatarUrl:', user.avatarUrl);
+      return user.avatarUrl;
+    }
+    
     // Default avatar with user initial
-    const initial = user.displayName?.charAt(0).toUpperCase() || 'U';
-    return `https://ui-avatars.com/api/?name=${initial}&background=ef4444&color=ffffff&size=40`;
+    const initial = user?.displayName?.charAt(0).toUpperCase() || 'U';
+    const fallbackUrl = `https://ui-avatars.com/api/?name=${initial}&background=ef4444&color=ffffff&size=40`;
+    console.log('⚠️ Using fallback avatar:', fallbackUrl);
+    return fallbackUrl;
   };
 
   return (

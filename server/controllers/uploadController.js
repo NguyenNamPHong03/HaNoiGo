@@ -105,17 +105,28 @@ export const uploadAvatarController = async (req, res, next) => {
       });
     }
 
+    // Get user ID from JWT middleware (req.user is set by authenticateToken)
+    const userId = req.user?._id || req.user?.id;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+    }
+
     let avatarUrl;
     
     // Check if using Cloudinary by checking if file.path contains cloudinary
     const isCloudinaryUrl = req.file.path && req.file.path.includes('cloudinary.com');
     
     // Debug log
-    console.log('File info:', {
+    console.log('📤 Upload Avatar - File info:', {
       filename: req.file.filename,
       path: req.file.path,
       originalname: req.file.originalname,
-      isCloudinaryUrl
+      isCloudinaryUrl,
+      userId
     });
     
     if (isCloudinaryUrl) {
@@ -128,16 +139,36 @@ export const uploadAvatarController = async (req, res, next) => {
       console.log('⚠️ Using local URL:', avatarUrl);
     }
 
+    // ✅ CRITICAL FIX: Update user's avatarUrl in MongoDB
+    const User = (await import('../models/User.js')).default;
+    
+    console.log('💾 Updating user avatarUrl in database...');
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { avatarUrl },
+      { new: true, runValidators: true }
+    ).select('-password');
+    
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    console.log('✅ User avatarUrl updated in DB:', updatedUser.avatarUrl);
+
     res.status(200).json({
       success: true,
       message: 'Avatar uploaded successfully',
       data: {
-        avatarUrl
+        avatarUrl: updatedUser.avatarUrl,
+        user: updatedUser // Trả về user đầy đủ để frontend update context
       }
     });
 
   } catch (error) {
-    console.error('Upload Avatar Error:', error);
+    console.error('❌ Upload Avatar Error:', error);
     next(error);
   }
 };

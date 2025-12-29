@@ -51,24 +51,33 @@ const OAuthSuccess = () => {
         // Fetch user profile
         console.log('📡 Fetching user profile...');
         const response = await authAPI.getProfile();
-        console.log('📥 Profile response:', response);
+        console.log('📥 Full Profile response:', response);
+        console.log('📥 Response.data:', response.data);
         
         if (response.success) {
-          const user = response.data?.user || response.data;
-          console.log('👤 User data:', user);
+          // Backend trả về: { success: true, data: { user: {...} } }
+          const user = response.data.user;
+          console.log('👤 User data extracted:', user);
+          console.log('👤 User avatarUrl:', user?.avatarUrl);
+          console.log('👤 User displayName:', user?.displayName);
           
           if (!user) {
+            console.error('❌ User data is missing from response.data.user');
             throw new Error('User data is missing from response');
           }
           
+          // Save user to context
           login(user, token);
+          console.log('✅ User saved to context');
           
-          toast.success('Login successful!');
+          toast.success(`Xin chào ${user.displayName || 'bạn'}!`);
           
           // Redirect to admin panel if user is admin
           if (user.role === 'admin') {
+            console.log('🔐 Redirecting to admin panel...');
             window.location.href = 'http://localhost:3001';
           } else {
+            console.log('🏠 Redirecting to homepage...');
             navigate('/');
           }
         } else {
