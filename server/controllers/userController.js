@@ -30,8 +30,9 @@ export const getUsers = async (req, res, next) => {
     // Status filter
     if (status && status !== 'all') {
       if (status === 'deleted') {
+        // Override default filter to show only deleted users
+        delete query.$or;
         query.deletedAt = { $ne: null };
-        delete query.deletedAt; // Remove the default filter
       } else {
         query.status = status;
       }
@@ -204,14 +205,30 @@ export const banUser = async (req, res, next) => {
 export const deleteUser = async (req, res, next) => {
   try {
     const userId = req.params.id;
-    const adminId = req.user._id;
+    const adminId = req.user?._id || null;
+    
+    // Validate ObjectId
+    if (!userId || !userId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID'
+      });
+    }
     
     const user = await User.findById(userId);
     
-    if (!user || user.deletedAt) {
+    if (!user) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
+      });
+    }
+    
+    // Check if already deleted
+    if (user.deletedAt) {
+      return res.status(400).json({
+        success: false,
+        message: 'User already deleted'
       });
     }
     
@@ -226,12 +243,20 @@ export const deleteUser = async (req, res, next) => {
     
     res.status(200).json({
       success: true,
-      message: 'User deleted successfully'
+      message: 'User deleted successfully',
+      data: {
+        userId: user._id,
+        displayName: user.displayName
+      }
     });
 
   } catch (error) {
     console.error('Delete User Error:', error);
-    next(error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
