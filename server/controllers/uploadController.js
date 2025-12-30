@@ -1,4 +1,5 @@
 import { v2 as cloudinary } from 'cloudinary';
+import fs from 'fs';
 import multer from 'multer';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import path from 'path';
@@ -6,6 +7,21 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Tạo upload directories nếu chưa có (sync để tránh race condition)
+const ensureUploadDirs = () => {
+  const dirs = ['avatars', 'places'];
+  dirs.forEach(dir => {
+    const uploadPath = path.join(__dirname, `../uploads/${dir}`);
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+      console.log(`📁 Created directory: ${uploadPath}`);
+    }
+  });
+};
+
+// Gọi ngay khi import
+ensureUploadDirs();
 
 // Function to check Cloudinary configuration (called dynamically)
 const checkCloudinaryConfig = () => {
@@ -60,13 +76,7 @@ const createStorage = (uploadType = 'avatars') => {
     return multer.diskStorage({
       destination: (req, file, cb) => {
         const uploadPath = path.join(__dirname, `../uploads/${uploadType}`);
-        // Tạo thư mục nếu chưa có
-        import('fs').then(fs => {
-          if (!fs.existsSync(uploadPath)) {
-            fs.mkdirSync(uploadPath, { recursive: true });
-            console.log(`📁 Created directory: ${uploadPath}`);
-          }
-        });
+        // Thư mục đã được tạo sẵn ở ensureUploadDirs()
         cb(null, uploadPath);
       },
       filename: (req, file, cb) => {
@@ -176,25 +186,31 @@ export const uploadAvatarController = async (req, res, next) => {
 // Upload place image controller (không cần auth cho admin)
 export const uploadPlaceImageController = async (req, res, next) => {
   try {
+    console.log('🖼️ Upload Place Image started');
+    console.log('File received:', req.file ? 'YES' : 'NO');
+    
     if (!req.file) {
+      console.log('❌ No file in request');
       return res.status(400).json({
         success: false,
         message: 'No image file provided'
       });
     }
 
+    console.log('📋 File details:', {
+      filename: req.file.filename,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      path: req.file.path
+    });
+
     let imageUrl;
     
     // Check if using Cloudinary by checking if file.path contains cloudinary
     const isCloudinaryUrl = req.file.path && req.file.path.includes('cloudinary.com');
     
-    // Debug log
-    console.log('Place image upload info:', {
-      filename: req.file.filename,
-      path: req.file.path,
-      originalname: req.file.originalname,
-      isCloudinaryUrl
-    });
+    console.log('🔍 Is Cloudinary URL?', isCloudinaryUrl);
     
     if (isCloudinaryUrl) {
       // Cloudinary URL (already complete URL from Cloudinary)
@@ -206,6 +222,8 @@ export const uploadPlaceImageController = async (req, res, next) => {
       console.log('⚠️ Using local URL for place image:', imageUrl);
     }
 
+    console.log('✅ Upload successful, returning response');
+    
     res.status(200).json({
       success: true,
       message: 'Place image uploaded successfully',
@@ -215,7 +233,7 @@ export const uploadPlaceImageController = async (req, res, next) => {
     });
 
   } catch (error) {
-    console.error('Upload Place Image Error:', error);
+    console.error('❌ Upload Place Image Error:', error);
     next(error);
   }
 };
@@ -228,14 +246,21 @@ export const getUploadPlaceImage = () => {
       fileSize: 10 * 1024 * 1024 // 10MB limit
     },
     fileFilter: (req, file, cb) => {
+      console.log('🔍 File filter check:', {
+        originalname: file.originalname,
+        mimetype: file.mimetype
+      });
+      
       // Check file type - allow common image formats including jfif
       const allowedTypes = /jpeg|jpg|png|gif|webp|jfif/;
       const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-      const mimetype = allowedTypes.test(file.mimetype);
+      const mimetype = allowedTypes.test(file.mimetype) || file.mimetype === 'image/jpeg';
 
       if (mimetype && extname) {
+        console.log('✅ File type accepted');
         return cb(null, true);
       } else {
+        console.log('❌ File type rejected');
         cb(new Error('Only image files are allowed!'));
       }
     }

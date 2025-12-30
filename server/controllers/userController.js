@@ -1,60 +1,19 @@
-import User from '../models/User.js';
+import * as userService from '../services/userService.js';
 
 // @desc    Get all users
 // @route   GET /api/users?page=1&limit=10&search=...&role=...&status=...
 // @access  Private (Admin only)
 export const getUsers = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, search, role, status } = req.query;
+    const { page, limit, search, role, status } = req.query;
     
-    const query = { 
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $exists: false } }
-      ]
-    }; // Show non-deleted users (including those without deletedAt field)
-    
-    // Search filter
-    if (search) {
-      query.$or = [
-        { displayName: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ];
-    }
-    
-    // Role filter
-    if (role && role !== 'all') {
-      query.role = role;
-    }
-    
-    // Status filter
-    if (status && status !== 'all') {
-      if (status === 'deleted') {
-        // Override default filter to show only deleted users
-        delete query.$or;
-        query.deletedAt = { $ne: null };
-      } else {
-        query.status = status;
-      }
-    }
-    
-    const users = await User.find(query)
-      .select('-password')
-      .populate('deletedBy', 'displayName email')
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit));
-    
-    const total = await User.countDocuments(query);
-    const totalPages = Math.ceil(total / parseInt(limit));
+    // Call service layer
+    const result = await userService.getAllUsers({ page, limit, search, role, status });
 
     res.status(200).json({
       success: true,
-      data: users,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      total: total,
-      totalPages: totalPages
+      data: result.users,
+      ...result.pagination
     });
 
   } catch (error) {
@@ -68,14 +27,8 @@ export const getUsers = async (req, res, next) => {
 // @access  Private (Admin only)
 export const getUserById = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
-    
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
+    // Call service layer
+    const user = await userService.getUserById(req.params.id);
     
     res.status(200).json({
       success: true,
@@ -84,6 +37,14 @@ export const getUserById = async (req, res, next) => {
 
   } catch (error) {
     console.error('Get User By ID Error:', error);
+    
+    if (error.message === 'User not found') {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
     next(error);
   }
 };
@@ -96,43 +57,13 @@ export const updateUser = async (req, res, next) => {
     const { role, status, isBanned, isActive } = req.body;
     const userId = req.params.id;
     
-    const user = await User.findById(userId);
-    
-    if (!user || user.deletedAt) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-    
-    // Don't allow changing admin role by non-superadmin
-    if (user.role === 'admin' && role && role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Cannot demote admin users'
-      });
-    }
-    
-    const updateData = {};
-    if (role) updateData.role = role;
-    if (status) updateData.status = status;
-    if (typeof isBanned !== 'undefined') updateData.isBanned = isBanned;
-    if (typeof isActive !== 'undefined') updateData.isActive = isActive;
-    
-    // Sync status with boolean fields
-    if (status === 'banned') {
-      updateData.isBanned = true;
-      updateData.isActive = false;
-    } else if (status === 'active') {
-      updateData.isBanned = false;
-      updateData.isActive = true;
-    }
-    
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      updateData,
-      { new: true, select: '-password' }
-    );
+    // Call service layer
+    const updatedUser = await userService.updateUserRoleAndStatus(userId, {
+      role,
+      status,
+      isBanned,
+      isActive
+    });
     
     res.status(200).json({
       success: true,
@@ -142,6 +73,21 @@ export const updateUser = async (req, res, next) => {
 
   } catch (error) {
     console.error('Update User Error:', error);
+    
+    if (error.message === 'User not found') {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
+    if (error.message.includes('Cannot demote')) {
+      return res.status(403).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
     next(error);
   }
 };
@@ -154,38 +100,8 @@ export const banUser = async (req, res, next) => {
     const userId = req.params.id;
     const { reason, expiresAt } = req.body;
     
-    const user = await User.findById(userId);
-    
-    if (!user || user.deletedAt) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-    
-    if (user.role === 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Cannot ban admin users'
-      });
-    }
-    
-    const updateData = {
-      isBanned: true,
-      status: 'banned',
-      isActive: false,
-      banReason: reason || 'No reason provided'
-    };
-    
-    if (expiresAt) {
-      updateData.banExpiresAt = new Date(expiresAt);
-    }
-    
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      updateData,
-      { new: true, select: '-password' }
-    );
+    // Call service layer
+    const updatedUser = await userService.banUser(userId, { reason, expiresAt });
     
     res.status(200).json({
       success: true,
@@ -195,6 +111,21 @@ export const banUser = async (req, res, next) => {
 
   } catch (error) {
     console.error('Ban User Error:', error);
+    
+    if (error.message === 'User not found') {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
+    if (error.message.includes('Cannot ban')) {
+      return res.status(403).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
     next(error);
   }
 };
@@ -207,7 +138,7 @@ export const deleteUser = async (req, res, next) => {
     const userId = req.params.id;
     const adminId = req.user?._id || null;
     
-    // Validate ObjectId
+    // Validate ObjectId format
     if (!userId || !userId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({
         success: false,
@@ -215,48 +146,40 @@ export const deleteUser = async (req, res, next) => {
       });
     }
     
-    const user = await User.findById(userId);
-    
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-    
-    // Check if already deleted
-    if (user.deletedAt) {
-      return res.status(400).json({
-        success: false,
-        message: 'User already deleted'
-      });
-    }
-    
-    if (user.role === 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Cannot delete admin users'
-      });
-    }
-    
-    await user.softDelete(adminId);
+    // Call service layer
+    const result = await userService.softDeleteUser(userId, adminId);
     
     res.status(200).json({
       success: true,
       message: 'User deleted successfully',
-      data: {
-        userId: user._id,
-        displayName: user.displayName
-      }
+      data: result
     });
 
   } catch (error) {
     console.error('Delete User Error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    
+    if (error.message === 'User not found') {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
+    if (error.message.includes('already deleted')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
+    if (error.message.includes('Cannot delete')) {
+      return res.status(403).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
+    next(error);
   }
 };
 

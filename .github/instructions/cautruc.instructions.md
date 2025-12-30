@@ -191,3 +191,171 @@ Gợi ý mở rộng (nếu muốn mạnh hơn):
 images: [string] (ảnh review)
 
 tags: [string] (vd: “đồ ngon”, “phục vụ tốt”, “giá cao”)
+---
+
+## 📁 CẤU TRÚC BACKEND - HANOIGO
+
+### 🎯 Kiến trúc tổng quan
+
+Backend HANOIGO tuân theo kiến trúc **MVC (Model-View-Controller)** với **Service Layer** tách biệt, đảm bảo:
+
+- **Separation of Concerns**: Mỗi layer có trách nhiệm riêng biệt
+- **Testability**: Dễ dàng unit test từng layer
+- **Scalability**: Dễ mở rộng và maintain
+- **Reusability**: Business logic có thể tái sử dụng
+
+### 📊 Luồng xử lý Request
+
+```
+Request → Route → Middleware → Controller → Service → Model → Database
+                                    ↓           ↓
+                                Response ← Data Processing
+```
+
+---
+
+## 📂 Cấu trúc thư mục Server
+
+```
+server/
+├── server.js                    # Entry point - khởi tạo Express server
+├── package.json                 # Dependencies và scripts
+│
+├── config/                      # Cấu hình môi trường
+│   ├── db.js                   # MongoDB connection
+│   └── cloudinary.js           # Cloudinary config
+│
+├── models/                      # MongoDB Schemas (Data Layer)
+│   ├── User.js                 # Schema người dùng
+│   ├── Place.js                # Schema địa điểm
+│   ├── Review.js               # Schema đánh giá
+│   └── Admin.js                # Schema quản trị viên
+│
+├── controllers/                 # HTTP Request Handlers (Controller Layer)
+│   ├── authController.js       # Xử lý register/login/logout
+│   ├── userController.js       # Xử lý user profile, preferences
+│   ├── placesController.js     # Xử lý CRUD places, search
+│   ├── reviewController.js     # Xử lý CRUD reviews
+│   ├── chatController.js       # Xử lý AI chatbot interactions
+│   ├── uploadController.js     # Xử lý upload ảnh (Cloudinary)
+│   └── adminController.js      # Xử lý admin operations
+│
+├── services/                    # Business Logic Layer ⭐ QUAN TRỌNG
+│   ├── authService.js          # Logic authentication, JWT, OAuth
+│   ├── userService.js          # Logic quản lý user, preferences
+│   ├── placeService.js         # Logic tìm kiếm, filter, semantic search
+│   ├── reviewService.js        # Logic tính rating, validate review
+│   ├── chatService.js          # Logic RAG, vector search, AI prompt
+│   ├── uploadService.js        # Logic xử lý ảnh, resize, optimize
+│   └── emailService.js         # Logic gửi email (nếu có)
+│
+├── middleware/                  # Express Middlewares
+│   ├── auth.js                 # Verify JWT, protect routes
+│   ├── errorHandler.js         # Global error handling
+│   ├── notFound.js             # 404 handler
+│   ├── validate.js             # Request validation (Joi/express-validator)
+│   └── upload.js               # Multer config cho file upload
+│
+├── routes/                      # API Route Definitions
+│   ├── authRoutes.js           # /api/auth/*
+│   ├── userRoutes.js           # /api/users/*
+│   ├── placeRoutes.js          # /api/places/*
+│   ├── reviewRoutes.js         # /api/reviews/*
+│   ├── chatRoutes.js           # /api/chat/*
+│   ├── adminRoutes.js          # /api/admin/*
+│   └── aiRoutes.js             # /api/ai/* (AI config, feedback)
+│
+├── utils/                       # Helper Functions
+│   ├── asyncHandler.js         # Wrap async controllers (error handling)
+│   ├── validators.js           # Custom validation functions
+│   ├── formatters.js           # Data formatting utilities
+│   └── constants.js            # App constants (districts, categories)
+│
+└── uploads/                     # Temporary file storage
+    └── avatars/                # Avatar uploads trước khi lên Cloudinary
+```
+
+---
+
+## ⚙️ KIẾN TRÚC CONTROLLER - SERVICE - MODEL
+
+### 🎯 Nguyên tắc phân chia trách nhiệm
+
+#### 1️⃣ **Controller Layer** (controllers/)
+
+**Chức năng:**
+- Nhận HTTP request, extract params/body/query
+- Validate input cơ bản (gọi middleware hoặc validator)
+- Gọi Service layer để xử lý business logic
+- Format response và trả về cho client
+- **KHÔNG chứa business logic phức tạp**
+
+**✅ Controller KHÔNG làm gì:**
+- Không query database trực tiếp
+- Không xử lý logic phức tạp (filter, calculate, transform data)
+- Không gọi external APIs
+- Không validate business rules
+
+---
+
+#### 2️⃣ **Service Layer** (services/) ⭐ CORE BUSINESS LOGIC
+
+**Chức năng:**
+- Chứa toàn bộ business logic của ứng dụng
+- Xử lý data transformation, filtering, sorting
+- Validate business rules (ví dụ: user không thể review cùng 1 place 2 lần)
+- Gọi Model để thao tác database
+- Gọi external APIs (OpenAI, Cloudinary, Email service)
+- Có thể gọi Service khác (composition)
+
+*
+```
+
+**✅ Service làm gì:**
+- Query database thông qua Model
+- Validate business rules
+- Transform data
+- Orchestrate complex operations (gọi nhiều Models/Services)
+- Handle external API calls
+
+**❌ Service KHÔNG làm gì:**
+- Không xử lý HTTP request/response
+- Không biết về req, res objects
+- Không format JSON response
+
+---
+
+#### 3️⃣ **Model Layer** (models/)
+
+**Chức năng:**
+- Define MongoDB schema
+- Define virtual fields, methods, statics
+- Pre/post hooks (middleware)
+- Data validation tại DB level
+- **Chỉ tương tác với database**
+
+
+
+
+
+## ✅ TÓM TẮT NGUYÊN TẮC
+
+| Layer | Trách nhiệm | Ví dụ code |
+|-------|-------------|------------|
+| **Route** | Define endpoints, apply middleware | `router.post('/places', protect, createPlace)` |
+| **Middleware** | Authentication, validation, error handling | `auth.js`, `validate.js` |
+| **Controller** | Handle HTTP, call Service, format response | `const result = await placeService.getPlaces(filters)` |
+| **Service** | Business logic, orchestrate operations | `const place = await Place.findById(id)` |
+| **Model** | Database schema, validation, indexes | `placeSchema.pre('save', ...)` |
+
+**🎯 Quy tắc vàng:**
+- Controller → gọi Service
+- Service → gọi Model
+- Model → tương tác Database
+- **KHÔNG BAO GIỜ**: Controller gọi Model trực tiếp
+
+**✨ Lợi ích:**
+- **Testable**: Dễ viết unit test cho từng layer
+- **Maintainable**: Thay đổi business logic không ảnh hưởng Controller
+- **Reusable**: Service có thể dùng lại ở nhiều Controller
+- **Scalable**: Dễ mở rộng và refactor

@@ -1,121 +1,23 @@
-import Place from '../models/Place.js';
+import * as placeService from '../services/placeService.js';
 
 // Get all places for admin with search, filter, sort, pagination
 export const getAllPlaces = async (req, res) => {
   try {
-    const {
-      // Search
-      q,
-      
-      // Filters
-      district,
-      category,
-      status,
-      minPrice,
-      maxPrice,
-      mood,
-      space,
-      suitability,
-      
-      // Sort
-      sortBy = 'updatedAt',
-      sortOrder = 'desc',
-      
-      // Pagination
-      page = 1,
-      limit = 20
-    } = req.query;
+    // Call service layer
+    const result = await placeService.getAllPlaces(req.query);
 
-    // Build filter object
-    const filter = {};
-    
-    // Text search
-    if (q) {
-      filter.$text = { $search: q };
-    }
-    
-    // District filter
-    if (district) {
-      filter.district = district;
-    }
-    
-    // Category filter
-    if (category) {
-      filter.category = category;
-    }
-    
-    // Status filter
-    if (status) {
-      filter.status = status;
-    }
-    
-    // Price range filter
-    if (minPrice || maxPrice) {
-      filter['priceRange.min'] = {};
-      filter['priceRange.max'] = {};
-      
-      if (minPrice) {
-        filter['priceRange.min'].$gte = parseInt(minPrice);
-      }
-      if (maxPrice) {
-        filter['priceRange.max'].$lte = parseInt(maxPrice);
-      }
-    }
-    
-    // AI Tags filters
-    if (mood) {
-      filter['aiTags.mood'] = { $in: mood.split(',') };
-    }
-    if (space) {
-      filter['aiTags.space'] = { $in: space.split(',') };
-    }
-    if (suitability) {
-      filter['aiTags.suitability'] = { $in: suitability.split(',') };
-    }
-    
-    // Build sort object
-    const sort = {};
-    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
-    
-    // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    
-    // Execute query
-    const [places, total] = await Promise.all([
-      Place.find(filter)
-        .populate('createdBy', 'displayName username')
-        .populate('updatedBy', 'displayName username')
-        .sort(sort)
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean(),
-      Place.countDocuments(filter)
-    ]);
-    
-    // Calculate pagination info
-    const totalPages = Math.ceil(total / parseInt(limit));
-    const hasNextPage = parseInt(page) < totalPages;
-    const hasPrevPage = parseInt(page) > 1;
-    
     res.json({
       success: true,
       data: {
-        places,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages,
-          totalItems: total,
-          itemsPerPage: parseInt(limit),
-          hasNextPage,
-          hasPrevPage
-        }
+        places: result.places,
+        pagination: result.pagination
       }
     });
   } catch (error) {
     console.error('Get places error:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Lỗi khi lấy danh sách địa điểm' 
+      message: error.message || 'Lỗi khi lấy danh sách địa điểm' 
     });
   }
 };
@@ -123,16 +25,8 @@ export const getAllPlaces = async (req, res) => {
 // Get place by ID
 export const getPlaceById = async (req, res) => {
   try {
-    const place = await Place.findById(req.params.id)
-      .populate('createdBy', 'displayName username email')
-      .populate('updatedBy', 'displayName username email');
-    
-    if (!place) {
-      return res.status(404).json({
-        success: false,
-        message: 'Không tìm thấy địa điểm'
-      });
-    }
+    // Call service layer
+    const place = await placeService.getPlaceById(req.params.id);
     
     res.json({
       success: true,
@@ -140,6 +34,14 @@ export const getPlaceById = async (req, res) => {
     });
   } catch (error) {
     console.error('Get place error:', error);
+    
+    if (error.message.includes('Không tìm thấy')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Lỗi khi lấy thông tin địa điểm'
@@ -152,46 +54,8 @@ export const createPlace = async (req, res) => {
   try {
     console.log('📝 Creating place with data:', JSON.stringify(req.body, null, 2));
     
-    // Chuẩn hóa dữ liệu để match với schema
-    const placeData = {
-      name: req.body.name,
-      address: req.body.address,
-      district: req.body.district,
-      category: req.body.category,
-      description: req.body.description,
-      priceRange: req.body.priceRange,
-      images: req.body.images || [],
-      menu: req.body.menu || [],
-      aiTags: req.body.aiTags || {},
-      coordinates: req.body.coordinates,
-      operatingHours: req.body.operatingHours,
-      // Map phone/website từ top-level về contact object
-      contact: {
-        phone: req.body.phone || req.body.contact?.phone || '',
-        website: req.body.website || req.body.contact?.website || ''
-      },
-      // Normalize status - schema dùng 'Published' chứ không phải 'published'
-      status: req.body.status === 'published' ? 'Published' : 
-              req.body.status === 'draft' ? 'Draft' :
-              req.body.status === 'archived' ? 'Archived' :
-              req.body.status || 'Draft',
-      isActive: req.body.isActive !== false,
-      featured: req.body.featured || false,
-      // Tạm thời không cần user (admin tạo không cần auth)
-      // createdBy: req.user?.id,
-      // updatedBy: req.user?.id
-    };
-    
-    console.log('💾 Processed place data:', JSON.stringify(placeData, null, 2));
-    
-    const place = new Place(placeData);
-    await place.save();
-    
-    // Populate nếu có user
-    if (req.user) {
-      await place.populate('createdBy', 'displayName username');
-      await place.populate('updatedBy', 'displayName username');
-    }
+    // Call service layer
+    const place = await placeService.createPlace(req.body, req.user?.id);
     
     console.log('✅ Place created successfully:', place._id);
     
@@ -202,25 +66,22 @@ export const createPlace = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Create place error:', error);
-    console.error('❌ Error name:', error.name);
     console.error('❌ Error message:', error.message);
     
+    if (error.message.includes('required')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
     if (error.name === 'ValidationError') {
-      console.error('❌ Validation errors:', error.errors);
       const errors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
         success: false,
         message: 'Dữ liệu không hợp lệ',
         errors,
-        details: error.errors // Thêm chi tiết để debug
-      });
-    }
-    
-    if (error.name === 'CastError') {
-      return res.status(400).json({
-        success: false,
-        message: 'Dữ liệu không đúng định dạng',
-        details: error.message
+        details: error.errors
       });
     }
     
@@ -238,52 +99,8 @@ export const updatePlace = async (req, res) => {
   try {
     console.log('📝 Updating place with data:', JSON.stringify(req.body, null, 2));
     
-    // Chuẩn hóa dữ liệu giống createPlace
-    const updateData = {
-      name: req.body.name,
-      address: req.body.address,
-      district: req.body.district,
-      category: req.body.category,
-      description: req.body.description,
-      priceRange: req.body.priceRange,
-      images: req.body.images,
-      menu: req.body.menu,
-      aiTags: req.body.aiTags,
-      coordinates: req.body.coordinates,
-      operatingHours: req.body.operatingHours,
-      // Map phone/website từ top-level về contact object
-      contact: {
-        phone: req.body.phone || req.body.contact?.phone || '',
-        website: req.body.website || req.body.contact?.website || ''
-      },
-      // Normalize status
-      status: req.body.status === 'published' ? 'Published' : 
-              req.body.status === 'draft' ? 'Draft' :
-              req.body.status === 'archived' ? 'Archived' :
-              req.body.status || 'Draft',
-      isActive: req.body.isActive,
-      featured: req.body.featured,
-      // updatedBy: req.user?.id
-    };
-    
-    const place = await Place.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-      
-    // Populate nếu có user
-    if (req.user) {
-      await place.populate('createdBy', 'displayName username');
-      await place.populate('updatedBy', 'displayName username');
-    }
-    
-    if (!place) {
-      return res.status(404).json({
-        success: false,
-        message: 'Không tìm thấy địa điểm'
-      });
-    }
+    // Call service layer
+    const place = await placeService.updatePlace(req.params.id, req.body, req.user?.id);
     
     console.log('✅ Place updated successfully:', place._id);
     
@@ -295,6 +112,13 @@ export const updatePlace = async (req, res) => {
   } catch (error) {
     console.error('❌ Update place error:', error);
     
+    if (error.message.includes('Không tìm thấy')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
@@ -302,14 +126,6 @@ export const updatePlace = async (req, res) => {
         message: 'Dữ liệu không hợp lệ',
         errors,
         details: error.errors
-      });
-    }
-    
-    if (error.name === 'CastError') {
-      return res.status(400).json({
-        success: false,
-        message: 'Dữ liệu không đúng định dạng',
-        details: error.message
       });
     }
     
@@ -325,21 +141,24 @@ export const updatePlace = async (req, res) => {
 // Delete place
 export const deletePlace = async (req, res) => {
   try {
-    const place = await Place.findByIdAndDelete(req.params.id);
-    
-    if (!place) {
-      return res.status(404).json({
-        success: false,
-        message: 'Không tìm thấy địa điểm'
-      });
-    }
+    // Call service layer
+    const result = await placeService.deletePlace(req.params.id);
     
     res.json({
       success: true,
-      message: 'Xóa địa điểm thành công'
+      message: 'Xóa địa điểm thành công',
+      data: result
     });
   } catch (error) {
     console.error('Delete place error:', error);
+    
+    if (error.message.includes('Không tìm thấy')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Lỗi khi xóa địa điểm'
@@ -427,39 +246,34 @@ export const updateAiTags = async (req, res) => {
   try {
     const { space, mood, suitability, crowdLevel, music, parking, specialFeatures } = req.body;
     
-    const updateData = {
-      aiTags: {
-        space: space || [],
-        mood: mood || [],
-        suitability: suitability || [],
-        crowdLevel: crowdLevel || [],
-        music: music || [],
-        parking: parking || [],
-        specialFeatures: specialFeatures || []
-      },
-      updatedBy: req.user.id
+    const aiTags = {
+      space: space || [],
+      mood: mood || [],
+      suitability: suitability || [],
+      crowdLevel: crowdLevel || [],
+      music: music || [],
+      parking: parking || [],
+      specialFeatures: specialFeatures || []
     };
     
-    const place = await Place.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-    
-    if (!place) {
-      return res.status(404).json({
-        success: false,
-        message: 'Không tìm thấy địa điểm'
-      });
-    }
+    // Call service layer
+    const updatedPlace = await placeService.updateAITags(req.params.id, aiTags);
     
     res.json({
       success: true,
-      data: place.aiTags,
+      data: updatedPlace.aiTags,
       message: 'Cập nhật AI Tags thành công'
     });
   } catch (error) {
     console.error('Update AI tags error:', error);
+    
+    if (error.message.includes('Không tìm thấy')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Lỗi khi cập nhật AI Tags'
