@@ -58,8 +58,23 @@ const createStorage = (uploadType = 'avatars') => {
     };
 
     const transformMap = {
-      'avatars': [{ width: 200, height: 200, crop: 'fill', gravity: 'face' }],
-      'places': [{ width: 800, height: 600, crop: 'limit', quality: 'auto' }]
+      'avatars': [{ 
+        width: 200, 
+        height: 200, 
+        crop: 'fill', 
+        gravity: 'face',
+        quality: 'auto:good',
+        fetch_format: 'auto',
+        flags: 'progressive'
+      }],
+      'places': [{ 
+        width: 1200, 
+        height: 900, 
+        crop: 'limit',
+        quality: 'auto:good',
+        fetch_format: 'auto',
+        flags: 'progressive'
+      }]
     };
 
     return new CloudinaryStorage({
@@ -67,7 +82,13 @@ const createStorage = (uploadType = 'avatars') => {
       params: {
         folder: folderMap[uploadType] || folderMap['avatars'],
         allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-        transformation: transformMap[uploadType] || transformMap['avatars']
+        transformation: transformMap[uploadType] || transformMap['avatars'],
+        // Eager transformation để tạo sẵn các version
+        eager: uploadType === 'places' ? [
+          { width: 400, height: 300, crop: 'fill', quality: 'auto:eco', fetch_format: 'auto' }, // Thumbnail
+          { width: 800, height: 600, crop: 'limit', quality: 'auto:good', fetch_format: 'auto' } // Medium
+        ] : undefined,
+        eager_async: false // Upload + transform ngay
       }
     });
   } else {
@@ -243,7 +264,7 @@ export const getUploadPlaceImage = () => {
   return multer({ 
     storage: createStorage('places'),
     limits: { 
-      fileSize: 10 * 1024 * 1024 // 10MB limit
+      fileSize: 5 * 1024 * 1024 // 5MB limit (giảm từ 10MB)
     },
     fileFilter: (req, file, cb) => {
       console.log('🔍 File filter check:', {

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { placesAPI, uploadAPI } from '../services/api';
+import { compressImage, formatFileSize, needsCompression } from '../utils/imageCompression';
 
 interface PlaceFormData {
   name: string;
@@ -68,6 +69,7 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
   const [districts, setDistricts] = useState<string[]>([]);
   const [aiTagsOptions, setAiTagsOptions] = useState<any>({});
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [dragActive, setDragActive] = useState(false);
 
   const tabs = [
@@ -188,11 +190,26 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
     return formData.images && formData.images.length > 0;
   };
 
-  // Upload ảnh lên server/cloudinary
+  // Upload ảnh lên server/cloudinary với compression
   const uploadImageToServer = async (file: File): Promise<string> => {
     try {
+      let fileToUpload = file;
+      
+      // Compress ảnh trước khi upload nếu cần
+      if (needsCompression(file, 1)) {
+        console.log(`🗜️ Compressing ${file.name} (${formatFileSize(file.size)})...`);
+        fileToUpload = await compressImage(file, {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          quality: 0.85
+        });
+        console.log(`✅ Compressed to ${formatFileSize(fileToUpload.size)}`);
+      } else {
+        console.log(`✓ ${file.name} không cần compress (${formatFileSize(file.size)})`);
+      }
+      
       // Sử dụng upload API riêng cho place images
-      const response = await uploadAPI.uploadImage(file);
+      const response = await uploadAPI.uploadImage(fileToUpload);
       console.log('✅ Upload response:', response);
       
       // Response structure: { success: true, data: { imageUrl: '...' } }
@@ -208,18 +225,18 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
     const fileArray = Array.from(files);
     const validFiles = fileArray.filter(file => {
       // Validate file type và size
-      const validTypes = ['image/png', 'image/jpg', 'image/jpeg', 'image/gif'];
-      const maxSize = 10 * 1024 * 1024; // 10MB
+      const validTypes = ['image/png', 'image/jpg', 'image/jpeg', 'image/gif', 'image/webp'];
+      const maxSize = 5 * 1024 * 1024; // 5MB (đã giảm từ 10MB)
 
       if (!validTypes.includes(file.type)) {
         console.error('File type không hợp lệ:', file.name);
-        setErrors(prev => ({ ...prev, images: `File ${file.name} không hợp lệ. Chỉ chấp nhận PNG, JPG, JPEG, GIF` }));
+        setErrors(prev => ({ ...prev, images: `File ${file.name} không hợp lệ. Chỉ chấp nhận PNG, JPG, JPEG, GIF, WebP` }));
         return false;
       }
       
       if (file.size > maxSize) {
         console.error('File quá lớn:', file.name);
-        setErrors(prev => ({ ...prev, images: `File ${file.name} quá lớn. Tối đa 10MB` }));
+        setErrors(prev => ({ ...prev, images: `File ${file.name} quá lớn. Tối đa 5MB (sẽ tự động nén nếu cần)` }));
         return false;
       }
 
@@ -231,6 +248,7 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
     }
 
     setUploadingImages(true);
+    setUploadProgress({ current: 0, total: validFiles.length });
     setErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors.images;
@@ -245,6 +263,7 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
       
       for (let i = 0; i < validFiles.length; i++) {
         const file = validFiles[i];
+        setUploadProgress({ current: i + 1, total: validFiles.length });
         console.log(`📤 Upload file ${i + 1}/${validFiles.length}: ${file.name}`);
         
         try {
@@ -280,6 +299,7 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
       setErrors(prev => ({ ...prev, images: 'Lỗi upload ảnh. Vui lòng thử lại.' }));
     } finally {
       setUploadingImages(false);
+      setUploadProgress({ current: 0, total: 0 });
     }
   };
 
@@ -837,7 +857,19 @@ ${formData.menu.length > 0 ? `**Menu nổi bật:**\n${formData.menu.slice(0, 3)
                       <div className="mx-auto h-12 w-12 text-yellow-500 animate-spin">
                         ⏳
                       </div>
-                      <p className="mt-4 text-yellow-600 font-medium">Đang upload ảnh...</p>
+                      <p className="mt-4 text-yellow-600 font-medium">
+                        Đang upload ảnh {uploadProgress.current}/{uploadProgress.total}...
+                      </p>
+                      {/* Progress bar */}
+                      <div className="mt-3 w-full bg-gray-200 rounded-full h-2.5">
+                        <div 
+                          className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                          style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                        ></div>
+                      </div>
+                      <p className="mt-2 text-sm text-gray-500">
+                        {Math.round((uploadProgress.current / uploadProgress.total) * 100)}% hoàn thành
+                      </p>
                     </>
                   ) : (
                     <>
