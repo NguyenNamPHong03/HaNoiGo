@@ -1,66 +1,17 @@
-import {
-    ArrowLeft,
-    Clock,
-    Edit,
-    Eye,
-    Globe,
-    MapPin,
-    MessageCircle,
-    Phone,
-    Star,
-    TrendingUp,
-    User
-} from 'lucide-react';
+import { ArrowLeft, Clock, Edit, Eye, Globe, MapPin, MessageCircle, Phone, Star, TrendingUp } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { placesAPI } from '../services/api';
+import { placesApi } from '../api/places.api';
+import StatusBadge from '../components/shared/StatusBadge';
+import type { Place, Review } from '../types/place.types';
+import { formatDateTime, formatPrice } from '../utils/formatters';
 
-interface Place {
-  _id: string;
-  name: string;
-  address: string;
-  district: string;
-  category: string;
-  description: string;
-  priceRange: { min: number; max: number };
-  status: string;
-  isActive: boolean;
-  averageRating: number;
-  totalReviews: number;
-  viewCount: number;
-  images: string[];
-  menu: Array<{ name: string; price: number; description: string; category: string }>;
-  aiTags: {
-    space: string[];
-    mood: string[];
-    suitability: string[];
-    crowdLevel: string[];
-    music: string[];
-    parking: string[];
-    specialFeatures: string[];
-  };
-  contact: { phone: string; website: string };
-  createdAt: string;
-  updatedAt: string;
-  createdBy?: { displayName: string; username: string };
-  updatedBy?: { displayName: string; username: string };
-}
-
-interface Review {
-  _id: string;
-  userId: string;
-  rating: number;
-  comment: string;
-  createdAt: string;
-  user?: { displayName: string; avatarUrl?: string };
-}
-
-interface PlaceDetailProps {
+interface PlaceDetailPageProps {
   placeId: string;
   onBack: () => void;
   onEdit: () => void;
 }
 
-const PlaceDetail: React.FC<PlaceDetailProps> = ({ placeId, onBack, onEdit }) => {
+const PlaceDetailPage: React.FC<PlaceDetailPageProps> = ({ placeId, onBack, onEdit }) => {
   const [place, setPlace] = useState<Place | null>(null);
   const [reviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,51 +24,13 @@ const PlaceDetail: React.FC<PlaceDetailProps> = ({ placeId, onBack, onEdit }) =>
   const loadPlaceDetail = async () => {
     setLoading(true);
     try {
-      const response = await placesAPI.getById(placeId);
+      const response = await placesApi.getById(placeId);
       setPlace(response.data);
-      
-      // TODO: Load reviews when review API is available
-      // const reviewsRes = await reviewsAPI.getByPlaceId(placeId);
-      // setReviews(reviewsRes.data);
     } catch (error) {
       console.error('Error loading place detail:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const getStatusBadge = (status: string, isActive: boolean) => {
-    if (!isActive) {
-      return <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm">Tạm ngưng</span>;
-    }
-    
-    switch (status) {
-      case 'Published':
-        return <span className="px-3 py-1 bg-green-100 text-green-600 rounded-full text-sm">Đã xuất bản</span>;
-      case 'Draft':
-        return <span className="px-3 py-1 bg-yellow-100 text-yellow-600 rounded-full text-sm">Bản nháp</span>;
-      case 'Archived':
-        return <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm">Lưu trữ</span>;
-      default:
-        return <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm">{status}</span>;
-    }
-  };
-
-  const formatPrice = (min: number, max: number) => {
-    if (min === max) {
-      return `${min.toLocaleString()}₫`;
-    }
-    return `${min.toLocaleString()}₫ - ${max.toLocaleString()}₫`;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   const renderStarRating = (rating: number, size = 'w-5 h-5') => {
@@ -214,7 +127,7 @@ const PlaceDetail: React.FC<PlaceDetailProps> = ({ placeId, onBack, onEdit }) =>
               <h1 className="text-2xl font-bold text-gray-900">{place.name}</h1>
               <div className="flex items-center gap-4 mt-1">
                 <span className="text-gray-600">{place.district} • {place.category}</span>
-                {getStatusBadge(place.status, place.isActive)}
+                <StatusBadge status={place.status} isActive={place.isActive} />
               </div>
             </div>
           </div>
@@ -397,7 +310,6 @@ const PlaceDetail: React.FC<PlaceDetailProps> = ({ placeId, onBack, onEdit }) =>
             <h3 className="text-lg font-medium text-gray-900 mb-4">Menu</h3>
             {place.menu && place.menu.length > 0 ? (
               <div className="space-y-4">
-                {/* Group menu items by category */}
                 {Object.entries(
                   place.menu.reduce((acc, item) => {
                     const category = item.category || 'Khác';
@@ -414,7 +326,7 @@ const PlaceDetail: React.FC<PlaceDetailProps> = ({ placeId, onBack, onEdit }) =>
                           <div>
                             <div className="font-medium">{item.name}</div>
                             {item.description && (
-                              <div className="text-sm text-gray-600">{item.description}</div>
+                              <div className="text-sm text-gray-500">{item.description}</div>
                             )}
                           </div>
                           <div className="text-lg font-bold text-blue-600 ml-4">
@@ -455,7 +367,7 @@ const PlaceDetail: React.FC<PlaceDetailProps> = ({ placeId, onBack, onEdit }) =>
           <div>
             <h3 className="text-lg font-medium text-gray-900 mb-4">Đánh giá từ người dùng</h3>
             
-            {/* Rating Distribution (placeholder) */}
+            {/* Rating Distribution */}
             <div className="bg-gray-50 p-4 rounded-lg mb-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="text-center">
@@ -468,10 +380,7 @@ const PlaceDetail: React.FC<PlaceDetailProps> = ({ placeId, onBack, onEdit }) =>
                     <div key={star} className="flex items-center gap-2">
                       <span className="text-sm w-8">{star} ⭐</span>
                       <div className="flex-1 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-yellow-400 h-2 rounded-full" 
-                          style={{ width: '60%' }} // Placeholder data
-                        ></div>
+                        <div className="bg-yellow-400 h-2 rounded-full" style={{ width: '60%' }}></div>
                       </div>
                       <span className="text-sm text-gray-600 w-8">60%</span>
                     </div>
@@ -480,39 +389,11 @@ const PlaceDetail: React.FC<PlaceDetailProps> = ({ placeId, onBack, onEdit }) =>
               </div>
             </div>
 
-            {/* Recent Reviews */}
-            <div>
-              <h4 className="font-medium text-gray-900 mb-4">Đánh giá gần đây</h4>
-              {reviews.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <p>Chưa có đánh giá nào</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {reviews.map((review) => (
-                    <div key={review._id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                            <User size={16} />
-                          </div>
-                          <div>
-                            <div className="font-medium">
-                              {review.user?.displayName || 'Người dùng ẩn danh'}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              {formatDate(review.createdAt)}
-                            </div>
-                          </div>
-                        </div>
-                        {renderStarRating(review.rating, 'w-4 h-4')}
-                      </div>
-                      <p className="text-gray-700">{review.comment}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {reviews.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <p>Chưa có đánh giá nào</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -526,7 +407,7 @@ const PlaceDetail: React.FC<PlaceDetailProps> = ({ placeId, onBack, onEdit }) =>
                 <div>
                   <div className="font-medium">Được tạo</div>
                   <div className="text-sm text-gray-600">
-                    {formatDate(place.createdAt)}
+                    {formatDateTime(place.createdAt)}
                     {place.createdBy && (
                       <span> bởi {place.createdBy.displayName || place.createdBy.username}</span>
                     )}
@@ -539,7 +420,7 @@ const PlaceDetail: React.FC<PlaceDetailProps> = ({ placeId, onBack, onEdit }) =>
                 <div>
                   <div className="font-medium">Cập nhật lần cuối</div>
                   <div className="text-sm text-gray-600">
-                    {formatDate(place.updatedAt)}
+                    {formatDateTime(place.updatedAt)}
                     {place.updatedBy && (
                       <span> bởi {place.updatedBy.displayName || place.updatedBy.username}</span>
                     )}
@@ -554,4 +435,4 @@ const PlaceDetail: React.FC<PlaceDetailProps> = ({ placeId, onBack, onEdit }) =>
   );
 };
 
-export default PlaceDetail;
+export default PlaceDetailPage;

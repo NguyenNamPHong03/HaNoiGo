@@ -8,8 +8,8 @@ import {
   X
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { placesAPI, uploadAPI } from '../services/api';
-import { compressImage, formatFileSize, needsCompression } from '../utils/imageCompression';
+import { placesAPI, uploadAPI } from '../../../services/api';
+import { compressImage, formatFileSize, needsCompression } from '../../../utils/imageCompression';
 
 interface PlaceFormData {
   name: string;

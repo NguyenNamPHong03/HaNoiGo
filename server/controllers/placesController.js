@@ -1,3 +1,4 @@
+import Place from '../models/Place.js';
 import * as placeService from '../services/placeService.js';
 
 // Get all places for admin with search, filter, sort, pagination

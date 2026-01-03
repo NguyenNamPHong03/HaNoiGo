@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import PlaceDetail from '../components/PlaceDetail';
-import PlaceForm from '../components/PlaceForm';
-import PlacesList from '../components/PlacesList';
+import { PlaceDetailPage, PlaceFormPage, PlacesListPage } from '../features/places';
 
 type ViewMode = 'list' | 'create' | 'edit' | 'detail';
 
@@ -41,7 +39,7 @@ const Places: React.FC = () => {
     switch (state.mode) {
       case 'create':
         return (
-          <PlaceForm
+          <PlaceFormPage
             onBack={handleBackToList}
             onSave={handlePlaceSaved}
           />
@@ -49,7 +47,7 @@ const Places: React.FC = () => {
       
       case 'edit':
         return (
-          <PlaceForm
+          <PlaceFormPage
             placeId={state.selectedPlaceId}
             onBack={handleBackToList}
             onSave={handlePlaceSaved}
@@ -58,7 +56,7 @@ const Places: React.FC = () => {
       
       case 'detail':
         return state.selectedPlaceId ? (
-          <PlaceDetail
+          <PlaceDetailPage
             placeId={state.selectedPlaceId}
             onBack={handleBackToList}
             onEdit={() => handleEditPlace(state.selectedPlaceId!)}
@@ -78,7 +76,7 @@ const Places: React.FC = () => {
       case 'list':
       default:
         return (
-          <PlacesList
+          <PlacesListPage
             onCreatePlace={handleCreatePlace}
             onEditPlace={handleEditPlace}
             onViewPlace={handleViewPlace}
