@@ -55,18 +55,49 @@ client/
 ├── src/
 │   ├── pages/              # Các trang chính
 │   │   ├── Home/           # Trang chủ
+│   │   │   ├── Home.jsx            # Component chính
+│   │   │   ├── Hero/               # Hero section
+│   │   │   ├── Introduction/       # Giới thiệu (với Grid 5 địa điểm)
+│   │   │   ├── OurPartners/        # Đối tác
+│   │   │   └── Why/                # Lý do chọn HaNoiGo
 │   │   ├── SearchResult/   # Kết quả tìm kiếm
 │   │   ├── Profile/        # Trang cá nhân
 │   │   └── Authentication/ # Đăng nhập/Đăng ký
 │   ├── components/         # Components tái sử dụng
 │   │   ├── common/         # Common UI components
+│   │   │   ├── Grid/       # Grid hiển thị 5 địa điểm mới nhất
+│   │   │   ├── Preloader/  # Loading animation
+│   │   │   └── TitleSection/
 │   │   ├── Layout/         # Layout components
-│   │   └── HanoiGo/        # Specific components
-│   ├── contexts/           # React Context (User, Cursor)
-│   ├── hooks/              # Custom hooks (GSAP, Lenis, Parallax)
+│   │   │   ├── Layout.jsx
+│   │   │   └── UserMenu.jsx
+│   │   ├── HanoiGo/        # Specific components
+│   │   ├── Link/           # Custom Link component
+│   │   └── AvatarUpload.jsx
+│   ├── contexts/           # React Context
+│   │   ├── UserContext.jsx # User state & auth
+│   │   └── CursorContext.jsx # Custom cursor
+│   ├── hooks/              # Custom hooks
+│   │   ├── useLenis.jsx    # Smooth scrolling
+│   │   ├── useParallax.js  # Parallax effects
+│   │   ├── useTextReveal.js
+│   │   └── useHorizontalLoop.js
 │   ├── services/           # API services (axios)
-│   └── styles/             # Global styles
-└── docs/rules/             # Coding rules & conventions
+│   │   └── api.js          # Axios instance + API functions
+│   ├── styles/             # Global styles
+│   └── global.css          # Global CSS
+├── docs/
+│   └── rules/              # Coding rules & conventions
+│       ├── 00-overview.md
+│       ├── 01-core-principles.md
+│       ├── 02-naming-conventions.md
+│       ├── 03-error-handling.md
+│       ├── 04-performance-optimization.md
+│       ├── 05-react-query.md
+│       ├── 06-code-splitting.md
+│       └── 07-testing-git.md
+└── public/
+    └── img/                # Static images
 ```
 
 **Đặc điểm:**
@@ -75,6 +106,8 @@ client/
 - Responsive design
 - CSS Modules cho styling
 - React Query cho data fetching
+- **Grid Component**: Tự động hiển thị 5 địa điểm mới nhất từ API
+- Custom hooks cho animations và scroll effects
 
 #### **⚙️ ADMIN (Dashboard quản trị)**
 ```
@@ -82,25 +115,64 @@ admin/
 ├── src/
 │   ├── pages/              # Các trang admin
 │   │   ├── Dashboard.tsx   # Thống kê tổng quan
-│   │   ├── Places.tsx      # Quản lý địa điểm
+│   │   ├── Places.tsx      # Quản lý địa điểm (legacy)
 │   │   ├── Users.tsx       # Quản lý người dùng
 │   │   ├── Reviews.tsx     # Quản lý đánh giá
 │   │   └── AIConfig.tsx    # Cấu hình AI
-│   ├── components/         # Admin components
+│   ├── features/           # Feature-based modules
+│   │   ├── places/         # Places feature module (NEW)
+│   │   │   ├── api/
+│   │   │   │   └── places.api.ts  # Places API functions
+│   │   │   ├── components/
+│   │   │   │   ├── list/          # List view components
+│   │   │   │   │   ├── PlacesTable.tsx
+│   │   │   │   │   ├── PlacesFilters.tsx
+│   │   │   │   │   └── PaginationControls.tsx
+│   │   │   │   └── shared/        # Shared components
+│   │   │   │       └── StatusBadge.tsx
+│   │   │   ├── pages/
+│   │   │   │   ├── PlacesListPage.tsx    # Danh sách địa điểm
+│   │   │   │   ├── PlaceFormPage.tsx     # Tạo/Sửa địa điểm
+│   │   │   │   └── PlaceDetailPage.tsx   # Chi tiết địa điểm
+│   │   │   ├── types/
+│   │   │   │   └── place.types.ts # TypeScript types
+│   │   │   ├── utils/
+│   │   │   │   ├── formatters.ts  # Format utilities
+│   │   │   │   └── mapPlaceForm.ts # Form mapping
+│   │   │   ├── README.md          # Feature documentation
+│   │   │   └── index.ts           # Exports
+│   │   └── users/          # Users feature module
+│   │       ├── api/
+│   │       │   └── users.api.ts
+│   │       ├── components/
+│   │       ├── hooks/
+│   │       ├── pages/
+│   │       ├── README.md
+│   │       └── index.ts
+│   ├── components/         # Shared components
 │   │   ├── AdminLayout.tsx # Layout chính
-│   │   ├── PlaceForm.tsx   # Form tạo/sửa địa điểm
+│   │   ├── ToastProvider.tsx
 │   │   └── ui/             # shadcn/ui components
+│   ├── hooks/              # Global custom hooks
 │   ├── services/           # API services
-│   └── types/              # TypeScript types
-└── tailwind.config.js      # TailwindCSS config
+│   │   └── api.ts          # Axios config
+│   ├── types/              # Global TypeScript types
+│   │   └── index.ts
+│   └── utils/              # Global utilities
+│       └── imageCompression.ts
+├── tailwind.config.js      # TailwindCSS config
+├── tsconfig.json           # TypeScript config
+└── PLACES_MIGRATION.md     # Migration guide
 ```
 
 **Đặc điểm:**
 - TypeScript cho type safety
+- **Feature-based architecture**: Mỗi feature (places, users) có structure độc lập
 - shadcn/ui components
 - TailwindCSS cho styling
 - React Hook Form + Zod validation
 - Recharts cho biểu đồ
+- Modular & scalable structure
 
 #### **🔧 SERVER (Backend API)**
 ```
@@ -112,28 +184,44 @@ server/
 │   └── uploadController.js # Upload files
 ├── models/                 # MongoDB schemas
 │   ├── User.js             # User model
-│   └── Place.js            # Place model
+│   └── Place.js            # Place model (với aiTags)
 ├── routes/                 # API routes
 │   ├── authRoutes.js       # /api/auth/*
 │   ├── placeRoutes.js      # /api/places/*
+│   │                       #   - GET /latest (5 địa điểm mới nhất)
+│   ├── adminRoutes.js      # /api/admin/*
 │   ├── chatRoutes.js       # /api/chat/*
 │   ├── reviewRoutes.js     # /api/reviews/*
+│   ├── userRoutes.js       # /api/users/*
 │   └── aiRoutes.js         # /api/ai/*
+├── services/               # Service layer
+│   ├── authService.js      # Auth business logic
+│   ├── placeService.js     # Place business logic
+│   ├── userService.js      # User business logic
+│   └── uploadService.js    # Upload logic
 ├── middleware/             # Express middleware
 │   ├── auth.js             # JWT authentication
 │   ├── errorHandler.js     # Error handling
 │   └── notFound.js         # 404 handler
 ├── utils/                  # Utilities
-└── server.js               # Entry point
+├── uploads/                # Local file storage (dev)
+│   ├── avatars/
+│   └── places/
+├── server.js               # Entry point
+├── server-simple.js        # Simple server (fallback)
+├── MIGRATION_GUIDE.md      # Migration documentation
+└── update-users.js         # Utility scripts
 ```
 
 **Đặc điểm:**
 - RESTful API
 - JWT authentication
 - MongoDB + Mongoose ODM
+- **Service Layer Pattern**: Tách business logic khỏi controllers
 - Cloudinary integration
 - OpenAI API integration
 - Security (Helmet, CORS, Rate limiting)
+- **Latest Places Endpoint**: Tự động lấy 5 địa điểm mới nhất (sort by createdAt)
 
 #### **🤖 AI-SERVICE (Dịch vụ AI)**
 ```
@@ -148,6 +236,19 @@ ai-service/
 - PyTorch backend
 - FastAPI framework
 - RESTful endpoints
+
+### 2.3 Root Files
+
+```
+HaNoiGo/
+├── .github/
+│   └── copilot-instructions.md  # GitHub Copilot guidelines
+├── docs/                        # Project documentation
+├── package.json                 # Root workspace config
+├── PROJECT_OVERVIEW.md          # Tài liệu này
+├── AI.md                        # AI features documentation
+└── README.md                    # Getting started guide
+```
 
 ---
 
@@ -697,6 +798,11 @@ Backend → FastAPI Service → CLIP Model → Similarity Scores
 #### **🎨 UI/UX nâng cao**
 - Smooth scrolling (Lenis)
 - Animations (GSAP)
+- **Dynamic Homepage Grid**: Tự động hiển thị 5 địa điểm mới nhất
+  - Component Grid tự động fetch từ `/api/places/latest`
+  - Sắp xếp theo thời gian tạo (createdAt desc)
+  - Fallback UI nếu API lỗi
+  - Auto-update khi có địa điểm mới (refresh page)
 - Responsive design
 - Loading states
 - Error handling

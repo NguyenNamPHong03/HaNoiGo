@@ -64,6 +64,19 @@ Người dùng dùng bộ lọc thông thường theo danh mục, quận, khoả
 
 Sau mỗi gợi ý, người dùng có thể đánh giá mức độ hữu ích. Dữ liệu này được thu thập vào reviews collection để tinh chỉnh thuật toán gợi ý, giúp hệ thống ngày càng thông minh hơn.
 
+### **Hiển thị Địa điểm Mới nhất (Homepage)**
+
+1. **Client**: Component Grid trong trang Home tự động gọi `placesAPI.getLatest(5)` khi mount
+2. **Server**: Endpoint `/api/places/latest` query MongoDB với:
+   - Filter: `status: 'Published'` và `isActive: true`
+   - Sort: `createdAt: -1` (mới nhất trước)
+   - Limit: 5 địa điểm
+3. **Response**: Trả về 5 địa điểm mới nhất với fields: name, description, images, priceRange, category, district
+4. **Client**: Grid component transform data và hiển thị trong layout responsive
+5. **Auto-update**: Mỗi khi admin tạo địa điểm mới → refresh trang chủ → Grid tự động hiển thị địa điểm mới
+
+**Lợi ích**: Trang chủ luôn hiển thị nội dung mới nhất, tăng engagement và khám phá các địa điểm mới.
+
 ## ✨ ĐIỂM NỔI BẬT
 
 **Hybrid Search**: Kết hợp tìm kiếm theo từ khóa cứng (tên địa điểm, địa chỉ) và semantic search (tâm trạng, ngữ cảnh sử dụng) để cho kết quả toàn diện.
@@ -88,68 +101,214 @@ Frontend được xây dựng bằng **React** với kiến trúc modular, phân
 ```
 client/
 ├── public/                      # Static assets (favicon, manifest)
+│   └── img/                     # Static images
 ├── src/
 │   ├── assets/                  # Images, icons, fonts
 │   ├── components/              # Reusable UI components
-│   │   ├── common/             # Shared components (Button, Input, Modal)
-│   │   ├── layout/             # Layout components (Navbar, Footer, Sidebar)
-│   │   
+│   │   ├── common/              # Shared components
+│   │   │   ├── Grid/            # Grid hiển thị 5 địa điểm mới nhất
+│   │   │   ├── Preloader/       # Loading animation
+│   │   │   └── TitleSection/    # Title component
+│   │   ├── Layout/              # Layout components
+│   │   │   ├── Layout.jsx       # Main layout
+│   │   │   └── UserMenu.jsx     # User menu dropdown
+│   │   ├── HanoiGo/             # Specific components
+│   │   ├── Link/                # Custom Link component
+│   │   └── AvatarUpload.jsx     # Avatar upload
 │   │
+│   ├── hooks/                   # Global custom hooks
+│   │   ├── useLenis.jsx         # Smooth scrolling
+│   │   ├── useParallax.js       # Parallax effects
+│   │   ├── useTextReveal.js     # Text animations
+│   │   └── useHorizontalLoop.js # Horizontal scroll
 │   │
+│   ├── contexts/                # React Context providers
+│   │   ├── UserContext.jsx      # User state & auth
+│   │   └── CursorContext.jsx    # Custom cursor
 │   │
-│   ├── hooks/                  # Global custom hooks
-│   │   ├── useCart.js         # Wishlist management
-│   │   ├── useCategories.js   # Category data
-│   │   ├── useHeaderHeight.js # UI utilities
-│   │   └── useScrollLock.js   # Scroll control
+│   ├── services/                # API service layer (Axios)
+│   │   └── api.js               # Axios config + API functions
+│   │                            #   - authAPI, placesAPI, chatAPI
+│   │                            #   - placesAPI.getLatest(5) - Lấy 5 địa điểm mới nhất
 │   │
-│   ├── contexts/               # React Context providers
-│   │   └── AuthContext.js     # Authentication state
+│   ├── pages/                   # Top-level page components
+│   │   ├── Home/                # Trang chủ
+│   │   │   ├── Home.jsx         # Main component
+│   │   │   ├── Hero/            # Hero section
+│   │   │   ├── Introduction/    # Introduction (chứa Grid)
+│   │   │   ├── OurPartners/     # Partners section
+│   │   │   └── Why/             # Why choose us
+│   │   ├── SearchResult/        # Search results page
+│   │   ├── Profile/             # User profile
+│   │   └── Authentication/      # Login/Register
 │   │
-│   ├── services/               # API service layer (Axios)
-│   │   ├── api.js             # Axios config + interceptors
-│   │   ├── authService.js     # Auth APIs
-│   │   ├── placeService.js    # Place CRUD APIs
-│   │   ├── chatService.js     # AI Chatbot APIs
-│   │   ├── reviewService.js   # Review APIs
-│   │   ├── categoryService.js # Category APIs
-│   │   └── adminService.js    # Admin APIs
+│   ├── utils/                   # Helper functions
+│   │   ├── validators.js        # Form validation
+│   │   ├── formatters.js        # Data formatting
+│   │   └── constants.js         # App constants
 │   │
-│   ├── pages/                  # Top-level page components
-│   │   ├── /HomePage
-│   │   ├── /ExplorePage
-│   │   └── /ProfilePage
-│   │
-│   │
-│   │
-│   ├── lib/                    # External library configs
-│   │   └── reactQuery.js      # React Query setup
-│   │
-│   ├── utils/                  # Helper functions
-│   │   ├── validators.js      # Form validation
-│   │   ├── formatters.js      # Data formatting
-│   │   └── constants.js       # App constants
-│   │
-│   │
-│   │
-│   ├── config/                 # App configuration
-│   │   └── env.js             # Environment variables
-│   │
-│   ├── App.js                  # Root component
-│   ├── index.js                # Entry point
-│   └── routes.js               # Route definitions
-│   └── global.css              # Global styles
+│   ├── App.jsx                  # Root component
+│   ├── main.jsx                 # Entry point
+│   └── global.css               # Global styles
 │
+├── docs/
+│   └── rules/                   # Coding rules & conventions
+│       ├── 00-overview.md
+│       ├── 01-core-principles.md
+│       ├── 02-naming-conventions.md
+│       ├── 03-error-handling.md
+│       ├── 04-performance-optimization.md
+│       ├── 05-react-query.md
+│       ├── 06-code-splitting.md
+│       └── 07-testing-git.md
 ├── package.json
-├── vite.config.js              # Vite configuration
-└── tailwind.config.js          # Tailwind CSS config
+├── vite.config.js               # Vite configuration
+└── index.html                   # HTML template
 ```
 
 
 ***
 
+## 📂 Cấu trúc ADMIN Dashboard
 
-### **services/** - API Layer
+```
+admin/
+├── src/
+│   ├── pages/                   # Các trang admin
+│   │   ├── Dashboard.tsx        # Thống kê tổng quan
+│   │   ├── Places.tsx           # Quản lý địa điểm (legacy)
+│   │   ├── Users.tsx            # Quản lý người dùng
+│   │   ├── Reviews.tsx          # Quản lý đánh giá
+│   │   ├── AIConfig.tsx         # Cấu hình AI
+│   │   └── index.ts             # Exports
+│   │
+│   ├── features/                # Feature-based modules (NEW)
+│   │   ├── places/              # Places feature module
+│   │   │   ├── api/
+│   │   │   │   └── places.api.ts         # API functions
+│   │   │   ├── components/
+│   │   │   │   ├── list/                 # List view
+│   │   │   │   │   ├── PlacesTable.tsx
+│   │   │   │   │   ├── PlacesFilters.tsx
+│   │   │   │   │   └── PaginationControls.tsx
+│   │   │   │   └── shared/               # Shared components
+│   │   │   │       └── StatusBadge.tsx
+│   │   │   ├── pages/
+│   │   │   │   ├── PlacesListPage.tsx    # Danh sách
+│   │   │   │   ├── PlaceFormPage.tsx     # Tạo/Sửa
+│   │   │   │   └── PlaceDetailPage.tsx   # Chi tiết
+│   │   │   ├── types/
+│   │   │   │   └── place.types.ts        # TypeScript types
+│   │   │   ├── utils/
+│   │   │   │   ├── formatters.ts         # Format utilities
+│   │   │   │   └── mapPlaceForm.ts       # Form mapping
+│   │   │   ├── README.md                 # Feature docs
+│   │   │   └── index.ts                  # Exports
+│   │   │
+│   │   └── users/               # Users feature module
+│   │       ├── api/
+│   │       │   └── users.api.ts
+│   │       ├── components/
+│   │       ├── hooks/
+│   │       ├── pages/
+│   │       ├── README.md
+│   │       └── index.ts
+│   │
+│   ├── components/              # Shared components
+│   │   ├── AdminLayout.tsx      # Main layout
+│   │   ├── ToastProvider.tsx    # Toast notifications
+│   │   └── ui/                  # shadcn/ui components
+│   │
+│   ├── hooks/                   # Global custom hooks
+│   ├── services/                # API services
+│   │   └── api.ts               # Axios config
+│   ├── types/                   # Global TypeScript types
+│   │   └── index.ts
+│   └── utils/                   # Global utilities
+│       └── imageCompression.ts
+│
+├── tailwind.config.js           # TailwindCSS config
+├── tsconfig.json                # TypeScript config
+├── vite.config.ts               # Vite config
+├── PLACES_MIGRATION.md          # Migration guide
+└── package.json
+```
+
+## 📂 Cấu trúc SERVER Backend
+
+```
+server/
+├── controllers/                 # Business logic
+│   ├── authController.js        # Authentication
+│   ├── placesController.js      # Places management
+│   │                            #   - getLatestPlaces() - Lấy 5 địa điểm mới nhất
+│   ├── userController.js        # User management
+│   └── uploadController.js      # File uploads
+│
+├── models/                      # MongoDB schemas
+│   ├── User.js                  # User model
+│   └── Place.js                 # Place model (với aiTags)
+│
+├── routes/                      # API routes
+│   ├── authRoutes.js            # /api/auth/*
+│   ├── placeRoutes.js           # /api/places/*
+│   │                            #   - GET /latest (5 địa điểm mới)
+│   ├── adminRoutes.js           # /api/admin/*
+│   ├── chatRoutes.js            # /api/chat/*
+│   ├── reviewRoutes.js          # /api/reviews/*
+│   ├── userRoutes.js            # /api/users/*
+│   └── aiRoutes.js              # /api/ai/*
+│
+├── services/                    # Service layer
+│   ├── authService.js           # Auth logic
+│   ├── placeService.js          # Place logic
+│   ├── userService.js           # User logic
+│   └── uploadService.js         # Upload logic
+│
+├── middleware/                  # Express middleware
+│   ├── auth.js                  # JWT authentication
+│   ├── errorHandler.js          # Error handling
+│   └── notFound.js              # 404 handler
+│
+├── utils/                       # Utilities
+├── uploads/                     # Local storage (dev)
+│   ├── avatars/
+│   └── places/
+│
+├── server.js                    # Main entry point
+├── server-simple.js             # Simple server
+├── MIGRATION_GUIDE.md           # Documentation
+├── update-users.js              # Utility scripts
+└── package.json
+```
+
+## 📂 Cấu trúc AI Service
+
+```
+ai-service/
+├── main.py                      # FastAPI application
+├── requirements.txt             # Python dependencies
+└── .env                         # Environment variables
+```
+
+## 📂 Root Structure
+
+```
+HaNoiGo/
+├── .github/
+│   └── copilot-instructions.md  # Tài liệu này
+├── client/                      # Frontend người dùng
+├── admin/                       # Admin dashboard
+├── server/                      # Backend API
+├── ai-service/                  # AI service
+├── docs/                        # Documentation
+├── package.json                 # Workspace config
+├── PROJECT_OVERVIEW.md          # Project overview
+├── AI.md                        # AI features
+└── README.md                    # Getting started
+```
+
+***
 
 Axios instance cấu hình sẵn với interceptors để tự động:
 
