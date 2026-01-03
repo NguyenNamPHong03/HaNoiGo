@@ -1,11 +1,11 @@
 import {
-    AlertCircle,
-    ArrowLeft,
-    Minus,
-    Plus,
-    Save,
-    Upload,
-    X
+  AlertCircle,
+  ArrowLeft,
+  Minus,
+  Plus,
+  Save,
+  Upload,
+  X
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { placesAPI, uploadAPI } from '../services/api';
@@ -755,7 +755,8 @@ ${formData.menu.length > 0 ? `**Menu nổi bật:**\n${formData.menu.slice(0, 3)
                   type="number"
                   value={formData.priceRange.min}
                   onChange={(e) => updateNestedFormData('priceRange', 'min', parseInt(e.target.value) || 0)}
-                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                  onFocus={(e) => e.target.select()}
+                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                     errors.minPrice ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="0"
@@ -777,7 +778,8 @@ ${formData.menu.length > 0 ? `**Menu nổi bật:**\n${formData.menu.slice(0, 3)
                   type="number"
                   value={formData.priceRange.max}
                   onChange={(e) => updateNestedFormData('priceRange', 'max', parseInt(e.target.value) || 0)}
-                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                  onFocus={(e) => e.target.select()}
+                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                     errors.maxPrice ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="0"
