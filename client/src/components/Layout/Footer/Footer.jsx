@@ -1,39 +1,16 @@
+import {
+    Mail,
+    MapPin,
+    Phone
+} from "lucide-react";
 import { memo } from "react";
 import { Link } from "react-router-dom";
-import {
-    Sparkles,
-    ArrowRight,
-    Phone,
-    MapPin,
-    Mail,
-    Facebook,
-    Instagram,
-    Linkedin,
-    Twitter
-} from "lucide-react";
 import styles from "./Footer.module.css";
 
 const Footer = () => {
     return (
         <div className={styles.footerContainer}>
             <footer className={styles.footerWrapper}>
-                {/* CTA Section */}
-                <div className={styles.ctaSection}>
-                    <div className={styles.logoContainer}>
-                        <Sparkles size={32} strokeWidth={1.5} />
-                    </div>
-                    <h2 className={styles.ctaTitle}>
-                        Khám phá Hà Nội cùng HaNoiGo
-                    </h2>
-                    <p className={styles.ctaSubtitle}>
-                        Trải nghiệm văn hóa, ẩm thực và con người Hà Nội theo cách riêng của bạn.
-                        Chúng tôi kết nối bạn với những địa điểm tuyệt vời nhất.
-                    </p>
-                    <button className={styles.ctaButton}>
-                        Bắt đầu ngay <ArrowRight size={20} />
-                    </button>
-                </div>
-
                 {/* Main Links Section */}
                 <div className={styles.linksContainer}>
                     {/* Contact Column */}
@@ -43,13 +20,13 @@ const Footer = () => {
                             <div className={styles.iconCircle}>
                                 <Phone size={20} />
                             </div>
-                            <span>098 765 4321</span>
+                            <span>0988642538</span>
                         </div>
                         <div className={styles.infoItem}>
                             <div className={styles.iconCircle}>
                                 <MapPin size={20} />
                             </div>
-                            <span>Cầu Giấy, Hà Nội, Việt Nam</span>
+                            <span>Đại Học Xây Dựng, Hà Nội, Việt Nam</span>
                         </div>
                         <div className={styles.infoItem}>
                             <div className={styles.iconCircle}>

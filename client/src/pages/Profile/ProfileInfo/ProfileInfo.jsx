@@ -99,23 +99,6 @@ const ProfileInfo = ({ user, onUpdateSuccess }) => {
         </div>
 
         {isEditing && (
-          <div className={styles.formGroup}>
-            <label className={styles.label}>URL Ảnh đại diện (tùy chọn)</label>
-            <input
-              type="url"
-              name="avatarUrl"
-              value={formData.avatarUrl}
-              onChange={handleChange}
-              className={styles.input}
-              placeholder="https://example.com/avatar.jpg"
-            />
-            <small className={styles.hint}>
-              Hoặc kéo thả ảnh vào avatar ở trên
-            </small>
-          </div>
-        )}
-
-        {isEditing && (
           <div className={styles.actions}>
             <button
               type="button"

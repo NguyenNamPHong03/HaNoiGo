@@ -1,8 +1,8 @@
-import { memo, useRef } from "react";
-import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import styles from "./OurPartners.module.css";
+import gsap from "gsap";
+import { memo, useRef } from "react";
 import TitleSection from "../../../components/common/TitleSection/TitleSection";
+import styles from "./OurPartners.module.css";
 
 const PARTNER_DATA = [
     { src: "/img/partner1.webp", alt: "Partner 1" },
@@ -35,9 +35,9 @@ const PARTNER_DATA = [
  * We define --radius in styles for each ring.
  */
 const RINGS = [
-    { id: 1, radiusVar: "250px", speed: 40, partners: [0, 1, 2, 0, 1, 2] },
-    { id: 2, radiusVar: "400px", speed: -50, partners: [3, 4, 5, 0, 1, 3, 4] },
-    { id: 3, radiusVar: "550px", speed: 60, partners: [2, 3, 4, 5, 0, 1, 2, 5] },
+    { id: 1, radiusVar: "200px", speed: 40, partners: [0, 1, 2, 0, 1, 2] },
+    { id: 2, radiusVar: "320px", speed: -50, partners: [3, 4, 5, 0, 1, 3, 4] },
+    { id: 3, radiusVar: "440px", speed: 60, partners: [2, 3, 4, 5, 0, 1, 2, 5] },
 ];
 
 const OurPartners = () => {

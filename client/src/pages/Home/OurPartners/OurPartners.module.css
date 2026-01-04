@@ -14,7 +14,7 @@
 .header {
     text-align: center;
     max-width: 800px;
-    margin-bottom: 40px;
+    margin-bottom: 0px;
     z-index: 2;
     padding: 0 20px;
 }
@@ -50,7 +50,7 @@
 /* Central Piece */
 .centerPiece {
     position: absolute;
-    bottom: calc(-60px * var(--scale-factor));
+    bottom: calc(-10px * var(--scale-factor));
     left: 50%;
     transform: translateX(-50%);
     width: calc(120px * var(--scale-factor));
@@ -84,17 +84,17 @@
 }
 
 .ring:nth-child(1) {
-    width: calc(500px * var(--scale-factor));
+    width: calc(400px * var(--scale-factor));
     opacity: 0.8;
 }
 
 .ring:nth-child(2) {
-    width: calc(800px * var(--scale-factor));
+    width: calc(640px * var(--scale-factor));
     opacity: 0.6;
 }
 
 .ring:nth-child(3) {
-    width: calc(1100px * var(--scale-factor));
+    width: calc(880px * var(--scale-factor));
     opacity: 0.4;
 }
 

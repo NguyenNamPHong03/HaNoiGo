@@ -2,12 +2,19 @@
   display: flex;
   flex-direction: column;
   gap: 32px;
+  background: #FFFFFF;
+  border: 1px solid #EAECF0;
+  border-radius: 12px;
+  padding: 24px;
+  min-height: 100%;
 }
 
 .sectionHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-bottom: 1px solid #EAECF0;
+  padding-bottom: 20px;
   margin-bottom: 8px;
 }
 
@@ -16,27 +23,28 @@
   font-weight: 600;
   color: #101828;
   margin: 0;
-  display: none;
-  /* Hide main title since we use sub-headers which act like Sidebar titles */
 }
 
 .editBtn {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: none;
-  border: none;
-  padding: 0;
+  background: white;
+  border: 1px solid #D0D5DD;
+  padding: 8px 14px;
+  border-radius: 20px;
   font-size: 0.9rem;
-  color: #475467;
+  color: #344054;
   font-weight: 600;
   cursor: pointer;
   margin-left: auto;
   /* Push to right */
+  transition: all 0.2s;
 }
 
 .editBtn:hover {
-  color: #101828;
+  background: #F9FAFB;
+  border-color: #98A2B3;
 }
 
 .form {

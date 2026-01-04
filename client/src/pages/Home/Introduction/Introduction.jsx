@@ -1,70 +1,69 @@
-import { useState, useEffect, useRef } from "react";
 import {
     ArrowLeft,
     ArrowRight,
     Heart,
-    Plus,
     MapPin,
-    BedDouble,
-    Bath,
-    Maximize2
+    MessageCircle,
+    Plus,
+    Star
 } from "lucide-react";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation } from "swiper/modules";
+import { useEffect, useRef, useState } from "react";
 import "swiper/css";
 import "swiper/css/navigation";
+import { Navigation } from "swiper/modules";
+import { Swiper, SwiperSlide } from "swiper/react";
 
-import styles from "./Introduction.module.css";
 import { placesAPI } from "../../../services/api";
+import styles from "./Introduction.module.css";
 
 const FALLBACK_DATA = [
     {
         id: 1,
         src: "https://images.unsplash.com/photo-1499678329028-101435549a4e",
-        title: "Tây Hồ Villa",
-        description: "5500 SQFT",
-        price: "$6,359,000",
-        address: "435 Au Co, Tay Ho, Hanoi",
-        tag: "For Sale",
+        title: "Quán Cafe Hồ Tây",
+        description: "Không gian view hồ thoáng mát",
+        price: "50.000₫ - 150.000₫",
+        address: "Tây Hồ, Hà Nội",
+        tag: "Ăn uống",
         beds: 4,
-        baths: 4,
-        sqft: 5500
+        baths: 120,
+        sqft: 150000
     },
     {
         id: 2,
         src: "https://images.unsplash.com/photo-1562323150-c3f486a6f185",
-        title: "Old Quarter House",
-        description: "Historic charm",
-        price: "$3,950,000",
-        address: "Hang Gai, Hoan Kiem, Hanoi",
-        tag: "For Rent",
-        beds: 3,
-        baths: 2,
-        sqft: 2200
+        title: "Phở Phố Cổ",
+        description: "Hương vị truyền thống Hà Nội",
+        price: "30.000₫ - 80.000₫",
+        address: "Hoàn Kiếm, Hà Nội",
+        tag: "Ăn uống",
+        beds: 5,
+        baths: 89,
+        sqft: 80000
     },
     {
         id: 3,
         src: "https://images.unsplash.com/photo-1606402179428-a57976d71fa4",
-        title: "Garden Villa Ecopark",
-        description: "Green living",
-        price: "$7,850,000",
-        address: "Ecopark Urban Area, Hung Yen",
-        tag: "For Sale",
-        beds: 5,
-        baths: 4,
-        sqft: 6000
+        title: "Bar Rooftop Cầu Giấy",
+        description: "View thành phố tuyệt đẹp",
+        price: "100.000₫ - 500.000₫",
+        address: "Cầu Giấy, Hà Nội",
+        tag: "Vui chơi",
+        beds: 4,
+        baths: 56,
+        sqft: 500000
     },
     {
         id: 4,
         src: "https://images.unsplash.com/photo-1531366936337-7c912a4589a7",
-        title: "Modern Apartment",
-        description: "City View",
-        price: "$2,150,000",
-        address: "Cau Giay, Hanoi",
-        tag: "For Rent",
-        beds: 2,
-        baths: 2,
-        sqft: 1200
+        title: "Trà Sữa Đống Đa",
+        description: "Đa dạng menu cho giới trẻ",
+        price: "25.000₫ - 70.000₫",
+        address: "Đống Đa, Hà Nội",
+        tag: "Ăn uống",
+        beds: 4,
+        baths: 234,
+        sqft: 70000
     }
 ];
 
@@ -79,18 +78,32 @@ const Introduction = () => {
                 const response = await placesAPI.getLatest(6); // Fetch more for slider
 
                 if (response.success && response.data && response.data.length > 0) {
-                    const transformedData = response.data.map((place, index) => ({
-                        id: place._id,
-                        src: place.images?.[0] || FALLBACK_DATA[index % FALLBACK_DATA.length].src,
-                        title: place.name,
-                        description: place.description,
-                        price: ["$6,359,000", "$4,200,000", "$7,850,000", "$2,100,000"][index % 4],
-                        address: place.address || "Hanoi, Vietnam",
-                        tag: index % 2 === 0 ? "For Sale" : "For Rent",
-                        beds: 3 + (index % 3),
-                        baths: 2 + (index % 2),
-                        sqft: 2000 + (index * 500)
-                    }));
+                    const transformedData = response.data.map((place) => {
+                        // Format price từ priceRange
+                        const formatPrice = (min, max) => {
+                            if (min === max) {
+                                return `${min.toLocaleString('vi-VN')}₫`;
+                            }
+                            return `${min.toLocaleString('vi-VN')}₫ - ${max.toLocaleString('vi-VN')}₫`;
+                        };
+
+                        return {
+                            id: place._id,
+                            src: place.images?.[0] || FALLBACK_DATA[0].src,
+                            title: place.name,
+                            description: place.description,
+                            price: place.priceRange 
+                                ? formatPrice(place.priceRange.min, place.priceRange.max)
+                                : 'Liên hệ',
+                            address: `${place.district}, Hà Nội`,
+                            tag: place.category || 'Ăn uống',
+                            // Sử dụng avgRating làm "beds" và totalReviews làm "baths"
+                            beds: Math.round(place.averageRating || 0),
+                            baths: place.totalReviews || 0,
+                            // Hiển thị priceRange.max làm "sqft"
+                            sqft: place.priceRange?.max || 0
+                        };
+                    });
 
                     setGridData(transformedData);
                 }
@@ -190,16 +203,12 @@ const Introduction = () => {
 
                                     <div className={styles.statsRow}>
                                         <div className={styles.statItem}>
-                                            <BedDouble size={18} className={styles.statIcon} />
-                                            <span>{item.beds} Bed</span>
+                                            <Star size={18} className={styles.statIcon} />
+                                            <span>{item.beds}/5</span>
                                         </div>
                                         <div className={styles.statItem}>
-                                            <Bath size={18} className={styles.statIcon} />
-                                            <span>{item.baths} Bath</span>
-                                        </div>
-                                        <div className={styles.statItem}>
-                                            <Maximize2 size={18} className={styles.statIcon} />
-                                            <span>{item.sqft} Sqft</span>
+                                            <MessageCircle size={18} className={styles.statIcon} />
+                                            <span>{item.baths} Reviews</span>
                                         </div>
                                     </div>
                                 </div>

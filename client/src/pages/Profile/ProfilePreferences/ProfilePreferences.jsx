@@ -4,21 +4,21 @@ import { authAPI } from '../../../services/api';
 import styles from './ProfilePreferences.module.css';
 
 const STYLE_OPTIONS = [
-  { value: 'modern', label: '🏙️ Hiện đại', color: '#3b82f6' },
-  { value: 'traditional', label: '🏮 Truyền thống', color: '#ef4444' },
-  { value: 'cozy', label: '🛋️ Ấm cúng', color: '#f59e0b' },
-  { value: 'elegant', label: '✨ Thanh lịch', color: '#8b5cf6' },
-  { value: 'casual', label: '👕 Giản dị', color: '#10b981' },
-  { value: 'upscale', label: '💎 Cao cấp', color: '#ec4899' }
+  { value: 'modern', label: 'Hiện đại', color: '#3b82f6' },
+  { value: 'traditional', label: 'Truyền thống', color: '#ef4444' },
+  { value: 'cozy', label: 'Ấm cúng', color: '#f59e0b' },
+  { value: 'elegant', label: 'Thanh lịch', color: '#8b5cf6' },
+  { value: 'casual', label: 'Giản dị', color: '#10b981' },
+  { value: 'upscale', label: 'Cao cấp', color: '#ec4899' }
 ];
 
 const DIETARY_OPTIONS = [
-  { value: 'vegetarian', label: '🥗 Chay', color: '#22c55e' },
-  { value: 'vegan', label: '🌱 Thuần chay', color: '#84cc16' },
-  { value: 'halal', label: '☪️ Halal', color: '#14b8a6' },
-  { value: 'kosher', label: '✡️ Kosher', color: '#06b6d4' },
-  { value: 'gluten-free', label: '🌾 Không gluten', color: '#f59e0b' },
-  { value: 'dairy-free', label: '🥛 Không lactose', color: '#a855f7' }
+  { value: 'vegetarian', label: 'Chay', color: '#22c55e' },
+  { value: 'vegan', label: 'Thuần chay', color: '#84cc16' },
+  { value: 'halal', label: 'Halal', color: '#14b8a6' },
+  { value: 'kosher', label: 'Kosher', color: '#06b6d4' },
+  { value: 'gluten-free', label: 'Không gluten', color: '#f59e0b' },
+  { value: 'dairy-free', label: 'Không lactose', color: '#a855f7' }
 ];
 
 const ProfilePreferences = ({ user, onUpdateSuccess }) => {
@@ -103,7 +103,7 @@ const ProfilePreferences = ({ user, onUpdateSuccess }) => {
   return (
     <div className={styles.profilePreferences}>
       <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>Sở thích & Chế độ ăn</h2>
+        <h2 className={styles.sectionTitle}>Cá nhân hóa</h2>
         {!isEditing && (
           <button 
             onClick={() => setIsEditing(true)}
@@ -120,7 +120,7 @@ const ProfilePreferences = ({ user, onUpdateSuccess }) => {
       <form onSubmit={handleSubmit} className={styles.form}>
         {/* Favorite Foods */}
         <div className={styles.preferenceGroup}>
-          <h3 className={styles.groupTitle}>🍜 Món ăn yêu thích</h3>
+          <h3 className={styles.groupTitle}>MÓN ĂN YÊU THÍCH</h3>
           {isEditing ? (
             <>
               <div className={styles.inputGroup}>
@@ -142,7 +142,7 @@ const ProfilePreferences = ({ user, onUpdateSuccess }) => {
               </div>
               <div className={styles.tags}>
                 {formData.favoriteFoods.map((food, index) => (
-                  <span key={index} className={styles.tag}>
+                  <span key={index} className={`${styles.tag} ${styles.optionActive}`}>
                     {food}
                     <button
                       type="button"
@@ -162,7 +162,7 @@ const ProfilePreferences = ({ user, onUpdateSuccess }) => {
             <div className={styles.tags}>
               {user.preferences?.favoriteFoods?.length > 0 ? (
                 user.preferences.favoriteFoods.map((food, index) => (
-                  <span key={index} className={styles.tag}>{food}</span>
+                  <span key={index} className={`${styles.tag} ${styles.optionActive}`}>{food}</span>
                 ))
               ) : (
                 <span className={styles.emptyText}>Chưa thiết lập</span>
@@ -173,7 +173,7 @@ const ProfilePreferences = ({ user, onUpdateSuccess }) => {
 
         {/* Styles */}
         <div className={styles.preferenceGroup}>
-          <h3 className={styles.groupTitle}>🎨 Phong cách yêu thích</h3>
+          <h3 className={styles.groupTitle}>PHONG CÁCH YÊU THÍCH</h3>
           <div className={styles.optionsGrid}>
             {STYLE_OPTIONS.map(option => (
               <button
@@ -196,7 +196,7 @@ const ProfilePreferences = ({ user, onUpdateSuccess }) => {
 
         {/* Dietary */}
         <div className={styles.preferenceGroup}>
-          <h3 className={styles.groupTitle}>🥗 Chế độ ăn</h3>
+          <h3 className={styles.groupTitle}>CHẾ ĐỘ ĂN</h3>
           <div className={styles.optionsGrid}>
             {DIETARY_OPTIONS.map(option => (
               <button

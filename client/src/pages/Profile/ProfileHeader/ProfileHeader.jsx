@@ -1,8 +1,8 @@
+import { Check } from 'lucide-react';
 import { useState } from 'react';
 import { useUser } from '../../../contexts/UserContext';
 import { authAPI } from '../../../services/api';
 import styles from './ProfileHeader.module.css';
-import { Check, MoreHorizontal } from 'lucide-react';
 
 const ProfileHeader = ({ user }) => {
   const { updateUser } = useUser();
@@ -80,21 +80,8 @@ const ProfileHeader = ({ user }) => {
               <h1 className={styles.name}>{user.displayName}</h1>
               <span className={styles.statusDot}></span>
             </div>
-            <p className={styles.headline}>I'm a Product Designer based in Melbourne.</p>
+            <p className={styles.headline}>Tôi Yêu Hà Nội.</p>
           </div>
-        </div>
-
-        {/* Actions */}
-        <div className={styles.actions}>
-          <button className={styles.btnIcon}>
-            <MoreHorizontal size={20} />
-          </button>
-          <button className={styles.btnSecondary}>
-            Hire me
-          </button>
-          <button className={styles.btnPrimary}>
-            + Follow
-          </button>
         </div>
       </div>
     </div>
