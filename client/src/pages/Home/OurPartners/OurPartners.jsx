@@ -89,11 +89,6 @@ const OurPartners = () => {
                 <div className={styles.ring}></div>
                 <div className={styles.ring}></div>
 
-                {/* Central Logo */}
-                <div className={styles.centerPiece}>
-                    <img src="/img/Icon.webp" alt="HaNoiGo" className={styles.centerLogo} />
-                </div>
-
                 {/* Rotating Planes */}
                 {RINGS.map((ring, rIndex) => (
                     <div
@@ -143,6 +138,11 @@ const OurPartners = () => {
                         })}
                     </div>
                 ))}
+            </div>
+
+            {/* Central Logo - Moved outside to escape overflow: hidden */}
+            <div className={styles.centerPiece}>
+                <img src="/img/Icon.webp" alt="HaNoiGo" className={styles.centerLogo} />
             </div>
         </section>
     );

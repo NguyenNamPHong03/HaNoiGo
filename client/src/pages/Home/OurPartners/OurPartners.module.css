@@ -1,7 +1,6 @@
 .ourPartners {
     width: 100%;
     position: relative;
-    overflow: hidden;
     background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
     display: flex;
     flex-direction: column;
@@ -9,6 +8,7 @@
     padding-top: 100px;
     font-family: 'Inter', sans-serif;
     padding-bottom: 0;
+    --scale-factor: 1;
 }
 
 .header {
@@ -44,7 +44,6 @@
     justify-content: center;
     margin-top: auto;
     overflow: hidden;
-    --scale-factor: 1;
 }
 
 /* Central Piece */
@@ -150,11 +149,11 @@
     .ourPartners {
         padding-top: 60px;
         min-height: auto;
+        --scale-factor: 0.6;
     }
 
     .orbitContainer {
         height: 360px;
-        --scale-factor: 0.6;
     }
 
     .partnerNode {
