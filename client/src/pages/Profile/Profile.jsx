@@ -24,26 +24,33 @@ const Profile = () => {
 
   if (loading || !user) {
     return (
-      <div className={styles.profileContainer}>
+      <div className={styles.loadingContainer}>
         <div className={styles.loading}>Đang tải...</div>
       </div>
     );
   }
 
   return (
-    <div className={styles.profileContainer}>
+    <div className={styles.pageContainer}>
       <ProfileHeader user={user} />
-      
-      <div className={styles.profileContent}>
+
+      <main className={styles.mainContent}>
         {updateSuccess && (
           <div className={styles.successMessage}>
             ✓ Cập nhật thông tin thành công!
           </div>
         )}
-        
-        <ProfileInfo user={user} onUpdateSuccess={handleUpdateSuccess} />
-        <ProfilePreferences user={user} onUpdateSuccess={handleUpdateSuccess} />
-      </div>
+
+        <div className={styles.gridContainer}>
+          <div className={styles.mainColumn}>
+            <ProfileInfo user={user} onUpdateSuccess={handleUpdateSuccess} />
+          </div>
+
+          <div className={styles.sideColumn}>
+            <ProfilePreferences user={user} onUpdateSuccess={handleUpdateSuccess} />
+          </div>
+        </div>
+      </main>
     </div>
   );
 };

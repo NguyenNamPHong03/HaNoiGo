@@ -1,254 +1,182 @@
 .profilePreferences {
-  background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
 }
 
 .sectionHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid var(--yellow);
+  margin-bottom: 8px;
 }
 
 .sectionTitle {
-  font-size: 1.8rem;
+  font-size: 1.1rem;
   font-weight: 600;
-  color: var(--dark-green);
+  color: #101828;
   margin: 0;
+  display: none;
+  /* Hide main title since we use sub-headers which act like Sidebar titles */
 }
 
 .editBtn {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: var(--yellow);
-  color: var(--dark-green);
+  gap: 6px;
+  background: none;
   border: none;
-  border-radius: 8px;
-  font-weight: 500;
+  padding: 0;
+  font-size: 0.9rem;
+  color: #475467;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  margin-left: auto;
+  /* Push to right */
 }
 
 .editBtn:hover {
-  background: var(--green);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  color: #101828;
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: 32px;
 }
 
 .preferenceGroup {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 16px;
 }
 
 .groupTitle {
-  font-size: 1.3rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  color: var(--dark-green);
+  color: #344054;
   margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
+.tags,
+.optionsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Style for tags to look like Sidebar Skills */
+.tag,
+.option {
+  padding: 4px 12px;
+  border-radius: 16px;
+  border: 1px solid #D0D5DD;
+  font-size: 0.85rem;
+  color: #344054;
+  background: white;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: default;
+}
+
+.option {
+  cursor: pointer;
+  /* Options are clickable in edit mode */
+}
+
+.optionDisabled {
+  cursor: default;
+  border-color: transparent;
+  background: #F9FAFB;
+  color: #475467;
+}
+
+.optionActive {
+  background: #EFF8FF;
+  border-color: #2E90FA;
+  color: #175CD3;
+  font-weight: 500;
+}
+
+/* Edit mode styles */
 .inputGroup {
   display: flex;
-  gap: 0.75rem;
+  gap: 8px;
 }
 
 .input {
   flex: 1;
-  padding: 0.875rem 1rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 10px;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  font-family: inherit;
+  padding: 8px 12px;
+  border: 1px solid #D0D5DD;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
 }
 
 .input:focus {
-  outline: none;
-  border-color: var(--green);
-  box-shadow: 0 0 0 3px rgba(184, 219, 128, 0.2);
+  border-color: #2E90FA;
 }
 
 .addBtn {
-  padding: 0.875rem 1.5rem;
-  background: var(--green);
-  color: var(--dark-green);
+  padding: 8px 16px;
+  background: #101828;
+  color: white;
   border: none;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-}
-
-.addBtn:hover {
-  background: var(--yellow);
-  transform: translateY(-2px);
-}
-
-.tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  min-height: 40px;
-  align-items: center;
-}
-
-.tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: var(--yellow);
-  color: var(--dark-green);
-  border-radius: 20px;
+  border-radius: 8px;
   font-weight: 500;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  cursor: pointer;
 }
 
 .removeTag {
   background: none;
   border: none;
-  color: var(--dark-green);
-  font-size: 1.5rem;
-  line-height: 1;
+  color: #98A2B3;
   cursor: pointer;
-  padding: 0;
-  width: 20px;
-  height: 20px;
+  font-size: 1.1rem;
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: background 0.2s ease;
+  padding: 0;
+  margin-left: 4px;
 }
 
 .removeTag:hover {
-  background: rgba(0, 0, 0, 0.1);
+  color: #F04438;
 }
 
 .emptyText {
-  color: #9ca3af;
   font-style: italic;
-}
-
-.optionsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 0.75rem;
-}
-
-.option {
-  padding: 1rem;
-  background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: inherit;
-  font-size: 1rem;
-  text-align: left;
-}
-
-.option:hover:not(.optionDisabled) {
-  border-color: var(--option-color);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.optionActive {
-  background: var(--option-color);
-  color: white;
-  border-color: var(--option-color);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.optionDisabled {
-  cursor: default;
-  opacity: 0.7;
+  color: #98A2B3;
+  font-size: 0.9rem;
 }
 
 .actions {
   display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
 }
 
 .btn {
-  padding: 0.875rem 2rem;
-  border: none;
-  border-radius: 10px;
+  flex: 1;
+  padding: 8px 16px;
+  border-radius: 8px;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.9rem;
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: inherit;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btnPrimary {
-  background: var(--green);
-  color: var(--dark-green);
-}
-
-.btnPrimary:hover:not(:disabled) {
-  background: var(--yellow);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: none;
 }
 
 .btnSecondary {
-  background: #f1f5f9;
-  color: #475569;
+  background: white;
+  border: 1px solid #D0D5DD;
+  color: #344054;
 }
 
-.btnSecondary:hover:not(:disabled) {
-  background: #e2e8f0;
-}
-
-@media (max-width: 768px) {
-  .profilePreferences {
-    padding: 1.5rem;
-  }
-  
-  .sectionHeader {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-  
-  .editBtn {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .optionsGrid {
-    grid-template-columns: 1fr;
-  }
-  
-  .actions {
-    flex-direction: column-reverse;
-  }
-  
-  .btn {
-    width: 100%;
-  }
+.btnPrimary {
+  background: #101828;
+  color: white;
 }

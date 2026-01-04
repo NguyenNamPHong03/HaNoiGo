@@ -44,12 +44,6 @@ const Why = () => {
 
     return (
         <section className={styles.why}>
-            <div className={styles.title}>
-                <TitleSection>
-                    Đi du lịch cùng chúng tôi nghĩa là bạn không cần phải lo lắng về các chi tiết.
-Chúng tôi lo liệu việc đưa đón, đặt chỗ và sắp xếp tại chỗ để bạn có thể thư giãn và tận hưởng kỳ nghỉ của mình ngay từ ngày đầu tiên.
-                </TitleSection>
-            </div>
 
             <div className={styles.whyContent}>
                 <div className={styles.leftColumn}>

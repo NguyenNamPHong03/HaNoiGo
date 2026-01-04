@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { useUser } from '../../../contexts/UserContext';
 import { authAPI } from '../../../services/api';
 import styles from './ProfileHeader.module.css';
+import { Check, MoreHorizontal } from 'lucide-react';
 
 const ProfileHeader = ({ user }) => {
   const { updateUser } = useUser();
   const [uploading, setUploading] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
 
   const getAvatarUrl = () => {
     if (user.avatarUrl) return user.avatarUrl;
@@ -14,8 +14,11 @@ const ProfileHeader = ({ user }) => {
     return `https://ui-avatars.com/api/?name=${initial}&background=004549&color=f9efa7&size=200`;
   };
 
-  const handleFileSelect = async (file) => {
-    if (!file || !file.type.startsWith('image/')) {
+  const handleFileSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
       alert('Vui lòng chọn file ảnh hợp lệ!');
       return;
     }
@@ -28,108 +31,70 @@ const ProfileHeader = ({ user }) => {
     setUploading(true);
 
     try {
-      console.log('📤 Uploading avatar...');
       const response = await authAPI.uploadAvatar(file);
-      console.log('📥 Upload response:', response);
-      
       if (response.success) {
-        // ✅ FIX: Cập nhật toàn bộ user object từ backend (đã có avatarUrl mới từ DB)
         if (response.data.user) {
-          console.log('✅ Updating user context with full user object from backend');
           updateUser(response.data.user);
         } else {
-          // Fallback: chỉ update avatarUrl nếu backend không trả user
-          console.log('⚠️ Backend không trả user object, chỉ update avatarUrl');
           updateUser({ avatarUrl: response.data.avatarUrl });
         }
-        
-        alert('✅ Đã cập nhật ảnh đại diện thành công!');
       }
     } catch (error) {
-      console.error('❌ Upload error:', error);
-      alert(error.response?.data?.message || 'Upload ảnh thất bại. Vui lòng thử lại.');
+      console.error('Upload error:', error);
+      alert('Upload ảnh thất bại.');
     } finally {
       setUploading(false);
     }
   };
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOver(true);
-  };
-
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOver(false);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOver(false);
-
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      handleFileSelect(files[0]);
-    }
-  };
-
-  const handleClick = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (file) handleFileSelect(file);
-    };
-    input.click();
-  };
-
   return (
-    <div className={styles.profileHeader}>
-      <div className={styles.headerBackground}>
-        <div className={styles.overlay}></div>
+    <div className={styles.container}>
+      {/* Banner */}
+      <div className={styles.banner}>
+        <div className={styles.bannerOverlay} />
       </div>
-      
-      <div className={styles.headerContent}>
-        <div
-          className={`${styles.avatarWrapper} ${dragOver ? styles.dragOver : ''} ${uploading ? styles.uploading : ''}`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={handleClick}
-        >
-          <img 
-            src={getAvatarUrl()}
-            alt={user.displayName}
-            className={styles.avatar}
-          />
-          <div className={styles.avatarOverlay}>
-            {uploading ? (
-              <div className={styles.spinner}></div>
-            ) : (
-              <>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                  <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1z" opacity="0.3"/>
-                </svg>
-                <span>Đổi ảnh</span>
-              </>
-            )}
+
+      {/* Profile Bar */}
+      <div className={styles.profileBar}>
+        <div className={styles.mainInfo}>
+          {/* Avatar */}
+          <div className={styles.avatarWrapper}>
+            <img
+              src={getAvatarUrl()}
+              alt={user.displayName}
+              className={styles.avatar}
+            />
+            {uploading && <div className={styles.spinner} />}
+            <div className={styles.verifiedBadge}>
+              <Check size={12} color="white" strokeWidth={4} />
+            </div>
+
+            <label className={styles.uploadTrigger}>
+              <input type="file" onChange={handleFileSelect} accept="image/*" hidden />
+            </label>
+          </div>
+
+          {/* Texts */}
+          <div className={styles.textInfo}>
+            <div className={styles.nameRow}>
+              <h1 className={styles.name}>{user.displayName}</h1>
+              <span className={styles.statusDot}></span>
+            </div>
+            <p className={styles.headline}>I'm a Product Designer based in Melbourne.</p>
           </div>
         </div>
-        
-        <div className={styles.userInfo}>
-          <h1 className={styles.userName}>{user.displayName}</h1>
-          <p className={styles.userEmail}>{user.email}</p>
-          <div className={styles.userStats}>
-            <div className={styles.stat}>
-              <span className={styles.statValue}>{user.totalReviews || 0}</span>
-              <span className={styles.statLabel}>Đánh giá</span>
-            </div>           
-          </div>
+
+        {/* Actions */}
+        <div className={styles.actions}>
+          <button className={styles.btnIcon}>
+            <MoreHorizontal size={20} />
+          </button>
+          <button className={styles.btnSecondary}>
+            Hire me
+          </button>
+          <button className={styles.btnPrimary}>
+            + Follow
+          </button>
         </div>
       </div>
     </div>

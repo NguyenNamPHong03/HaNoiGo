@@ -1,3 +1,220 @@
-.footer {
-    height: 100vh;
+.footerContainer {
+    width: 100%;
+    background: transparent;
+    /* Assuming main page background handles the outer area */
+    display: flex;
+    justify-content: center;
+}
+
+.footerWrapper {
+    width: 100%;
+    background-color: #f8faff;
+    /* Light grayish blue tint */
+    padding: 80px 60px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 80px;
+    font-family: 'Inter', sans-serif;
+    color: #1a1a1a;
+}
+
+/* CTA Section */
+.ctaSection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 24px;
+}
+
+.logoContainer {
+    width: 64px;
+    height: 64px;
+    background-color: #0f172a;
+    /* Dark navy */
+    border-radius: 20px;
+    /* Squircle */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.ctaTitle {
+    font-size: 3rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #1a1a1a;
+    line-height: 1.1;
+}
+
+.ctaSubtitle {
+    font-size: 1.125rem;
+    color: #64748b;
+    max-width: 600px;
+    line-height: 1.6;
+}
+
+.ctaButton {
+    margin-top: 16px;
+    background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+    color: white;
+    padding: 16px 32px;
+    border-radius: 100px;
+    /* Pill shape */
+    font-weight: 600;
+    font-size: 1rem;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ctaButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+}
+
+/* Links Section */
+.linksContainer {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr;
+    gap: 40px;
+    padding-top: 40px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.columnTitle {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 8px;
+}
+
+.infoItem {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    color: #475569;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.iconCircle {
+    width: 40px;
+    height: 40px;
+    background-color: #e0e7ff;
+    /* Light indigo tint */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4f46e5;
+    /* Indigo icon */
+    flex-shrink: 0;
+}
+
+.linkList {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.linkItem {
+    color: #64748b;
+    text-decoration: none;
+    font-size: 1rem;
+    transition: color 0.2s ease;
+}
+
+.linkItem:hover {
+    color: #4f46e5;
+}
+
+/* Bottom Bar */
+.bottomBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 40px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    color: #94a3b8;
+    font-size: 0.875rem;
+}
+
+.policyLinks {
+    display: flex;
+    gap: 24px;
+}
+
+.policyLinks a {
+    color: #94a3b8;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.policyLinks a:hover {
+    color: #4f46e5;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .linksContainer {
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 30px;
+    }
+
+    .column:first-child {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+}
+
+@media (max-width: 768px) {
+    .footerWrapper {
+        padding: 40px 20px;
+        border-radius: 24px;
+    }
+
+    .ctaTitle {
+        font-size: 2rem;
+    }
+
+    .linksContainer {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+
+    .column {
+        align-items: center;
+    }
+
+    .column:first-child {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .infoItem {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+
+    .bottomBar {
+        flex-direction: column;
+        gap: 16px;
+        text-align: center;
+    }
 }

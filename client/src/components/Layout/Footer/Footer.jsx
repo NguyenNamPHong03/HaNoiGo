@@ -1,11 +1,122 @@
-import styles from "./Footer.module.css"
+import { memo } from "react";
+import { Link } from "react-router-dom";
+import {
+    Sparkles,
+    ArrowRight,
+    Phone,
+    MapPin,
+    Mail,
+    Facebook,
+    Instagram,
+    Linkedin,
+    Twitter
+} from "lucide-react";
+import styles from "./Footer.module.css";
 
 const Footer = () => {
     return (
-        <footer className={styles.footer}>
-            <h1 style={{ textAlign: "center" }}>Coming soon...</h1>
-        </footer>
-    )
-}
+        <div className={styles.footerContainer}>
+            <footer className={styles.footerWrapper}>
+                {/* CTA Section */}
+                <div className={styles.ctaSection}>
+                    <div className={styles.logoContainer}>
+                        <Sparkles size={32} strokeWidth={1.5} />
+                    </div>
+                    <h2 className={styles.ctaTitle}>
+                        Khám phá Hà Nội cùng HaNoiGo
+                    </h2>
+                    <p className={styles.ctaSubtitle}>
+                        Trải nghiệm văn hóa, ẩm thực và con người Hà Nội theo cách riêng của bạn.
+                        Chúng tôi kết nối bạn với những địa điểm tuyệt vời nhất.
+                    </p>
+                    <button className={styles.ctaButton}>
+                        Bắt đầu ngay <ArrowRight size={20} />
+                    </button>
+                </div>
 
-export default Footer
+                {/* Main Links Section */}
+                <div className={styles.linksContainer}>
+                    {/* Contact Column */}
+                    <div className={styles.column}>
+                        <h3 className={styles.columnTitle}>Liên hệ</h3>
+                        <div className={styles.infoItem}>
+                            <div className={styles.iconCircle}>
+                                <Phone size={20} />
+                            </div>
+                            <span>098 765 4321</span>
+                        </div>
+                        <div className={styles.infoItem}>
+                            <div className={styles.iconCircle}>
+                                <MapPin size={20} />
+                            </div>
+                            <span>Cầu Giấy, Hà Nội, Việt Nam</span>
+                        </div>
+                        <div className={styles.infoItem}>
+                            <div className={styles.iconCircle}>
+                                <Mail size={20} />
+                            </div>
+                            <span>support@hanoigo.com</span>
+                        </div>
+                    </div>
+
+                    {/* Navigate Column */}
+                    <div className={styles.column}>
+                        <h3 className={styles.columnTitle}>Điều hướng</h3>
+                        <div className={styles.linkList}>
+                            <Link to="/services" className={styles.linkItem}>Dịch vụ</Link>
+                            <Link to="/stories" className={styles.linkItem}>Câu chuyện</Link>
+                            <Link to="/blog" className={styles.linkItem}>Blog du lịch</Link>
+                            <Link to="/events" className={styles.linkItem}>Sự kiện</Link>
+                        </div>
+                    </div>
+
+                    {/* Solution Column */}
+                    <div className={styles.column}>
+                        <h3 className={styles.columnTitle}>Giải pháp</h3>
+                        <div className={styles.linkList}>
+                            <Link to="/for-business" className={styles.linkItem}>Cho doanh nghiệp</Link>
+                            <Link to="/partners" className={styles.linkItem}>Đối tác</Link>
+                            <Link to="/advertising" className={styles.linkItem}>Quảng cáo</Link>
+                            <Link to="/tech" className={styles.linkItem}>Công nghệ AI</Link>
+                        </div>
+                    </div>
+
+                    {/* Discover Column */}
+                    <div className={styles.column}>
+                        <h3 className={styles.columnTitle}>Khám phá</h3>
+                        <div className={styles.linkList}>
+                            <Link to="/new" className={styles.linkItem}>Địa điểm mới</Link>
+                            <Link to="/trending" className={styles.linkItem}>Xu hướng</Link>
+                            <Link to="/categories" className={styles.linkItem}>Danh mục</Link>
+                            <Link to="/map" className={styles.linkItem}>Bản đồ</Link>
+                        </div>
+                    </div>
+
+                    {/* Follow Us Column */}
+                    <div className={styles.column}>
+                        <h3 className={styles.columnTitle}>Theo dõi</h3>
+                        <div className={styles.linkList}>
+                            <a href="#" className={styles.linkItem}>Facebook</a>
+                            <a href="#" className={styles.linkItem}>Instagram</a>
+                            <a href="#" className={styles.linkItem}>LinkedIn</a>
+                            <a href="#" className={styles.linkItem}>Twitter</a>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bottom Copyright */}
+                <div className={styles.bottomBar}>
+                    <div className={styles.copyright}>
+                        © Copyright HaNoiGo 2024. All rights reserved.
+                    </div>
+                    <div className={styles.policyLinks}>
+                        <Link to="/privacy">Chính sách bảo mật</Link>
+                        <Link to="/terms">Điều khoản sử dụng</Link>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    );
+};
+
+export default memo(Footer);
