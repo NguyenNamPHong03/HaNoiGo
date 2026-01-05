@@ -498,10 +498,10 @@
 
 /* --- Detail Panel --- */
 .detailPanel {
-    width: 400px;
+    width: 550px;
     background: #fff;
     border-left: 1px solid #eee;
-    padding: 20px;
+    padding: 25px;
     overflow-y: auto;
     flex-shrink: 0;
     position: sticky;
@@ -848,4 +848,67 @@
     .noResults h3 {
         font-size: 18px;
     }
+}
+
+/* Place Detail Mode Styles */
+.placeDetailMode {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+}
+
+.placeDetailInfo {
+    text-align: center;
+}
+
+.placeDetailInfo h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 12px;
+}
+
+.subtitle {
+    font-size: 16px;
+    color: #666;
+}
+
+.loadingContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #0066FF;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.errorMessage {
+    text-align: center;
+}
+
+.errorMessage h3 {
+    font-size: 20px;
+    color: #dc3545;
+    margin-bottom: 8px;
+}
+
+.errorMessage p {
+    color: #666;
+    font-size: 14px;
 }

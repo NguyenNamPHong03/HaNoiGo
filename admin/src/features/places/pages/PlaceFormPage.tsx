@@ -4,6 +4,7 @@ import { placesAPI } from '../../../services/api';
 import { AITagsTab } from '../components/form/AITagsTab';
 import { BasicInfoTab } from '../components/form/BasicInfoTab';
 import { ImagesMenuTab } from '../components/form/ImagesMenuTab';
+import { OperatingHoursTab } from '../components/form/OperatingHoursTab';
 import { PreviewTab } from '../components/form/PreviewTab';
 import { useFormValidation } from '../hooks/useFormValidation';
 import { usePlaceForm } from '../hooks/usePlaceForm';
@@ -28,7 +29,8 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
     addMenuItem,
     removeMenuItem,
     updateMenuItem,
-    toggleAiTag
+    toggleAiTag,
+    updateOperatingHours
   } = usePlaceForm(placeId);
 
   const { errors, setErrors, validateForm, clearError } = useFormValidation(formData);
@@ -36,8 +38,9 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
   const tabs = [
     { id: 0, name: 'Thông tin cơ bản', icon: '📝' },
     { id: 1, name: 'Hình ảnh & Menu', icon: '🖼️' },
-    { id: 2, name: 'AI Tags', icon: '🤖' },
-    { id: 3, name: 'Xem trước', icon: '👁️' }
+    { id: 2, name: 'Giờ mở cửa', icon: '🕒' },
+    { id: 3, name: 'AI Tags', icon: '🤖' },
+    { id: 4, name: 'Xem trước', icon: '👁️' }
   ];
 
   const canPublish = () => {
@@ -111,6 +114,7 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
         },
         phone: formData.contact.phone?.trim() || '',
         website: formData.contact.website?.trim() || '',
+        operatingHours: formData.operatingHours,
         status: normalizedStatus,
         isActive: true,
         featured: false
@@ -223,6 +227,21 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
         )}
 
         {activeTab === 2 && (
+          <OperatingHoursTab
+            operatingHours={formData.operatingHours || {
+              monday: { open: '', close: '' },
+              tuesday: { open: '', close: '' },
+              wednesday: { open: '', close: '' },
+              thursday: { open: '', close: '' },
+              friday: { open: '', close: '' },
+              saturday: { open: '', close: '' },
+              sunday: { open: '', close: '' }
+            }}
+            onUpdate={updateOperatingHours}
+          />
+        )}
+
+        {activeTab === 3 && (
           <AITagsTab
             formData={formData}
             aiTagsOptions={aiTagsOptions}
@@ -230,7 +249,7 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
           />
         )}
 
-        {activeTab === 3 && <PreviewTab formData={formData} />}
+        {activeTab === 4 && <PreviewTab formData={formData} />}
       </div>
 
       {/* Footer Actions */}

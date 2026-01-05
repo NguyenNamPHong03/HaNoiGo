@@ -8,6 +8,7 @@ import {
     Star
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "swiper/css";
 import "swiper/css/navigation";
 import { Navigation } from "swiper/modules";
@@ -70,6 +71,7 @@ const FALLBACK_DATA = [
 const Introduction = () => {
     const [gridData, setGridData] = useState(FALLBACK_DATA);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
     const swiperRef = useRef(null);
 
     useEffect(() => {
@@ -125,6 +127,10 @@ const Introduction = () => {
         if (swiperRef.current) swiperRef.current.slideNext();
     };
 
+    const handleCardClick = (placeId) => {
+        navigate(`/places/${placeId}`);
+    };
+
     if (loading) {
         return (
             <section className={styles.introduction}>
@@ -175,7 +181,12 @@ const Introduction = () => {
                 >
                     {gridData.map((item) => (
                         <SwiperSlide key={item.id}>
-                            <div className={styles.card}>
+                            <div 
+                                className={styles.card}
+                                onClick={() => handleCardClick(item.id)}
+                                style={{ cursor: 'pointer' }}
+                                title="Click để xem chi tiết"
+                            >
                                 {/* Image Area */}
                                 <div className={styles.imageContainer}>
                                     <img src={item.src} alt={item.title} className={styles.cardImage} />

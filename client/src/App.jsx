@@ -36,6 +36,7 @@ function App() {
               <Route path="/" element={<Layout />}>
                 <Route index element={<Home />} />
                 <Route path="/search" element={<SearchResult />} />
+                <Route path="/places/:id" element={<SearchResult />} />
                 <Route path="/profile" element={<Profile />} />
               </Route>
             </Routes>

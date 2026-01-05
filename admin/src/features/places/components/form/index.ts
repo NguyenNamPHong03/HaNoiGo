@@ -4,5 +4,6 @@ export { FormField } from './FormField';
 export { ImagesMenuTab } from './ImagesMenuTab';
 export { ImageUpload } from './ImageUpload';
 export { MenuItem } from './MenuItem';
+export { OperatingHoursTab } from './OperatingHoursTab';
 export { PreviewTab } from './PreviewTab';
 

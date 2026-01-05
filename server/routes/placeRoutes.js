@@ -1,18 +1,17 @@
 import express from 'express';
-import { getLatestPlaces } from '../controllers/placesController.js';
+import { getLatestPlaces, getPlaceById } from '../controllers/placesController.js';
 
 const router = express.Router();
 
 // Public endpoint - Get latest places for homepage
 router.get('/latest', getLatestPlaces);
 
-// Places routes placeholder
+// Public endpoint - Get place by ID
+router.get('/:id', getPlaceById);
+
+// Places routes placeholder (for future implementation)
 router.get('/', (req, res) => {
   res.json({ message: 'Get places endpoint - to be implemented' });
-});
-
-router.get('/:id', (req, res) => {
-  res.json({ message: 'Get place by ID endpoint - to be implemented' });
 });
 
 router.post('/', (req, res) => {

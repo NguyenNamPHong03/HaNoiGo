@@ -51,6 +51,7 @@ export const normalizePlacePayload = (formData: PlaceFormData) => {
     },
     phone: formData.contact.phone?.trim() || '',
     website: formData.contact.website?.trim() || '',
+    operatingHours: formData.operatingHours || {},
     status: normalizeStatus(formData.status),
     isActive: true,
     featured: false
@@ -95,6 +96,15 @@ export const mapPlaceToFormData = (place: any): PlaceFormData => {
       specialFeatures: []
     },
     contact: place.contact || { phone: '', website: '' },
+    operatingHours: place.operatingHours || {
+      monday: { open: '', close: '' },
+      tuesday: { open: '', close: '' },
+      wednesday: { open: '', close: '' },
+      thursday: { open: '', close: '' },
+      friday: { open: '', close: '' },
+      saturday: { open: '', close: '' },
+      sunday: { open: '', close: '' }
+    },
     status: place.status || 'Draft'
   };
 };

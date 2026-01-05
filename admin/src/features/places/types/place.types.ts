@@ -18,6 +18,7 @@ export interface Place {
   aiTags: AiTags;
   coordinates?: { latitude: number; longitude: number };
   contact: { phone: string; website: string };
+  operatingHours?: OperatingHours;
   createdAt: string;
   updatedAt: string;
   createdBy?: { displayName: string; username: string };
@@ -29,6 +30,21 @@ export interface MenuItem {
   price: number;
   description: string;
   category: string;
+}
+
+export interface DayHours {
+  open: string;
+  close: string;
+}
+
+export interface OperatingHours {
+  monday?: DayHours;
+  tuesday?: DayHours;
+  wednesday?: DayHours;
+  thursday?: DayHours;
+  friday?: DayHours;
+  saturday?: DayHours;
+  sunday?: DayHours;
 }
 
 export interface AiTags {
@@ -53,6 +69,7 @@ export interface PlaceFormData {
   aiTags: AiTags;
   coordinates?: { latitude: number; longitude: number };
   contact: { phone: string; website: string };
+  operatingHours?: OperatingHours;
   status: string;
 }
 

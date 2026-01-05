@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { placesAPI } from '../../../services/api';
+import type { OperatingHours } from '../types/place.types';
 
 interface PlaceFormData {
   name: string;
@@ -21,6 +22,7 @@ interface PlaceFormData {
   };
   coordinates?: { latitude: number; longitude: number };
   contact: { phone: string; website: string };
+  operatingHours?: OperatingHours;
   status: string;
 }
 
@@ -44,6 +46,15 @@ export const usePlaceForm = (placeId?: string) => {
       specialFeatures: []
     },
     contact: { phone: '', website: '' },
+    operatingHours: {
+      monday: { open: '', close: '' },
+      tuesday: { open: '', close: '' },
+      wednesday: { open: '', close: '' },
+      thursday: { open: '', close: '' },
+      friday: { open: '', close: '' },
+      saturday: { open: '', close: '' },
+      sunday: { open: '', close: '' }
+    },
     status: 'Draft'
   });
 
@@ -94,6 +105,15 @@ export const usePlaceForm = (placeId?: string) => {
             specialFeatures: []
           },
           contact: place.contact || { phone: '', website: '' },
+          operatingHours: place.operatingHours || {
+            monday: { open: '', close: '' },
+            tuesday: { open: '', close: '' },
+            wednesday: { open: '', close: '' },
+            thursday: { open: '', close: '' },
+            friday: { open: '', close: '' },
+            saturday: { open: '', close: '' },
+            sunday: { open: '', close: '' }
+          },
           status: place.status || 'Draft'
         });
       }
@@ -151,6 +171,19 @@ export const usePlaceForm = (placeId?: string) => {
     }));
   };
 
+  const updateOperatingHours = (day: string, field: 'open' | 'close', value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      operatingHours: {
+        ...prev.operatingHours,
+        [day]: {
+          ...(prev.operatingHours?.[day as keyof OperatingHours] || { open: '', close: '' }),
+          [field]: value
+        }
+      }
+    }));
+  };
+
   return {
     formData,
     districts,
@@ -163,6 +196,7 @@ export const usePlaceForm = (placeId?: string) => {
     removeMenuItem,
     updateMenuItem,
     toggleAiTag,
+    updateOperatingHours,
     setFormData
   };
 };
