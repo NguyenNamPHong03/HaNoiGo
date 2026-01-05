@@ -6,7 +6,6 @@
     flex-direction: column;
     align-items: center;
     padding-top: 100px;
-    font-family: 'Inter', sans-serif;
     padding-bottom: 0;
     --scale-factor: 1;
 }
@@ -54,7 +53,7 @@
     transform: translateX(-50%);
     width: calc(120px * var(--scale-factor));
     height: calc(120px * var(--scale-factor));
-    background: white;
+    background: #f8f1b1;
     border-radius: 50%;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
     display: flex;
@@ -73,7 +72,7 @@
 /* Static Rings Visuals */
 .ring {
     position: absolute;
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    border: 1px solid rgba(139, 92, 246, 0.8);
     border-radius: 50%;
     left: 50%;
     bottom: 0;
