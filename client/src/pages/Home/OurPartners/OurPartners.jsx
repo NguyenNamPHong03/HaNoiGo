@@ -64,7 +64,7 @@ const OurPartners = () => {
             // 2. Counter-rotate the nodes to keep them upright
             // They must rotate in the OPPOSITE direction of the plane
             gsap.to(nodes, {
-                rotation: -direction,
+                rotation: "-=" + direction,
                 duration: duration,
                 repeat: -1,
                 ease: "none"

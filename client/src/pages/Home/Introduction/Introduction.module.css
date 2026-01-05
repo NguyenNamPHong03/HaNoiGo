@@ -3,7 +3,6 @@
     max-width: 1440px;
     margin: 0 auto;
     padding: 100px 60px;
-    font-family: 'Inter', sans-serif;
     background-color: #fff;
 }
 
@@ -69,6 +68,11 @@
     /* Add padding to prevent hover shadows from being clipped */
     padding: 2px 5px 30px;
     /* Counteract padding somewhat if needed or just let it sit */
+    overflow: hidden;
+}
+
+.swiperContainer :global(.swiper) {
+    overflow: visible;
 }
 
 /* Property Card */
@@ -84,7 +88,6 @@
 }
 
 .card:hover {
-    transform: translateY(-5px);
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.01);
 }
 
