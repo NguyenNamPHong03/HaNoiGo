@@ -310,6 +310,103 @@ HaNoiGo/
 
 ***
 
+## 🏗️ KIẾN TRÚC BACKEND CHI TIẾT
+
+### 🎯 Kiến trúc tổng quan
+
+Backend HANOIGO tuân theo kiến trúc **MVC (Model-View-Controller)** với **Service Layer** tách biệt, đảm bảo:
+
+- **Separation of Concerns**: Mỗi layer có trách nhiệm riêng biệt
+- **Testability**: Dễ dàng unit test từng layer
+- **Scalability**: Dễ mở rộng và maintain
+- **Reusability**: Business logic có thể tái sử dụng
+
+### 📊 Luồng xử lý Request
+
+```
+Request → Route → Middleware → Controller → Service → Model → Database
+                                    ↓           ↓
+                                Response ← Data Processing
+```
+
+### ⚙️ Phân chia trách nhiệm theo Layer
+
+#### 1️⃣ **Controller Layer** (controllers/)
+
+**Chức năng:**
+- Nhận HTTP request, extract params/body/query
+- Validate input cơ bản (gọi middleware hoặc validator)
+- Gọi Service layer để xử lý business logic
+- Format response và trả về cho client
+- **KHÔNG chứa business logic phức tạp**
+
+**✅ Controller KHÔNG làm gì:**
+- Không query database trực tiếp
+- Không xử lý logic phức tạp (filter, calculate, transform data)
+- Không gọi external APIs
+- Không validate business rules
+
+---
+
+#### 2️⃣ **Service Layer** (services/) ⭐ CORE BUSINESS LOGIC
+
+**Chức năng:**
+- Chứa toàn bộ business logic của ứng dụng
+- Xử lý data transformation, filtering, sorting
+- Validate business rules (ví dụ: user không thể review cùng 1 place 2 lần)
+- Gọi Model để thao tác database
+- Gọi external APIs (OpenAI, Cloudinary, Email service)
+- Có thể gọi Service khác (composition)
+
+**✅ Service làm gì:**
+- Query database thông qua Model
+- Validate business rules
+- Transform data
+- Orchestrate complex operations (gọi nhiều Models/Services)
+- Handle external API calls
+
+**❌ Service KHÔNG làm gì:**
+- Không xử lý HTTP request/response
+- Không biết về req, res objects
+- Không format JSON response
+
+---
+
+#### 3️⃣ **Model Layer** (models/)
+
+**Chức năng:**
+- Define MongoDB schema
+- Define virtual fields, methods, statics
+- Pre/post hooks (middleware)
+- Data validation tại DB level
+- **Chỉ tương tác với database**
+
+---
+
+### ✅ TÓM TẮT NGUYÊN TẮC
+
+| Layer | Trách nhiệm | Ví dụ code |
+|-------|-------------|------------|
+| **Route** | Define endpoints, apply middleware | `router.post('/places', protect, createPlace)` |
+| **Middleware** | Authentication, validation, error handling | `auth.js`, `validate.js` |
+| **Controller** | Handle HTTP, call Service, format response | `const result = await placeService.getPlaces(filters)` |
+| **Service** | Business logic, orchestrate operations | `const place = await Place.findById(id)` |
+| **Model** | Database schema, validation, indexes | `placeSchema.pre('save', ...)` |
+
+**🎯 Quy tắc vàng:**
+- Controller → gọi Service
+- Service → gọi Model
+- Model → tương tác Database
+- **KHÔNG BAO GIỜ**: Controller gọi Model trực tiếp
+
+**✨ Lợi ích:**
+- **Testable**: Dễ viết unit test cho từng layer
+- **Maintainable**: Thay đổi business logic không ảnh hưởng Controller
+- **Reusable**: Service có thể dùng lại ở nhiều Controller
+- **Scalable**: Dễ mở rộng và refactor
+
+***
+
 Axios instance cấu hình sẵn với interceptors để tự động:
 
 - Gắn JWT token vào mọi request

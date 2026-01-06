@@ -114,7 +114,19 @@ const placeSchema = new mongoose.Schema({
       enum: ['wifi miễn phí', 'điều hòa', 'view đẹp', 'phục vụ 24h', 'delivery', 'pet friendly', 'có khu vui chơi trẻ em']
     }]
   },
-  // Location coordinates (for future map integration)
+  // Location coordinates (GeoJSON format for MongoDB geospatial queries)
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      index: '2dsphere'
+    }
+  },
+  // Legacy coordinates (deprecated - use location instead)
   coordinates: {
     latitude: {
       type: Number,
@@ -126,6 +138,35 @@ const placeSchema = new mongoose.Schema({
       min: -180,
       max: 180
     }
+  },
+  // Data source tracking
+  source: {
+    type: String,
+    enum: ['goong', 'manual'],
+    default: 'manual'
+  },
+  goongPlaceId: {
+    type: String,
+    sparse: true, // Only index non-null values
+    index: true
+  },
+  goong: {
+    lastSyncedAt: {
+      type: Date
+    },
+    rating: {
+      type: Number,
+      min: 0,
+      max: 5
+    },
+    raw: {
+      type: mongoose.Schema.Types.Mixed // Store raw Goong response for debugging
+    }
+  },
+  // AI enrichment flag
+  needsEnrich: {
+    type: Boolean,
+    default: true
   },
   // Operating hours
   operatingHours: {
@@ -143,6 +184,9 @@ const placeSchema = new mongoose.Schema({
       type: String,
       validate: {
         validator: function(v) {
+          // Allow undefined/null (optional field)
+          if (!v) return true;
+          // Validate only if value exists
           return /^[\+]?[0-9\-\(\)\s]+$/.test(v);
         },
         message: 'Invalid phone number'
@@ -152,6 +196,9 @@ const placeSchema = new mongoose.Schema({
       type: String,
       validate: {
         validator: function(v) {
+          // Allow undefined/null (optional field)
+          if (!v) return true;
+          // Validate only if value exists
           return /^https?:\/\/.+$/.test(v);
         },
         message: 'Invalid website URL'
@@ -206,13 +253,18 @@ placeSchema.index({ name: 'text', description: 'text' });
 placeSchema.index({ category: 1, status: 1, isActive: 1 });
 placeSchema.index({ district: 1 });
 placeSchema.index({ 'priceRange.min': 1, 'priceRange.max': 1 });
-placeSchema.index({ coordinates: '2dsphere' });
+placeSchema.index({ 'location.coordinates': '2dsphere' }); // GeoJSON index
+placeSchema.index({ coordinates: '2dsphere' }); // Legacy index
 placeSchema.index({ featured: 1, averageRating: -1 });
 placeSchema.index({ 'aiTags.mood': 1 });
 placeSchema.index({ 'aiTags.space': 1 });
 placeSchema.index({ 'aiTags.suitability': 1 });
 placeSchema.index({ updatedAt: -1 });
 placeSchema.index({ status: 1, updatedAt: -1 });
+
+// ✅ CRITICAL: Unique compound index to prevent duplicate imports
+placeSchema.index({ source: 1, goongPlaceId: 1 }, { unique: true, sparse: true });
+placeSchema.index({ needsEnrich: 1 }); // For AI enrichment queries
 
 // Virtual for price range display
 placeSchema.virtual('priceRangeDisplay').get(function() {

@@ -17,7 +17,10 @@ console.log('ENV LOADED:', {
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET ? 'SET' : 'NOT SET',
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ? process.env.GOOGLE_CLIENT_ID.substring(0, 20) + '...' : 'NOT SET',
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ? 'SET' : 'NOT SET',
-  GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI
+  GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
+  GOONG_API_KEY: process.env.GOONG_API_KEY ? process.env.GOONG_API_KEY.substring(0, 10) + '...' : 'NOT SET',
+  GOONG_DEFAULT_LOCATION: process.env.GOONG_DEFAULT_LOCATION,
+  GOONG_DEFAULT_RADIUS: process.env.GOONG_DEFAULT_RADIUS
 });
 
 import compression from 'compression';
@@ -30,6 +33,7 @@ import morgan from 'morgan';
 // Path và filename đã được import ở trên
 
 // Import routes
+import adminImportRoutes from './routes/adminImportRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import authRoutes from './routes/authRoutes.js';
@@ -109,6 +113,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin/import', adminImportRoutes); // ✅ Goong import routes
 app.use('/api/ai', aiRoutes);
 
 // Health check

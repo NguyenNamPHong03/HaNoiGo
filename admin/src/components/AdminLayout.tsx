@@ -9,6 +9,7 @@ const AdminLayout: React.FC = () => {
     { name: 'Places', href: '/places', icon: '📍' },
     { name: 'Users', href: '/users', icon: '👥' },
     { name: 'Reviews', href: '/reviews', icon: '⭐' },
+    { name: 'Import Data', href: '/import', icon: '📥' },
     { name: 'AI Config', href: '/ai-config', icon: '🤖' },
   ];
 

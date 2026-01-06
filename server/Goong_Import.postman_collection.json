@@ -1,0 +1,162 @@
+{
+  "info": {
+    "name": "HANOIGO - Goong Auto Import",
+    "description": "Collection để test Goong API import functionality",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{admin_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "0️⃣ Validate API Key",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/admin/import/goong/validate-api-key",
+          "host": ["{{base_url}}"],
+          "path": ["api", "admin", "import", "goong", "validate-api-key"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "1️⃣ Autocomplete - Cafe",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/admin/import/goong/autocomplete?input=cafe",
+          "host": ["{{base_url}}"],
+          "path": ["api", "admin", "import", "goong", "autocomplete"],
+          "query": [
+            {
+              "key": "input",
+              "value": "cafe"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "1️⃣ Autocomplete - Bún bò Huế",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/admin/import/goong/autocomplete?input=bún bò huế",
+          "host": ["{{base_url}}"],
+          "path": ["api", "admin", "import", "goong", "autocomplete"],
+          "query": [
+            {
+              "key": "input",
+              "value": "bún bò huế"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "2️⃣ Import Places (REPLACE placeIds)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"placeIds\": [\n    \"PASTE_goongPlaceId_FROM_AUTOCOMPLETE_HERE\"\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/admin/import/goong",
+          "host": ["{{base_url}}"],
+          "path": ["api", "admin", "import", "goong"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "3️⃣ Get Import Stats",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/admin/import/stats",
+          "host": ["{{base_url}}"],
+          "path": ["api", "admin", "import", "stats"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4️⃣ Get Places Needing Enrichment",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/admin/import/goong/needs-enrichment?limit=10",
+          "host": ["{{base_url}}"],
+          "path": ["api", "admin", "import", "goong", "needs-enrichment"],
+          "query": [
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5️⃣ Sync Goong Place (REPLACE placeId)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/admin/import/goong/PASTE_MONGODB_ID_HERE/sync",
+          "host": ["{{base_url}}"],
+          "path": ["api", "admin", "import", "goong", "PASTE_MONGODB_ID_HERE", "sync"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "6️⃣ Mark as Enriched (REPLACE placeId)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/admin/import/goong/PASTE_MONGODB_ID_HERE/mark-enriched",
+          "host": ["{{base_url}}"],
+          "path": ["api", "admin", "import", "goong", "PASTE_MONGODB_ID_HERE", "mark-enriched"]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "YOUR_ADMIN_JWT_TOKEN_HERE",
+      "type": "string"
+    }
+  ]
+}
