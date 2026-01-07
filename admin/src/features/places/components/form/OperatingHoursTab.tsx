@@ -1,5 +1,5 @@
 import { Clock } from 'lucide-react';
-import React from 'react';
+import React, { useState } from 'react';
 import type { OperatingHours } from '../../types/place.types';
 
 interface OperatingHoursTabProps {
@@ -11,6 +11,11 @@ export const OperatingHoursTab: React.FC<OperatingHoursTabProps> = ({
   operatingHours,
   onUpdate
 }) => {
+  // State cho giờ chung (bulk hours)
+  const [bulkOpen, setBulkOpen] = useState('08:00');
+  const [bulkClose, setBulkClose] = useState('22:00');
+  const [is24h, setIs24h] = useState(false);
+
   const days = [
     { key: 'monday', label: 'Thứ Hai' },
     { key: 'tuesday', label: 'Thứ Ba' },
@@ -20,6 +25,29 @@ export const OperatingHoursTab: React.FC<OperatingHoursTabProps> = ({
     { key: 'saturday', label: 'Thứ Bảy' },
     { key: 'sunday', label: 'Chủ Nhật' }
   ];
+
+  // Áp dụng giờ chung cho Thứ 2-6
+  const applyWeekdayHours = () => {
+    const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    const openTime = is24h ? '00:00' : bulkOpen;
+    const closeTime = is24h ? '23:59' : bulkClose;
+
+    weekdays.forEach(day => {
+      onUpdate(day, 'open', openTime);
+      onUpdate(day, 'close', closeTime);
+    });
+  };
+
+  // Áp dụng giờ chung cho tất cả các ngày
+  const applyAllDays = () => {
+    const openTime = is24h ? '00:00' : bulkOpen;
+    const closeTime = is24h ? '23:59' : bulkClose;
+
+    days.forEach(({ key }) => {
+      onUpdate(key, 'open', openTime);
+      onUpdate(key, 'close', closeTime);
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -33,6 +61,76 @@ export const OperatingHoursTab: React.FC<OperatingHoursTabProps> = ({
               Để trống nếu ngày đó đóng cửa.
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Khối Giờ chung (Thứ 2-6) */}
+      <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg p-5">
+        <h4 className="font-semibold text-purple-900 mb-4 flex items-center gap-2">
+          <Clock className="w-5 h-5" />
+          Giờ chung (Thứ 2–6)
+        </h4>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Mở cửa
+            </label>
+            <input
+              type="time"
+              value={bulkOpen}
+              onChange={(e) => setBulkOpen(e.target.value)}
+              disabled={is24h}
+              className="w-full p-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Đóng cửa
+            </label>
+            <input
+              type="time"
+              value={bulkClose}
+              onChange={(e) => setBulkClose(e.target.value)}
+              disabled={is24h}
+              className="w-full p-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            />
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={is24h}
+              onChange={(e) => setIs24h(e.target.checked)}
+              className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+            />
+            <span className="text-sm font-medium text-gray-700">
+              Mở cửa 24/24
+            </span>
+          </label>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={applyWeekdayHours}
+            className="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+          >
+            <Clock className="w-4 h-4" />
+            Áp dụng cho Thứ 2–6
+          </button>
+          
+          <button
+            type="button"
+            onClick={applyAllDays}
+            className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
+            <Clock className="w-4 h-4" />
+            Áp dụng cho tất cả
+          </button>
         </div>
       </div>
 

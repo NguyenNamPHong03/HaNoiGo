@@ -43,10 +43,6 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
     { id: 4, name: 'Xem trước', icon: '👁️' }
   ];
 
-  const canPublish = () => {
-    return formData.images && formData.images.length > 0;
-  };
-
   const handleFormDataUpdate = (field: string, value: any) => {
     updateFormData(field, value);
     clearError(field);
@@ -62,12 +58,6 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
     };
 
     const normalizedStatus = normalizeStatus(finalStatus);
-
-    if (normalizedStatus === 'published' && (!formData.images || formData.images.length === 0)) {
-      setErrors({ images: 'Cần có ít nhất 1 hình ảnh khi xuất bản' });
-      setActiveTab(1);
-      return;
-    }
 
     if (!validateForm()) {
       setActiveTab(0);
@@ -274,11 +264,6 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
         </div>
 
         <div className="flex flex-col gap-2">
-          {!canPublish() && (
-            <div className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
-              ⚠️ Cần có ít nhất 1 hình ảnh để xuất bản
-            </div>
-          )}
           <div className="flex gap-2">
             <button
               onClick={() => handleSubmit('Draft')}
@@ -289,9 +274,8 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
             </button>
             <button
               onClick={() => handleSubmit('Published')}
-              disabled={loading || !canPublish()}
+              disabled={loading}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:bg-gray-400 flex items-center gap-2"
-              title={!canPublish() ? 'Cần có ít nhất 1 hình ảnh để xuất bản' : ''}
             >
               <Save size={16} />
               {loading ? 'Đang lưu...' : placeId ? 'Cập nhật' : 'Tạo & Xuất bản'}
