@@ -235,3 +235,99 @@ const calculateConfidence = (aiTags) => {
 
   return confidence;
 };
+
+/**
+ * Parse Google openingHours sang operatingHours format (24h)
+ * @param {Array} googleOpeningHours - Array từ Google với format [{day: "Thứ Hai", hours: "11:00 to 15:00"}]
+ * @returns {Object} operatingHours object cho 7 ngày tuần
+ */
+export const parseGoogleOpeningHours = (googleOpeningHours) => {
+  const operatingHours = {
+    monday: { open: '', close: '' },
+    tuesday: { open: '', close: '' },
+    wednesday: { open: '', close: '' },
+    thursday: { open: '', close: '' },
+    friday: { open: '', close: '' },
+    saturday: { open: '', close: '' },
+    sunday: { open: '', close: '' }
+  };
+
+  if (!googleOpeningHours || !Array.isArray(googleOpeningHours)) {
+    return operatingHours;
+  }
+
+  // Map Vietnamese day names to English keys
+  const dayMap = {
+    'Thứ Hai': 'monday',
+    'Thứ Ba': 'tuesday',
+    'Thứ Tư': 'wednesday',
+    'Thứ Năm': 'thursday',
+    'Thứ Sáu': 'friday',
+    'Thứ Bảy': 'saturday',
+    'Chủ Nhật': 'sunday'
+  };
+
+  googleOpeningHours.forEach(dayInfo => {
+    const dayKey = dayMap[dayInfo.day];
+    if (!dayKey) return;
+
+    const hoursString = dayInfo.hours;
+    if (!hoursString || hoursString.toLowerCase().includes('closed') || hoursString.toLowerCase().includes('đóng cửa')) {
+      // Ngày đóng cửa - để trống
+      operatingHours[dayKey] = { open: '', close: '' };
+      return;
+    }
+
+    // Parse hours: "11:00 to 15:00" hoặc "11:00 to 15:00, 17:00 to 21:30"
+    const periods = parseHoursPeriods(hoursString);
+    
+    if (periods.length > 0) {
+      // Lấy ca đầu tiên (vì UI hiện tại chỉ support 1 ca/ngày)
+      operatingHours[dayKey] = {
+        open: periods[0].open,
+        close: periods[0].close
+      };
+    }
+  });
+
+  console.log('✅ Parsed Google openingHours to 24h format:', operatingHours);
+  return operatingHours;
+};
+
+/**
+ * Parse hours string thành array of periods
+ * @param {String} hoursString - "11:00 to 15:00" hoặc "11:00 to 15:00, 17:00 to 21:30"
+ * @returns {Array} [{open: "11:00", close: "15:00"}, ...]
+ */
+const parseHoursPeriods = (hoursString) => {
+  const periods = [];
+  
+  // Tách theo dấu phẩy để lấy nhiều ca
+  const segments = hoursString.split(',').map(s => s.trim());
+  
+  segments.forEach(segment => {
+    // Parse "11:00 to 15:00" hoặc "11:00-15:00"
+    const match = segment.match(/(\d{1,2}:\d{2})\s*(?:to|-)\s*(\d{1,2}:\d{2})/i);
+    
+    if (match) {
+      periods.push({
+        open: normalizeTime24h(match[1]),
+        close: normalizeTime24h(match[2])
+      });
+    }
+  });
+  
+  return periods;
+};
+
+/**
+ * Normalize time to 24h format HH:mm
+ * @param {String} time - "7:00" hoặc "07:00"
+ * @returns {String} "07:00"
+ */
+const normalizeTime24h = (time) => {
+  const [hours, minutes] = time.split(':');
+  const h = hours.padStart(2, '0');
+  const m = (minutes || '00').padStart(2, '0');
+  return `${h}:${m}`;
+};

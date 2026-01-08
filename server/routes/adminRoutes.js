@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+    bulkRefreshGoogleData,
     bulkUpdatePlaces,
     createPlace,
     deletePlace,
@@ -52,6 +53,7 @@ router.delete('/places/:id', deletePlace);
 
 // AI Tags auto-generation
 router.post('/places/:id/refresh-google', refreshGoogleData);
+router.post('/places/bulk-refresh-google', bulkRefreshGoogleData);
 
 // Bulk operations
 router.post('/places/bulk', bulkUpdatePlaces);

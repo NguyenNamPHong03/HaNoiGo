@@ -4,10 +4,11 @@ import React, { useState } from 'react';
 interface GoogleInfoTabProps {
   formData: any;
   onRefreshAiTags?: (aiTags: any) => void;
+  onRefreshOperatingHours?: (operatingHours: any) => void;
   placeId?: string;
 }
 
-export const GoogleInfoTab: React.FC<GoogleInfoTabProps> = ({ formData, onRefreshAiTags, placeId }) => {
+export const GoogleInfoTab: React.FC<GoogleInfoTabProps> = ({ formData, onRefreshAiTags, onRefreshOperatingHours, placeId }) => {
   const [refreshing, setRefreshing] = useState(false);
   const isGoogleSource = formData.source === 'google';
 
@@ -30,8 +31,13 @@ export const GoogleInfoTab: React.FC<GoogleInfoTabProps> = ({ formData, onRefres
         // Callback to parent to update AI tags in form
         onRefreshAiTags(data.data.aiTagsFinal);
         
+        // 🕒 Callback to update operating hours if available
+        if (data.data.operatingHours && onRefreshOperatingHours) {
+          onRefreshOperatingHours(data.data.operatingHours);
+        }
+        
         // Show toast (nếu có toast provider)
-        alert('✅ Đã cập nhật AI Tags tự động từ Google data!');
+        alert('✅ Đã cập nhật AI Tags và Giờ mở cửa tự động từ Google data!');
       } else {
         alert('❌ Lỗi: ' + data.message);
       }
@@ -70,16 +76,16 @@ export const GoogleInfoTab: React.FC<GoogleInfoTabProps> = ({ formData, onRefres
             </div>
           </div>
           
-          {/* 🤖 Nút Refresh AI Tags */}
+          {/* Nút Refresh */}
           {onRefreshAiTags && placeId && (
             <button
               onClick={handleRefreshAiTags}
               disabled={refreshing}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
-              title="Tự động sinh AI Tags từ Google data"
+              title="Tự động cập nhật AI Tags và Giờ mở cửa từ Google data"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              {refreshing ? 'Đang xử lý...' : '🤖 Refresh AI Tags'}
+              {refreshing ? 'Đang xử lý...' : 'Refresh'}
             </button>
           )}
         </div>

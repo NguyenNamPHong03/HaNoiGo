@@ -162,6 +162,12 @@ export const placesAPI = {
   refreshGoogleData: async (id: string) => {
     const response = await api.post(`/admin/places/${id}/refresh-google`);
     return response.data;
+  },
+
+  // 🔄 Bulk refresh Google data cho nhiều places
+  bulkRefreshGoogleData: async (placeIds: string[]) => {
+    const response = await api.post('/admin/places/bulk-refresh-google', { placeIds });
+    return response.data;
   }
 };
 

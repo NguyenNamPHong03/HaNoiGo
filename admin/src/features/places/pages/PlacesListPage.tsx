@@ -120,6 +120,25 @@ const PlacesListPage: React.FC<PlacesListPageProps> = ({
     if (selectedPlaces.length === 0) return;
     
     try {
+      // 🔄 Nếu đang xuất bản (Published), tự động refresh Google data trước
+      if (operation === 'updateStatus' && updateData?.status === 'Published') {
+        console.log('🔄 Auto-refreshing Google data for selected places...');
+        
+        try {
+          const refreshResult = await placesApi.bulkRefreshGoogleData(selectedPlaces);
+          console.log('✅ Bulk refresh result:', refreshResult);
+          
+          if (refreshResult.success) {
+            const { success, skipped, failed } = refreshResult.data;
+            console.log(`Refreshed: ${success.length}, Skipped: ${skipped.length}, Failed: ${failed.length}`);
+          }
+        } catch (refreshError) {
+          console.error('⚠️ Bulk refresh error (continuing with publish):', refreshError);
+          // Tiếp tục xuất bản ngay cả khi refresh thất bại
+        }
+      }
+      
+      // Thực hiện bulk update status
       await placesApi.bulkUpdate({
         placeIds: selectedPlaces,
         operation,
@@ -128,8 +147,14 @@ const PlacesListPage: React.FC<PlacesListPageProps> = ({
       
       setSelectedPlaces([]);
       loadPlaces(); // Reload data
+      
+      // Toast notification
+      if (operation === 'updateStatus' && updateData?.status === 'Published') {
+        alert('✅ Đã xuất bản và tự động cập nhật AI Tags + Giờ mở cửa từ Google!');
+      }
     } catch (error) {
       console.error('Bulk operation error:', error);
+      alert('❌ Lỗi khi thực hiện thao tác hàng loạt');
     }
   };
 

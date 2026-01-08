@@ -1,5 +1,5 @@
 import Place from '../models/Place.js';
-import { generateAiTagsFromGoogle, mergeAiTags } from '../services/autoTaggerService.js';
+import { generateAiTagsFromGoogle, mergeAiTags, parseGoogleOpeningHours } from '../services/autoTaggerService.js';
 import * as placeService from '../services/placeService.js';
 
 // Get all places for admin with search, filter, sort, pagination
@@ -184,19 +184,21 @@ export const bulkUpdatePlaces = async (req, res) => {
     
     switch (operation) {
       case 'updateStatus':
-        if (!updateData.status) {
+        if (!updateData || !updateData.status) {
           return res.status(400).json({
             success: false,
             message: 'Trạng thái không hợp lệ'
           });
         }
         
+        const statusUpdate = { status: updateData.status };
+        if (req.user && req.user._id) {
+          statusUpdate.updatedBy = req.user._id;
+        }
+        
         result = await Place.updateMany(
           { _id: { $in: placeIds } },
-          { 
-            status: updateData.status,
-            updatedBy: req.user.id
-          }
+          statusUpdate
         );
         break;
         
@@ -209,15 +211,19 @@ export const bulkUpdatePlaces = async (req, res) => {
         const places = await Place.find({ _id: { $in: placeIds } });
         
         // Update each place with opposite isActive status
-        const updates = places.map(place => ({
-          updateOne: {
-            filter: { _id: place._id },
-            update: { 
-              isActive: !place.isActive,
-              updatedBy: req.user.id
-            }
+        const updates = places.map(place => {
+          const updateFields = { isActive: !place.isActive };
+          if (req.user && req.user._id) {
+            updateFields.updatedBy = req.user._id;
           }
-        }));
+          
+          return {
+            updateOne: {
+              filter: { _id: place._id },
+              update: updateFields
+            }
+          };
+        });
         
         result = await Place.bulkWrite(updates);
         break;
@@ -236,9 +242,12 @@ export const bulkUpdatePlaces = async (req, res) => {
     });
   } catch (error) {
     console.error('Bulk update places error:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi cập nhật hàng loạt'
+      message: 'Lỗi khi cập nhật hàng loạt',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -421,6 +430,14 @@ export const refreshGoogleData = async (req, res) => {
     // Merge với AI tags hiện tại
     const aiTagsFinal = mergeAiTags(place.aiTags, aiTagsNew);
 
+    // 🕒 Auto-parse operating hours từ Google (24h format)
+    let operatingHoursParsed = null;
+    if (place.openingHours && Array.isArray(place.openingHours)) {
+      console.log('🕒 Parsing Google openingHours to 24h format...');
+      operatingHoursParsed = parseGoogleOpeningHours(place.openingHours);
+      place.operatingHours = operatingHoursParsed;
+    }
+
     // Update place
     place.aiTags = aiTagsFinal;
     await place.save();
@@ -432,15 +449,98 @@ export const refreshGoogleData = async (req, res) => {
       data: {
         place: place,
         aiTagsNew: aiTagsNew,
-        aiTagsFinal: aiTagsFinal
+        aiTagsFinal: aiTagsFinal,
+        operatingHours: operatingHoursParsed // ✅ Trả về operating hours đã parse
       },
-      message: 'Đã cập nhật AI tags tự động từ Google data'
+      message: 'Đã cập nhật AI tags và giờ mở cửa tự động từ Google data'
     });
   } catch (error) {
     console.error('Refresh Google data error:', error);
     res.status(500).json({
       success: false,
       message: 'Lỗi khi refresh AI tags',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Bulk refresh Google data cho nhiều places
+ * POST /api/admin/places/bulk-refresh-google
+ */
+export const bulkRefreshGoogleData = async (req, res) => {
+  try {
+    const { placeIds } = req.body;
+
+    if (!placeIds || !Array.isArray(placeIds) || placeIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Danh sách placeIds không hợp lệ'
+      });
+    }
+
+    console.log(`🔄 Bulk refreshing ${placeIds.length} places...`);
+
+    const results = {
+      success: [],
+      failed: [],
+      skipped: []
+    };
+
+    for (const placeId of placeIds) {
+      try {
+        const place = await Place.findById(placeId);
+        
+        if (!place) {
+          results.failed.push({ placeId, reason: 'Không tìm thấy địa điểm' });
+          continue;
+        }
+
+        // Skip nếu không phải từ Google
+        if (place.source !== 'google') {
+          results.skipped.push({ placeId, name: place.name, reason: 'Không phải từ Google' });
+          continue;
+        }
+
+        // Auto-generate AI tags
+        const googleData = {
+          additionalInfo: place.additionalInfo,
+          reviews: place.additionalInfo?.reviews || [],
+          category: place.category
+        };
+
+        const aiTagsNew = generateAiTagsFromGoogle(googleData);
+        const aiTagsFinal = mergeAiTags(place.aiTags, aiTagsNew);
+
+        // Parse operating hours
+        if (place.openingHours && Array.isArray(place.openingHours)) {
+          const operatingHoursParsed = parseGoogleOpeningHours(place.openingHours);
+          place.operatingHours = operatingHoursParsed;
+        }
+
+        place.aiTags = aiTagsFinal;
+        await place.save();
+
+        results.success.push({ placeId, name: place.name });
+        console.log(`✅ Refreshed: ${place.name}`);
+      } catch (error) {
+        results.failed.push({ placeId, reason: error.message });
+        console.error(`❌ Failed to refresh ${placeId}:`, error);
+      }
+    }
+
+    console.log(`✅ Bulk refresh completed: ${results.success.length} success, ${results.failed.length} failed, ${results.skipped.length} skipped`);
+
+    res.json({
+      success: true,
+      data: results,
+      message: `Đã refresh ${results.success.length}/${placeIds.length} địa điểm từ Google`
+    });
+  } catch (error) {
+    console.error('Bulk refresh error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi bulk refresh',
       error: error.message
     });
   }

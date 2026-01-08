@@ -268,7 +268,17 @@ export const handleGoogleCallback = async (code) => {
     isNewUser = true;
   } else {
     // Update existing user
-    user.avatarUrl = picture || user.avatarUrl;
+    // ✅ FIX: Chỉ set Google avatar nếu user chưa có avatar custom
+    // Kiểm tra nếu avatarUrl hiện tại là Google avatar hoặc chưa có
+    const isGoogleAvatar = user.avatarUrl && user.avatarUrl.includes('googleusercontent.com');
+    const hasNoAvatar = !user.avatarUrl;
+    
+    // Chỉ update avatar nếu: (1) chưa có avatar HOẶC (2) đang dùng Google avatar cũ
+    if (hasNoAvatar || isGoogleAvatar) {
+      user.avatarUrl = picture || user.avatarUrl;
+    }
+    // Nếu user đã upload avatar custom (Cloudinary/local), GIỮ NGUYÊN không ghi đè
+    
     user.authProvider = 'google';
     await user.updateLastLogin();
   }

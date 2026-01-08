@@ -44,6 +44,14 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
     setActiveTab(3);
   };
 
+  // 🕒 Handle Operating Hours refresh from Google data
+  const handleRefreshOperatingHours = (operatingHours: any) => {
+    console.log('🕒 Received parsed operating hours (24h):', operatingHours);
+    updateFormData('operatingHours', operatingHours);
+    // Optionally switch to Operating Hours tab
+    // setActiveTab(2);
+  };
+
   const tabs = [
     { id: 0, name: 'Thông tin cơ bản', icon: '📝' },
     { id: 1, name: 'Hình ảnh & Menu', icon: '🖼️' },
@@ -253,6 +261,7 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
           <GoogleInfoTab 
             formData={formData} 
             onRefreshAiTags={handleRefreshAiTags}
+            onRefreshOperatingHours={handleRefreshOperatingHours}
             placeId={placeId}
           />
         )}

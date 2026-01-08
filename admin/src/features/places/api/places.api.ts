@@ -60,5 +60,10 @@ export const placesApi = {
   // 🤖 Refresh AI tags from Google data
   refreshGoogleData: (id: string) => {
     return placesAPI.refreshGoogleData(id);
+  },
+
+  // 🔄 Bulk refresh Google data
+  bulkRefreshGoogleData: (placeIds: string[]) => {
+    return placesAPI.bulkRefreshGoogleData(placeIds);
   }
 };
