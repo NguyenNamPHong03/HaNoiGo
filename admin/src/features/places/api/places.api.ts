@@ -55,5 +55,10 @@ export const placesApi = {
 
   getAiTagsOptions: () => {
     return placesAPI.getAiTagsOptions();
+  },
+
+  // 🤖 Refresh AI tags from Google data
+  refreshGoogleData: (id: string) => {
+    return placesAPI.refreshGoogleData(id);
   }
 };

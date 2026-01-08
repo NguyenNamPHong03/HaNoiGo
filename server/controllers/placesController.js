@@ -1,4 +1,5 @@
 import Place from '../models/Place.js';
+import { generateAiTagsFromGoogle, mergeAiTags } from '../services/autoTaggerService.js';
 import * as placeService from '../services/placeService.js';
 
 // Get all places for admin with search, filter, sort, pagination
@@ -378,4 +379,69 @@ export const getAiTagsOptions = (req, res) => {
     success: true,
     data: aiTagsOptions
   });
+};
+
+/**
+ * Refresh Google data & auto-generate AI tags
+ * POST /api/admin/places/:id/refresh-google
+ */
+export const refreshGoogleData = async (req, res) => {
+  try {
+    const placeId = req.params.id;
+    
+    // Lấy place hiện tại
+    const place = await Place.findById(placeId);
+    if (!place) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy địa điểm'
+      });
+    }
+
+    // Kiểm tra xem place có phải từ Google không
+    if (place.source !== 'google') {
+      return res.status(400).json({
+        success: false,
+        message: 'Chỉ có thể refresh AI tags cho địa điểm từ Google/Goong'
+      });
+    }
+
+    console.log(`🔄 Refreshing AI tags for place: ${place.name}`);
+
+    // Tạo Google data object từ place hiện tại
+    const googleData = {
+      additionalInfo: place.additionalInfo,
+      reviews: place.additionalInfo?.reviews || [],
+      category: place.category
+    };
+
+    // Auto-generate AI tags mới
+    const aiTagsNew = generateAiTagsFromGoogle(googleData);
+
+    // Merge với AI tags hiện tại
+    const aiTagsFinal = mergeAiTags(place.aiTags, aiTagsNew);
+
+    // Update place
+    place.aiTags = aiTagsFinal;
+    await place.save();
+
+    console.log(`✅ AI tags refreshed for: ${place.name}`);
+
+    res.json({
+      success: true,
+      data: {
+        place: place,
+        aiTagsNew: aiTagsNew,
+        aiTagsFinal: aiTagsFinal
+      },
+      message: 'Đã cập nhật AI tags tự động từ Google data'
+    });
+  } catch (error) {
+    console.error('Refresh Google data error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi refresh AI tags',
+      error: error.message
+    });
+  }
 };

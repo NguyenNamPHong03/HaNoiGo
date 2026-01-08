@@ -21,9 +21,26 @@ interface PlaceFormData {
     specialFeatures: string[];
   };
   coordinates?: { latitude: number; longitude: number };
-  contact: { phone: string; website: string };
+  contact: { phone: string; website: string; phoneUnformatted?: string };
   operatingHours?: OperatingHours;
   status: string;
+  
+  // Google Places fields (read-only)
+  source?: string;
+  googlePlaceId?: string;
+  priceDisplay?: string;
+  openingHours?: Array<{ day: string; hours: string }>;
+  reviewsDistribution?: {
+    oneStar: number;
+    twoStar: number;
+    threeStar: number;
+    fourStar: number;
+    fiveStar: number;
+  };
+  totalReviews?: number;
+  averageRating?: number;
+  additionalInfo?: Record<string, any>;
+  googleData?: Record<string, any>;
 }
 
 export const usePlaceForm = (placeId?: string) => {
@@ -114,7 +131,18 @@ export const usePlaceForm = (placeId?: string) => {
             saturday: { open: '', close: '' },
             sunday: { open: '', close: '' }
           },
-          status: place.status || 'Draft'
+          status: place.status || 'Draft',
+          
+          // Google Places fields (read-only)
+          source: place.source,
+          googlePlaceId: place.googlePlaceId,
+          priceDisplay: place.priceDisplay,
+          openingHours: place.openingHours,
+          reviewsDistribution: place.reviewsDistribution,
+          totalReviews: place.totalReviews,
+          averageRating: place.averageRating,
+          additionalInfo: place.additionalInfo,
+          googleData: place.googleData
         });
       }
     } catch (error) {

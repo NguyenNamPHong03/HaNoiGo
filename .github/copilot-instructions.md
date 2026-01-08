@@ -77,6 +77,61 @@ Sau mỗi gợi ý, người dùng có thể đánh giá mức độ hữu ích.
 
 **Lợi ích**: Trang chủ luôn hiển thị nội dung mới nhất, tăng engagement và khám phá các địa điểm mới.
 
+### **Import Dữ liệu Tự động từ Goong Maps API** 🗺️
+
+Admin có thể nhanh chóng import địa điểm từ Goong Maps thay vì nhập thủ công:
+
+1. **Admin Dashboard**: Truy cập trang "Import Data" trong Admin panel
+2. **Search**: Nhập keyword (ví dụ: "cafe học bài"), location (tọa độ Hà Nội), radius (5km)
+3. **Goong Autocomplete**: Backend gọi Goong API `/Place/AutoComplete` → trả về danh sách gợi ý
+4. **Select Places**: Admin tick chọn địa điểm muốn import từ bảng (checkbox multi-select)
+5. **Fetch Details**: Backend gọi Goong API `/Place/Detail` cho từng địa điểm đã chọn
+6. **Map Data**: 
+   - `goongProvider.js` chuẩn hóa dữ liệu từ Goong
+   - `placeMapper.js` transform sang Place schema của MongoDB
+   - Tự động mapping: name, address, coordinates, category, phone
+7. **Upsert MongoDB**: 
+   - Kiểm tra `goongId` để tránh duplicate
+   - **Update** nếu địa điểm đã tồn tại
+   - **Create** nếu địa điểm mới
+8. **Import Summary**: Hiển thị kết quả:
+   - ✅ Imported: X places
+   - 🔄 Updated: Y places
+   - ⏭️ Skipped: Z duplicates
+   - ❌ Errors: N failed
+
+**Luồng kỹ thuật:**
+```
+Admin Frontend (GoongImportPage)
+    ↓ [POST /admin/import/goong/autocomplete]
+Backend (adminImportController)
+    ↓ 
+goongProvider → Goong Maps API
+    ↓
+placeImportService → Validate & Transform
+    ↓
+placeMapper → Map to Place schema
+    ↓
+MongoDB → Upsert (update/insert)
+    ↓
+Response → Import summary
+```
+
+**Tính năng bổ sung:**
+- **Validate API Key**: Endpoint `/goong/validate-api-key` kiểm tra Goong token
+- **Import Stats**: Dashboard hiển thị:
+  - Total places in DB
+  - Places from Goong vs Manual
+  - Places needing AI enrichment
+- **Re-sync**: Cập nhật lại data từ Goong cho địa điểm cũ
+- **Needs Enrichment**: Filter places thiếu aiTags để admin gắn semantic tags
+
+**Lợi ích**:
+- ⚡ Tăng tốc độ tạo content (5-10 phút import hàng chục địa điểm)
+- 🎯 Giảm lỗi nhập liệu thủ công
+- 🔄 Dữ liệu luôn fresh từ Goong Maps
+- 🤖 Tích hợp sẵn để AI enrichment sau
+
 ## ✨ ĐIỂM NỔI BẬT
 
 **Hybrid Search**: Kết hợp tìm kiếm theo từ khóa cứng (tên địa điểm, địa chỉ) và semantic search (tâm trạng, ngữ cảnh sử dụng) để cho kết quả toàn diện.
@@ -84,6 +139,8 @@ Sau mỗi gợi ý, người dùng có thể đánh giá mức độ hữu ích.
 **Cá nhân hóa thông minh**: Hệ thống ưu tiên gợi ý địa điểm phù hợp với sở thích cá nhân từ preferences, không chỉ dựa vào query hiện tại.
 
 **Admin-friendly AI Control**: Quản trị viên có thể làm giàu dữ liệu bằng cách gắn semantic tags và điều chỉnh prompt AI qua giao diện web, không cần kiến thức lập trình.
+
+**Auto Import từ Goong Maps**: Tích hợp API Goong Maps cho phép Admin import hàng loạt địa điểm chỉ với vài click, tự động mapping data và upsert vào MongoDB, tiết kiệm thời gian và giảm lỗi nhập liệu.
 
 **Học liên tục**: Mỗi review và phản hồi từ người dùng đều giúp cải thiện độ chính xác của gợi ý trong tương lai, tạo vòng lặp cải tiến không ngừng.
 
@@ -205,6 +262,23 @@ admin/
 │   │   │   ├── README.md                 # Feature docs
 │   │   │   └── index.ts                  # Exports
 │   │   │
+│   │   ├── imports/             # Goong Auto Import module
+│   │   │   ├── api/
+│   │   │   │   └── goongImport.api.ts    # Goong API functions
+│   │   │   ├── components/
+│   │   │   │   ├── GoongImportForm.tsx   # Search form
+│   │   │   │   ├── PredictionsTable.tsx  # Checkbox table
+│   │   │   │   ├── ImportSummary.tsx     # Result summary
+│   │   │   │   └── ImportStatsCard.tsx   # Database stats
+│   │   │   ├── hooks/
+│   │   │   │   └── useGoongImport.ts     # React Query hooks
+│   │   │   ├── pages/
+│   │   │   │   └── GoongImportPage.tsx   # Main import page
+│   │   │   ├── types/
+│   │   │   │   └── goongImport.types.ts  # TypeScript types
+│   │   │   ├── README.md                 # Feature docs
+│   │   │   └── index.ts                  # Exports
+│   │   │
 │   │   └── users/               # Users feature module
 │   │       ├── api/
 │   │       │   └── users.api.ts
@@ -243,17 +317,19 @@ server/
 │   ├── placesController.js      # Places management
 │   │                            #   - getLatestPlaces() - Lấy 5 địa điểm mới nhất
 │   ├── userController.js        # User management
-│   └── uploadController.js      # File uploads
+│   ├── uploadController.js      # File uploads
+│   └── adminImportController.js # Goong auto import
 │
 ├── models/                      # MongoDB schemas
 │   ├── User.js                  # User model
-│   └── Place.js                 # Place model (với aiTags)
+│   └── Place.js                 # Place model (với aiTags, goongId)
 │
 ├── routes/                      # API routes
 │   ├── authRoutes.js            # /api/auth/*
 │   ├── placeRoutes.js           # /api/places/*
 │   │                            #   - GET /latest (5 địa điểm mới)
 │   ├── adminRoutes.js           # /api/admin/*
+│   ├── adminImportRoutes.js     # /api/admin/import/* (Goong)
 │   ├── chatRoutes.js            # /api/chat/*
 │   ├── reviewRoutes.js          # /api/reviews/*
 │   ├── userRoutes.js            # /api/users/*
@@ -263,7 +339,11 @@ server/
 │   ├── authService.js           # Auth logic
 │   ├── placeService.js          # Place logic
 │   ├── userService.js           # User logic
-│   └── uploadService.js         # Upload logic
+│   ├── uploadService.js         # Upload logic
+│   ├── imports/                 # Import services
+│   │   └── placeImportService.js # Goong import logic
+│   └── providers/               # External API providers
+│       └── goongProvider.js     # Goong Maps API client
 │
 ├── middleware/                  # Express middleware
 │   ├── auth.js                  # JWT authentication
@@ -271,6 +351,7 @@ server/
 │   └── notFound.js              # 404 handler
 │
 ├── utils/                       # Utilities
+│   └── placeMapper.js           # Map Goong data → Place schema
 ├── uploads/                     # Local storage (dev)
 │   ├── avatars/
 │   └── places/
@@ -278,6 +359,12 @@ server/
 ├── server.js                    # Main entry point
 ├── server-simple.js             # Simple server
 ├── MIGRATION_GUIDE.md           # Documentation
+├── GOONG_MODULE_README.md       # Goong import guide
+├── GOONG_IMPORT_GUIDE.md        # API detailed guide
+├── IMPLEMENTATION_SUMMARY.md    # Implementation summary
+├── QUICK_TEST.md                # Quick test guide
+├── PRE_DEPLOYMENT_CHECKLIST.md  # Deploy checklist
+├── Goong_Import.postman_collection.json # Postman tests
 ├── update-users.js              # Utility scripts
 └── package.json
 ```

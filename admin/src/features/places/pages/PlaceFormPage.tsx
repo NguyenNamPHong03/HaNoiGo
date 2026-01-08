@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { placesAPI } from '../../../services/api';
 import { AITagsTab } from '../components/form/AITagsTab';
 import { BasicInfoTab } from '../components/form/BasicInfoTab';
+import { GoogleInfoTab } from '../components/form/GoogleInfoTab';
 import { ImagesMenuTab } from '../components/form/ImagesMenuTab';
 import { OperatingHoursTab } from '../components/form/OperatingHoursTab';
 import { PreviewTab } from '../components/form/PreviewTab';
@@ -35,12 +36,21 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
 
   const { errors, setErrors, validateForm, clearError } = useFormValidation(formData);
 
+  // 🤖 Handle AI Tags refresh from Google data
+  const handleRefreshAiTags = (aiTags: any) => {
+    console.log('🤖 Received auto-generated AI tags:', aiTags);
+    updateFormData('aiTags', aiTags);
+    // Optionally switch to AI Tags tab to show results
+    setActiveTab(3);
+  };
+
   const tabs = [
     { id: 0, name: 'Thông tin cơ bản', icon: '📝' },
     { id: 1, name: 'Hình ảnh & Menu', icon: '🖼️' },
     { id: 2, name: 'Giờ mở cửa', icon: '🕒' },
     { id: 3, name: 'AI Tags', icon: '🤖' },
-    { id: 4, name: 'Xem trước', icon: '👁️' }
+    { id: 4, name: 'Google Info', icon: '🗺️' },
+    { id: 5, name: 'Xem trước', icon: '👁️' }
   ];
 
   const handleFormDataUpdate = (field: string, value: any) => {
@@ -239,7 +249,15 @@ const PlaceForm: React.FC<PlaceFormProps> = ({ placeId, onBack, onSave }) => {
           />
         )}
 
-        {activeTab === 4 && <PreviewTab formData={formData} />}
+        {activeTab === 4 && (
+          <GoogleInfoTab 
+            formData={formData} 
+            onRefreshAiTags={handleRefreshAiTags}
+            placeId={placeId}
+          />
+        )}
+
+        {activeTab === 5 && <PreviewTab formData={formData} />}
       </div>
 
       {/* Footer Actions */}

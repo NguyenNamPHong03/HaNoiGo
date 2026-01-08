@@ -1,22 +1,49 @@
 import express from 'express';
+import * as reviewController from '../controllers/reviewController.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Review routes placeholder
-router.get('/', (req, res) => {
-  res.json({ message: 'Get reviews endpoint - to be implemented' });
-});
+/**
+ * @route   GET /api/reviews/place/:placeId
+ * @desc    Get all reviews for a place (Google + User reviews combined)
+ * @access  Public
+ */
+router.get('/place/:placeId', reviewController.getPlaceReviews);
 
-router.post('/', (req, res) => {
-  res.json({ message: 'Create review endpoint - to be implemented' });
-});
+/**
+ * @route   GET /api/reviews/user/:userId
+ * @desc    Get all reviews by a user
+ * @access  Public
+ */
+router.get('/user/:userId', reviewController.getUserReviews);
 
-router.put('/:id', (req, res) => {
-  res.json({ message: 'Update review endpoint - to be implemented' });
-});
+/**
+ * @route   POST /api/reviews
+ * @desc    Create a new review
+ * @access  Private (requires authentication)
+ */
+router.post('/', authenticateToken, reviewController.createReview);
 
-router.delete('/:id', (req, res) => {
-  res.json({ message: 'Delete review endpoint - to be implemented' });
-});
+/**
+ * @route   PUT /api/reviews/:id
+ * @desc    Update a review (owner only)
+ * @access  Private
+ */
+router.put('/:id', authenticateToken, reviewController.updateReview);
+
+/**
+ * @route   DELETE /api/reviews/:id
+ * @desc    Delete a review (owner or admin)
+ * @access  Private
+ */
+router.delete('/:id', authenticateToken, reviewController.deleteReview);
+
+/**
+ * @route   POST /api/reviews/:id/helpful
+ * @desc    Mark/unmark review as helpful
+ * @access  Private
+ */
+router.post('/:id/helpful', authenticateToken, reviewController.markHelpful);
 
 export default router;

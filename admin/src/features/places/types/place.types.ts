@@ -17,12 +17,27 @@ export interface Place {
   menu: MenuItem[];
   aiTags: AiTags;
   coordinates?: { latitude: number; longitude: number };
-  contact: { phone: string; website: string };
+  contact: { phone: string; website: string; phoneUnformatted?: string };
   operatingHours?: OperatingHours;
   createdAt: string;
   updatedAt: string;
   createdBy?: { displayName: string; username: string };
   updatedBy?: { displayName: string; username: string };
+  
+  // Google Places fields
+  source?: string;
+  googlePlaceId?: string;
+  priceDisplay?: string;
+  openingHours?: Array<{ day: string; hours: string }>;
+  reviewsDistribution?: {
+    oneStar: number;
+    twoStar: number;
+    threeStar: number;
+    fourStar: number;
+    fiveStar: number;
+  };
+  additionalInfo?: Record<string, any>;
+  googleData?: Record<string, any>;
 }
 
 export interface MenuItem {

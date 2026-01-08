@@ -156,6 +156,12 @@ export const placesAPI = {
   getAiTagsOptions: async () => {
     const response = await api.get('/admin/ai-tags-options');
     return response.data;
+  },
+
+  // 🤖 Auto-refresh AI tags from Google data
+  refreshGoogleData: async (id: string) => {
+    const response = await api.post(`/admin/places/${id}/refresh-google`);
+    return response.data;
   }
 };
 

@@ -1,0 +1,63 @@
+{
+  "specialFeatures": [
+    { "match": ["Wi-Fi", "Wifi", "wifi miễn phí", "Wifi miễn phí"], "tag": "wifi miễn phí" },
+    { "match": ["Giao hàng", "Đồ ăn mang đi", "delivery"], "tag": "delivery" },
+    { "match": ["Điều hòa", "Máy lạnh"], "tag": "điều hòa" },
+    { "match": ["Phục vụ 24h", "Mở cửa 24h", "24 giờ"], "tag": "phục vụ 24h" },
+    { "match": ["Chấp nhận thẻ tín dụng", "Thẻ ghi nợ", "Thanh toán thẻ"], "tag": "thanh toán thẻ" },
+    { "match": ["View đẹp", "Tầm nhìn đẹp"], "tag": "view đẹp" },
+    { "match": ["Khu vui chơi trẻ em", "Thân thiện gia đình"], "tag": "có khu vui chơi trẻ em" },
+    { "match": ["Pet friendly", "Cho phép thú cưng"], "tag": "pet friendly" }
+  ],
+  "space": [
+    { "match": ["Ngoài trời", "Chỗ ngồi ngoài trời"], "tag": "ngoài trời" },
+    { "match": ["Sân thượng", "Rooftop"], "tag": "rooftop" },
+    { "match": ["Riêng tư"], "tag": "riêng tư" },
+    { "match": ["Rộng rãi", "Không gian rộng"], "tag": "rộng rãi" },
+    { "match": ["Ấm cúng", "Ấm áp"], "tag": "ấm cúng" },
+    { "match": ["Hiện đại"], "tag": "hiện đại" },
+    { "match": ["Cổ điển", "Truyền thống"], "tag": "cổ điển" },
+    { "match": ["Vintage", "Hoài cổ"], "tag": "vintage" },
+    { "match": ["Yên tĩnh", "Thanh tĩnh"], "tag": "yên tĩnh" },
+    { "match": ["Thoáng đãng"], "tag": "thoáng đãng" }
+  ],
+  "mood": [
+    { "match": ["Lãng mạn", "Romantic"], "tag": "lãng mạn" },
+    { "match": ["Thư giãn", "Thoải mái", "Chill"], "tag": "thư giãn" },
+    { "match": ["Sôi động", "Nhộn nhịp"], "tag": "sôi động" },
+    { "match": ["Yên bình", "Yên tĩnh"], "tag": "yên bình" },
+    { "match": ["Vui vẻ", "Náo nhiệt"], "tag": "vui vẻ" },
+    { "match": ["Chuyên nghiệp", "Lịch sự"], "tag": "chuyên nghiệp" },
+    { "match": ["Năng động"], "tag": "năng động" }
+  ],
+  "suitability": [
+    { "match": ["Hẹn hò", "Lãng mạn"], "tag": "hẹn hò" },
+    { "match": ["Gia đình", "Thân thiện gia đình"], "tag": "gia đình" },
+    { "match": ["Bạn bè", "Nhóm"], "tag": "bạn bè" },
+    { "match": ["Công việc", "Làm việc", "Họp"], "tag": "công việc" },
+    { "match": ["Một mình"], "tag": "một mình" },
+    { "match": ["Nhóm lớn", "Nhóm đông"], "tag": "nhóm lớn" },
+    { "match": ["Học bài", "Đọc sách"], "tag": "học bài" },
+    { "match": ["Tụ tập", "Gặp gỡ"], "tag": "tụ tập" },
+    { "match": ["Sinh nhật", "Tiệc"], "tag": "sinh nhật" }
+  ],
+  "crowdLevel": [
+    { "match": ["Ít người", "Vắng"], "tag": "ít người" },
+    { "match": ["Đông đúc", "Đông người"], "tag": "đông đúc" },
+    { "match": ["Vừa phải"], "tag": "vừa phải" },
+    { "match": ["Rất đông"], "tag": "rất đông" }
+  ],
+  "music": [
+    { "match": ["Nhạc nhẹ", "Nhạc êm"], "tag": "nhạc nhẹ" },
+    { "match": ["Nhạc sôi động", "Nhạc DJ"], "tag": "nhạc sôi động" },
+    { "match": ["Không có nhạc", "Yên tĩnh"], "tag": "không có nhạc" },
+    { "match": ["Karaoke"], "tag": "karaoke" },
+    { "match": ["Live music", "Nhạc sống"], "tag": "live music" }
+  ],
+  "parking": [
+    { "match": ["Có chỗ đậu xe", "Bãi đỗ xe"], "tag": "có chỗ đậu xe" },
+    { "match": ["Khó đậu xe"], "tag": "khó đậu xe" },
+    { "match": ["Gửi xe miễn phí"], "tag": "gửi xe miễn phí" },
+    { "match": ["Gửi xe có phí", "Trả phí đỗ xe"], "tag": "gửi xe có phí" }
+  ]
+}

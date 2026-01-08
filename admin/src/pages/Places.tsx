@@ -6,6 +6,7 @@ type ViewMode = 'list' | 'create' | 'edit' | 'detail';
 interface PlacesState {
   mode: ViewMode;
   selectedPlaceId?: string;
+  refreshKey?: number; // Force refresh detail view
 }
 
 const Places: React.FC = () => {
@@ -31,8 +32,12 @@ const Places: React.FC = () => {
     // Show success message (could use toast/notification)
     console.log('Place saved:', place);
     
-    // Navigate back to list or to detail view
-    setState({ mode: 'list' });
+    // Navigate to detail view to see updated data with new refresh key
+    setState({ 
+      mode: 'detail', 
+      selectedPlaceId: place._id || state.selectedPlaceId,
+      refreshKey: Date.now() 
+    });
   };
 
   const renderContent = () => {
@@ -57,6 +62,7 @@ const Places: React.FC = () => {
       case 'detail':
         return state.selectedPlaceId ? (
           <PlaceDetailPage
+            key={`detail-${state.selectedPlaceId}-${state.refreshKey || 0}`}
             placeId={state.selectedPlaceId}
             onBack={handleBackToList}
             onEdit={() => handleEditPlace(state.selectedPlaceId!)}

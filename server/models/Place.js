@@ -52,11 +52,19 @@ const placeSchema = new mongoose.Schema({
       }
     }
   },
+  // Price display từ Google (ví dụ: "200-300 N ₫")
+  priceDisplay: {
+    type: String,
+    trim: true
+  },
   images: [{
     type: String,
     validate: {
       validator: function(value) {
-        return /^https?:\/\/.+\.(jpg|jpeg|png|webp)$/i.test(value);
+        // Allow standard image URLs (.jpg, .png, .webp) and Google Photos URLs (lh3.googleusercontent.com, googleusercontent.com)
+        return /^https?:\/\/.+\.(jpg|jpeg|png|webp)$/i.test(value) || 
+               /^https?:\/\/(lh\d+\.)?googleusercontent\.com\//i.test(value) ||
+               /^https?:\/\/res\.cloudinary\.com\//i.test(value);
       },
       message: 'Invalid image URL'
     }
@@ -111,7 +119,7 @@ const placeSchema = new mongoose.Schema({
     }],
     specialFeatures: [{
       type: String,
-      enum: ['wifi miễn phí', 'điều hòa', 'view đẹp', 'phục vụ 24h', 'delivery', 'pet friendly', 'có khu vui chơi trẻ em']
+      enum: ['wifi miễn phí', 'điều hòa', 'view đẹp', 'phục vụ 24h', 'delivery', 'pet friendly', 'có khu vui chơi trẻ em', 'thanh toán thẻ', 'ngoài trời']
     }]
   },
   // Location coordinates (GeoJSON format for MongoDB geospatial queries)
@@ -126,23 +134,10 @@ const placeSchema = new mongoose.Schema({
       index: '2dsphere'
     }
   },
-  // Legacy coordinates (deprecated - use location instead)
-  coordinates: {
-    latitude: {
-      type: Number,
-      min: -90,
-      max: 90
-    },
-    longitude: {
-      type: Number,
-      min: -180,
-      max: 180
-    }
-  },
   // Data source tracking
   source: {
     type: String,
-    enum: ['goong', 'manual'],
+    enum: ['goong', 'google', 'manual'],
     default: 'manual'
   },
   goongPlaceId: {
@@ -168,7 +163,12 @@ const placeSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  // Operating hours
+  // Operating hours (Google format)
+  openingHours: [{
+    day: String, // "Thứ Hai", "Thứ Ba", ...
+    hours: String // "08:30 to 22:00"
+  }],
+  // Operating hours (legacy format)
   operatingHours: {
     monday: { open: String, close: String },
     tuesday: { open: String, close: String },
@@ -191,6 +191,10 @@ const placeSchema = new mongoose.Schema({
         },
         message: 'Invalid phone number'
       }
+    },
+    phoneUnformatted: {
+      type: String,
+      trim: true
     },
     website: {
       type: String,
@@ -229,6 +233,47 @@ const placeSchema = new mongoose.Schema({
     min: 0,
     max: 5
   },
+  //totReviews distribution từ Google
+  reviewsDistribution: {
+    oneStar: { type: Number, default: 0 },
+    twoStar: { type: Number, default: 0 },
+    threeStar: { type: Number, default: 0 },
+    fourStar: { type: Number, default: 0 },
+    fiveStar: { type: Number, default: 0 }
+  },
+  // Additional info từ Google Places
+  additionalInfo: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  // Google Places specific fields
+  googlePlaceId: {
+    type: String,
+    sparse: true,
+    index: true
+  },
+  googleData: {
+    placeId: String,
+    cid: String,
+    fid: String,
+    kgmid: String,
+    imageUrl: String,
+    imagesCount: Number,
+    url: String,
+    plusCode: String,
+    locatedIn: String,
+    neighborhood: String,
+    street: String,
+    city: String,
+    postalCode: String,
+    state: String,
+    countryCode: String,
+    permanentlyClosed: { type: Boolean, default: false },
+    temporarilyClosed: { type: Boolean, default: false },
+    scrapedAt: Date,
+    popularTimesLiveText: String,
+    popularTimesLivePercent: Number
+  },
   totalReviews: {
     type: Number,
     default: 0
@@ -254,7 +299,6 @@ placeSchema.index({ category: 1, status: 1, isActive: 1 });
 placeSchema.index({ district: 1 });
 placeSchema.index({ 'priceRange.min': 1, 'priceRange.max': 1 });
 placeSchema.index({ 'location.coordinates': '2dsphere' }); // GeoJSON index
-placeSchema.index({ coordinates: '2dsphere' }); // Legacy index
 placeSchema.index({ featured: 1, averageRating: -1 });
 placeSchema.index({ 'aiTags.mood': 1 });
 placeSchema.index({ 'aiTags.space': 1 });
@@ -264,6 +308,7 @@ placeSchema.index({ status: 1, updatedAt: -1 });
 
 // ✅ CRITICAL: Unique compound index to prevent duplicate imports
 placeSchema.index({ source: 1, goongPlaceId: 1 }, { unique: true, sparse: true });
+placeSchema.index({ source: 1, googlePlaceId: 1 }, { unique: true, sparse: true });
 placeSchema.index({ needsEnrich: 1 }); // For AI enrichment queries
 
 // Virtual for price range display

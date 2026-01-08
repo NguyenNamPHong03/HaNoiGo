@@ -1,8 +1,10 @@
 import { ArrowLeft, Clock, Edit, Eye, Globe, MapPin, MessageCircle, Phone, Star, TrendingUp } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { placesApi } from '../api/places.api';
+import { reviewsApi } from '../api/reviews.api';
+import ReviewList from '../components/reviews/ReviewList';
 import StatusBadge from '../components/shared/StatusBadge';
-import type { Place, Review } from '../types/place.types';
+import type { Place } from '../types/place.types';
 import { formatDateTime, formatPrice } from '../utils/formatters';
 
 interface PlaceDetailPageProps {
@@ -13,13 +15,20 @@ interface PlaceDetailPageProps {
 
 const PlaceDetailPage: React.FC<PlaceDetailPageProps> = ({ placeId, onBack, onEdit }) => {
   const [place, setPlace] = useState<Place | null>(null);
-  const [reviews] = useState<Review[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('info');
 
   useEffect(() => {
     loadPlaceDetail();
   }, [placeId]);
+
+  useEffect(() => {
+    if (activeTab === 'reviews') {
+      loadReviews();
+    }
+  }, [activeTab, placeId]);
 
   const loadPlaceDetail = async () => {
     setLoading(true);
@@ -30,6 +39,19 @@ const PlaceDetailPage: React.FC<PlaceDetailPageProps> = ({ placeId, onBack, onEd
       console.error('Error loading place detail:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadReviews = async () => {
+    setReviewsLoading(true);
+    try {
+      const response = await reviewsApi.getByPlace(placeId);
+      setReviews(response.data.data.reviews || []);
+    } catch (error) {
+      console.error('Error loading reviews:', error);
+      setReviews([]);
+    } finally {
+      setReviewsLoading(false);
     }
   };
 
@@ -194,6 +216,7 @@ const PlaceDetailPage: React.FC<PlaceDetailPageProps> = ({ placeId, onBack, onEd
           {[
             { id: 'info', name: 'Thông tin chung', icon: '📝' },
             { id: 'menu', name: 'Menu', icon: '🍽️' },
+            { id: 'hours', name: 'Giờ mở cửa', icon: '🕒' },
             { id: 'ai-tags', name: 'AI Tags', icon: '🤖' },
             { id: 'reviews', name: 'Đánh giá', icon: '⭐' },
             { id: 'audit', name: 'Lịch sử', icon: '📊' }
@@ -362,6 +385,77 @@ const PlaceDetailPage: React.FC<PlaceDetailPageProps> = ({ placeId, onBack, onEd
           </div>
         )}
 
+        {/* Operating Hours Tab */}
+        {activeTab === 'hours' && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Giờ mở cửa</h3>
+            
+            {/* Operating Hours (User-set format) */}
+            {place.operatingHours && (
+              <div className="bg-white border border-gray-200 rounded-lg p-5">
+                <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  Giờ hoạt động (Theo thiết lập)
+                </h4>
+                <div className="space-y-3">
+                  {[
+                    { key: 'monday', label: 'Thứ Hai' },
+                    { key: 'tuesday', label: 'Thứ Ba' },
+                    { key: 'wednesday', label: 'Thứ Tư' },
+                    { key: 'thursday', label: 'Thứ Năm' },
+                    { key: 'friday', label: 'Thứ Sáu' },
+                    { key: 'saturday', label: 'Thứ Bảy' },
+                    { key: 'sunday', label: 'Chủ Nhật' }
+                  ].map(({ key, label }) => {
+                    const hours = place.operatingHours?.[key as keyof typeof place.operatingHours];
+                    const isOpen = hours?.open && hours?.close;
+                    
+                    return (
+                      <div key={key} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                        <span className="font-medium text-gray-700 w-32">{label}</span>
+                        {isOpen ? (
+                          <span className="text-gray-600">
+                            {hours.open} - {hours.close}
+                          </span>
+                        ) : (
+                          <span className="text-red-500 text-sm">Đóng cửa</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Google Opening Hours (if available) */}
+            {place.openingHours && place.openingHours.length > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
+                <h4 className="font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                  <Globe className="w-5 h-5" />
+                  Giờ mở cửa (Google Places)
+                </h4>
+                <div className="space-y-2">
+                  {place.openingHours.map((item: any, index: number) => (
+                    <div key={index} className="flex justify-between items-center py-2 border-b border-blue-100 last:border-0">
+                      <span className="font-medium text-blue-800">{item.day}</span>
+                      <span className="text-blue-700">{item.hours}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* No hours data */}
+            {!place.operatingHours && (!place.openingHours || place.openingHours.length === 0) && (
+              <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
+                <Clock className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p>Chưa có thông tin giờ mở cửa</p>
+                <p className="text-sm mt-2">Hãy chỉnh sửa để thêm giờ hoạt động</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Reviews Tab */}
         {activeTab === 'reviews' && (
           <div>
@@ -376,23 +470,35 @@ const PlaceDetailPage: React.FC<PlaceDetailPageProps> = ({ placeId, onBack, onEd
                   <div className="text-sm text-gray-600 mt-1">{place.totalReviews} đánh giá</div>
                 </div>
                 <div className="space-y-2">
-                  {[5, 4, 3, 2, 1].map(star => (
-                    <div key={star} className="flex items-center gap-2">
-                      <span className="text-sm w-8">{star} ⭐</span>
-                      <div className="flex-1 bg-gray-200 rounded-full h-2">
-                        <div className="bg-yellow-400 h-2 rounded-full" style={{ width: '60%' }}></div>
+                  {[5, 4, 3, 2, 1].map(star => {
+                    const starKey = ['fiveStar', 'fourStar', 'threeStar', 'twoStar', 'oneStar'][5 - star] as keyof typeof place.reviewsDistribution;
+                    const count = place.reviewsDistribution?.[starKey] || 0;
+                    const percentage = place.totalReviews > 0 
+                      ? Math.round((count / place.totalReviews) * 100) 
+                      : 0;
+                    
+                    return (
+                      <div key={star} className="flex items-center gap-2">
+                        <span className="text-sm w-8">{star} ⭐</span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div className="bg-yellow-400 h-2 rounded-full transition-all" style={{ width: `${percentage}%` }}></div>
+                        </div>
+                        <span className="text-sm text-gray-600 w-20 text-right">{count} ({percentage}%)</span>
                       </div>
-                      <span className="text-sm text-gray-600 w-8">60%</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
-            {reviews.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <p>Chưa có đánh giá nào</p>
+            {/* Reviews List */}
+            {reviewsLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="text-gray-500 mt-2">Đang tải đánh giá...</p>
               </div>
+            ) : (
+              <ReviewList reviews={reviews} showSource={true} />
             )}
           </div>
         )}

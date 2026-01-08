@@ -1,24 +1,25 @@
 import express from 'express';
 import {
-  bulkUpdatePlaces,
-  createPlace,
-  deletePlace,
-  getAiTagsOptions,
-  getAllPlaces,
-  getDistricts,
-  getPlaceById,
-  getPlaceStats,
-  updateAiTags,
-  updatePlace
+    bulkUpdatePlaces,
+    createPlace,
+    deletePlace,
+    getAiTagsOptions,
+    getAllPlaces,
+    getDistricts,
+    getPlaceById,
+    getPlaceStats,
+    refreshGoogleData,
+    updateAiTags,
+    updatePlace
 } from '../controllers/placesController.js';
 import { getUploadPlaceImage, uploadPlaceImageController } from '../controllers/uploadController.js';
 import {
-  banUser,
-  deleteUser,
-  getUserById,
-  getUsers,
-  getUserStats,
-  updateUser
+    banUser,
+    deleteUser,
+    getUserById,
+    getUsers,
+    getUserStats,
+    updateUser
 } from '../controllers/userController.js';
 
 const router = express.Router();
@@ -48,6 +49,9 @@ router.get('/places/:id', getPlaceById);
 router.post('/places', createPlace);
 router.put('/places/:id', updatePlace);
 router.delete('/places/:id', deletePlace);
+
+// AI Tags auto-generation
+router.post('/places/:id/refresh-google', refreshGoogleData);
 
 // Bulk operations
 router.post('/places/bulk', bulkUpdatePlaces);
