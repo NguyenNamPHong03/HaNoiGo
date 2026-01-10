@@ -31,9 +31,14 @@ const buildPlaceQuery = (filters) => {
 
   const query = {};
 
-  // Text search (name, description, address)
+  // Text search (name, description, address) - using regex for partial matching
   if (q) {
-    query.$text = { $search: q };
+    const searchRegex = { $regex: q.trim(), $options: 'i' }; // Case-insensitive
+    query.$or = [
+      { name: searchRegex },
+      { description: searchRegex },
+      { address: searchRegex }
+    ];
   }
 
   // District filter
