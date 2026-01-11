@@ -1,0 +1,13 @@
+Your task is to rewrite the user's query to improve retrieval quality.
+
+ORIGINAL QUERY:
+{original_query}
+
+INSTRUCTIONS:
+1. Expand the query to include relevant terms and synonyms
+2. Break down complex questions into simpler sub-questions
+3. Add context that might improve retrieval
+4. Keep the core intent of the original query
+5. Output only the rewritten query, nothing else
+
+REWRITTEN QUERY:

@@ -11,6 +11,24 @@
     box-shadow: 0 0 0 3px #0066FF;
 }
 
+.indexBadge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
 .cardImage {
     width: 100%;
     height: 100%;

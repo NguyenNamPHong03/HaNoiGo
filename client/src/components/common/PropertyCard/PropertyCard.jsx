@@ -1,12 +1,17 @@
 import React, { memo } from 'react';
 import styles from './PropertyCard.module.css';
 
-const PropertyCard = memo(({ item, isSelected, onClick }) => {
+const PropertyCard = memo(({ item, isSelected, onClick, index = null }) => {
     return (
         <div
             className={`${styles.card} ${isSelected ? styles.selectedCard : ''}`}
             onClick={onClick}
         >
+            {index && (
+                <div className={styles.indexBadge}>
+                    {index}
+                </div>
+            )}
             <img src={item.image} alt={item.title} className={styles.cardImage} />
             <span className={styles.typeBadge} data-type={item.type}>{item.type}</span>
             <div className={styles.cardContent + " liquid"}>
@@ -23,8 +28,7 @@ const PropertyCard = memo(({ item, isSelected, onClick }) => {
                 </div>
                 <div className={styles.cardFooter}>
                     <span className={styles.price}>
-                        $ {item.price.toFixed(2)}
-                        <span className={styles.period}>/month</span>
+                        {item.price?.toLocaleString('vi-VN')}₫
                     </span>
                     <span className={styles.rating}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFB800">

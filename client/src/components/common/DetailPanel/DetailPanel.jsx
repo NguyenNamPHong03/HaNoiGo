@@ -1,27 +1,36 @@
-import { memo, useState } from 'react';
+/* eslint-disable react/prop-types */
+import { memo, useState, useEffect, useMemo } from 'react';
 import styles from './DetailPanel.module.css';
 
-const DetailTabs = ({ selectedItem }) => {
+const DetailTabs = ({ place }) => {
     const [activeTab, setActiveTab] = useState('overview');
 
-    // Get real data from database
-    const place = selectedItem._originalPlace || selectedItem;
-    const name = place.name || selectedItem.title;
-    const description = place.description || `Welcome to ${name}`;
-    const address = place.address || selectedItem.address;
-    const category = place.category || selectedItem.type;
-    const priceRange = place.priceRange || { min: selectedItem.price, max: selectedItem.price };
+    const description = place.description || `Welcome to ${place.name}`;
+    const address = place.address;
+    const category = place.category;
+    const priceRange = place.priceRange || { min: 0, max: 0 };
     const district = place.district || '';
     const menu = place.menu || [];
     const operatingHours = place.operatingHours || {};
     const contact = place.contact || {};
     const aiTags = place.aiTags || {};
-    const averageRating = place.averageRating || selectedItem.rating || 0;
-    const totalReviews = place.totalReviews || selectedItem.reviews || 0;
+    const averageRating = place.averageRating || 0;
+    const totalReviews = place.totalReviews || 0;
 
-    // Debug: Log operatingHours để kiểm tra
-    console.log('🕐 Operating Hours Data:', operatingHours);
-    console.log('🕐 Place object:', place);
+    // Rating Distribution
+    const reviewsDistribution = place.reviewsDistribution || {
+        fiveStar: 0, fourStar: 0, threeStar: 0, twoStar: 0, oneStar: 0
+    };
+
+    // Real Reviews from Google Data
+    const reviews = place.additionalInfo?.reviews || place.googleData?.reviews || [];
+
+    // Calculate total for percentages
+    const totalRatingsCount = Object.values(reviewsDistribution).reduce((a, b) => a + b, 0) || totalReviews || 1;
+
+    // Google Data
+    const liveStatus = place.googleData?.popularTimesLiveText;
+    const isLiveActive = liveStatus && !liveStatus.includes('Less busy');
 
     return (
         <>
@@ -49,12 +58,29 @@ const DetailTabs = ({ selectedItem }) => {
 
             {activeTab === 'overview' && (
                 <div className={styles.tabContent}>
+                    {/* Meta Info Row */}
+                    <div className={styles.metaRow}>
+                        {liveStatus && (
+                            <div className={styles.liveStatus}>
+                                {isLiveActive && <div className={styles.liveIndicator}></div>}
+                                {liveStatus}
+                            </div>
+                        )}
+                        {place.viewCount > 0 && (
+                            <div className={styles.viewCount}>
+                                {place.viewCount.toLocaleString()} lượt xem
+                            </div>
+                        )}
+                        <div className={styles.viewCount}>
+                            {place.status || 'Verified'}
+                        </div>
+                    </div>
+
                     <p className={styles.label}>Mô tả:</p>
                     <p className={styles.descriptionText}>
                         {description}
                     </p>
 
-                    {/* Thông tin chi tiết - chuyển từ tab Chi tiết */}
                     <div className={styles.infoGrid}>
                         <div className={styles.infoItem}>
                             <span className={styles.infoLabel}>Địa chỉ:</span>
@@ -73,47 +99,62 @@ const DetailTabs = ({ selectedItem }) => {
                         <div className={styles.infoItem}>
                             <span className={styles.infoLabel}>Giá:</span>
                             <span className={styles.infoValue}>
-                                {priceRange.min === priceRange.max 
-                                    ? `${priceRange.min.toLocaleString('vi-VN')}₫`
-                                    : `${priceRange.min.toLocaleString('vi-VN')}₫ - ${priceRange.max.toLocaleString('vi-VN')}₫`
+                                {priceRange.min === priceRange.max
+                                    ? `${priceRange.min?.toLocaleString('vi-VN')}₫`
+                                    : `${priceRange.min?.toLocaleString('vi-VN')}₫ - ${priceRange.max?.toLocaleString('vi-VN')}₫`
                                 }
                             </span>
                         </div>
                     </div>
 
-                    {/* AI Tags */}
-                    {aiTags && Object.keys(aiTags).some(key => aiTags[key]?.length > 0) && (
+                    {/* Rich AI Tags Grouped */}
+                    {aiTags && (
                         <div className={styles.tagsSection}>
-                            <p className={styles.label}>Đặc điểm nổi bật:</p>
-                            <div className={styles.tagsList}>
-                                {aiTags.space?.map((tag, idx) => (
-                                    <span key={idx} className={styles.tag}>{tag}</span>
-                                ))}
-                                {aiTags.mood?.map((tag, idx) => (
-                                    <span key={idx} className={styles.tag}>{tag}</span>
-                                ))}
-                                {aiTags.suitability?.map((tag, idx) => (
-                                    <span key={idx} className={styles.tag}>{tag}</span>
-                                ))}
-                                {aiTags.specialFeatures?.map((tag, idx) => (
-                                    <span key={idx} className={styles.tag}>{tag}</span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                            {aiTags.space?.length > 0 && (
+                                <>
+                                    <p className={styles.label}>Không gian:</p>
+                                    <div className={styles.tagsList}>
+                                        {aiTags.space.map((tag, idx) => (
+                                            <span key={idx} className={styles.tag}>{tag}</span>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
 
-                    {/* Additional AI Tags */}
-                    {(aiTags?.crowdLevel?.length > 0 || aiTags?.music?.length > 0 || aiTags?.parking?.length > 0) && (
-                        <div className={styles.additionalInfo}>
-                            <p className={styles.label}>Thông tin bổ sung:</p>
-                            {aiTags.crowdLevel?.length > 0 && (
-                                <p><strong>Mức độ đông:</strong> {aiTags.crowdLevel.join(', ')}</p>
+                            {aiTags.mood?.length > 0 && (
+                                <>
+                                    <div style={{ marginTop: '15px' }}></div>
+                                    <p className={styles.label}>Không khí:</p>
+                                    <div className={styles.tagsList}>
+                                        {aiTags.mood.map((tag, idx) => (
+                                            <span key={idx} className={styles.tag}>{tag}</span>
+                                        ))}
+                                    </div>
+                                </>
                             )}
-                            {aiTags.music?.length > 0 && (
-                                <p><strong>Âm nhạc:</strong> {aiTags.music.join(', ')}</p>
+
+                            {aiTags.suitability?.length > 0 && (
+                                <>
+                                    <div style={{ marginTop: '15px' }}></div>
+                                    <p className={styles.label}>Phù hợp cho:</p>
+                                    <div className={styles.tagsList}>
+                                        {aiTags.suitability.map((tag, idx) => (
+                                            <span key={idx} className={styles.tag}>{tag}</span>
+                                        ))}
+                                    </div>
+                                </>
                             )}
-                            {aiTags.parking?.length > 0 && (
-                                <p><strong>Đỗ xe:</strong> {aiTags.parking.join(', ')}</p>
+
+                            {aiTags.specialFeatures?.length > 0 && (
+                                <>
+                                    <div style={{ marginTop: '15px' }}></div>
+                                    <p className={styles.label}>Tiện ích:</p>
+                                    <div className={styles.tagsList}>
+                                        {aiTags.specialFeatures.map((tag, idx) => (
+                                            <span key={idx} className={styles.tag}>{tag}</span>
+                                        ))}
+                                    </div>
+                                </>
                             )}
                         </div>
                     )}
@@ -137,9 +178,9 @@ const DetailTabs = ({ selectedItem }) => {
                                                 {day === 'sunday' && 'Chủ nhật'}
                                             </span>
                                             <span className={styles.hourTime}>
-                                                {hours.open && hours.close 
+                                                {hours.open && hours.close
                                                     ? `${hours.open} - ${hours.close}`
-                                                    : hours.open 
+                                                    : hours.open
                                                         ? `Mở cửa: ${hours.open}`
                                                         : `Đóng cửa: ${hours.close}`
                                                 }
@@ -156,13 +197,13 @@ const DetailTabs = ({ selectedItem }) => {
                             <p className={styles.label}>Liên hệ:</p>
                             {contact.phone && (
                                 <p className={styles.contactItem}>
-                                    📞 {contact.phone}
+                                    SĐT: {contact.phone}
                                 </p>
                             )}
                             {contact.website && (
                                 <p className={styles.contactItem}>
-                                    🌐 <a href={contact.website} target="_blank" rel="noopener noreferrer">
-                                        {contact.website}
+                                    Web: <a href={contact.website} target="_blank" rel="noopener noreferrer">
+                                        Website
                                     </a>
                                 </p>
                             )}
@@ -175,7 +216,7 @@ const DetailTabs = ({ selectedItem }) => {
                 <div className={styles.tabContent}>
                     {menu && menu.length > 0 ? (
                         <div className={styles.menuSection}>
-                            <p className={styles.label}>Thực đơn:</p>
+                            <p className={styles.label}>Thực đơn nổi bật:</p>
                             {menu.map((item, idx) => (
                                 <div key={idx} className={styles.menuItem}>
                                     <div className={styles.menuItemHeader}>
@@ -194,7 +235,7 @@ const DetailTabs = ({ selectedItem }) => {
                             ))}
                         </div>
                     ) : (
-                        <p className={styles.noData}>Chưa có thông tin menu</p>
+                        <p className={styles.noData}>Chưa có thông tin menu chi tiết</p>
                     )}
                 </div>
             )}
@@ -208,88 +249,73 @@ const DetailTabs = ({ selectedItem }) => {
                                 <span className={styles.ratingNumber}>{averageRating.toFixed(1)}</span>
                                 <div className={styles.ratingStars}>
                                     {[1, 2, 3, 4, 5].map((star) => (
-                                        <svg key={star} width="18" height="18" viewBox="0 0 24 24" fill={star <= Math.round(averageRating) ? "#FFB800" : "#E0E0E0"}>
+                                        <svg key={star} width="16" height="16" viewBox="0 0 24 24" fill={star <= Math.round(averageRating) ? "#FFB800" : "rgba(255,255,255,0.3)"}>
                                             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                                         </svg>
                                     ))}
                                 </div>
                                 <p className={styles.ratingCount}>({totalReviews} đánh giá)</p>
                             </div>
+
+                            {/* Rating Distribution Bars */}
+                            <div className={styles.ratingDistribution}>
+                                {['fiveStar', 'fourStar', 'threeStar', 'twoStar', 'oneStar'].map((key, index) => {
+                                    const stars = 5 - index;
+                                    const count = reviewsDistribution[key] || 0;
+                                    const percent = (count / totalRatingsCount) * 100;
+
+                                    return (
+                                        <div key={key} className={styles.distBarRow}>
+                                            <span className={styles.starLabel}>{stars}★</span>
+                                            <div className={styles.barContainer}>
+                                                <div
+                                                    className={styles.barFill}
+                                                    style={{ width: `${percent}%` }}
+                                                ></div>
+                                            </div>
+                                            <span className={styles.distCount}>{count}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
 
-                    {/* Review Form */}
-                    <div className={styles.reviewForm}>
-                        <p className={styles.label}>Viết đánh giá của bạn:</p>
-                        <div className={styles.starRating}>
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <svg key={star} width="24" height="24" viewBox="0 0 24 24" fill="#E0E0E0" className={styles.starInput}>
-                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                                </svg>
-                            ))}
-                        </div>
-                        <textarea 
-                            className={styles.reviewTextarea} 
-                            placeholder="Chia sẻ trải nghiệm của bạn về địa điểm này..."
-                            rows={4}
-                        />
-                        <button className={styles.submitReviewBtn}>Gửi đánh giá</button>
-                    </div>
-
-                    {/* Reviews List */}
                     <div className={styles.reviewsList}>
-                        <p className={styles.label}>Đánh giá từ khách hàng:</p>
-                        
-                        {/* Mock reviews - sẽ thay bằng dữ liệu thật sau */}
-                        <div className={styles.reviewItem}>
-                            <div className={styles.reviewHeader}>
-                                <div className={styles.reviewerInfo}>
-                                    <div className={styles.reviewerAvatar}>👤</div>
-                                    <div>
-                                        <strong className={styles.reviewerName}>Nguyễn Văn A</strong>
-                                        <div className={styles.reviewRating}>
-                                            {[1, 2, 3, 4, 5].map((star) => (
-                                                <svg key={star} width="12" height="12" viewBox="0 0 24 24" fill="#FFB800">
-                                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                                                </svg>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                                <span className={styles.reviewDate}>2 ngày trước</span>
-                            </div>
-                            <p className={styles.reviewText}>
-                                Địa điểm rất tuyệt vời! Không gian ấm cúng, phục vụ nhiệt tình. Đồ ăn ngon và giá cả hợp lý. Sẽ quay lại lần sau!
-                            </p>
-                        </div>
+                        <p className={styles.label}>Đánh giá từ Google ({reviews.length}):</p>
 
-                        <div className={styles.reviewItem}>
-                            <div className={styles.reviewHeader}>
-                                <div className={styles.reviewerInfo}>
-                                    <div className={styles.reviewerAvatar}>👤</div>
-                                    <div>
-                                        <strong className={styles.reviewerName}>Trần Thị B</strong>
-                                        <div className={styles.reviewRating}>
-                                            {[1, 2, 3, 4].map((star) => (
-                                                <svg key={star} width="12" height="12" viewBox="0 0 24 24" fill="#FFB800">
-                                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                                                </svg>
-                                            ))}
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#E0E0E0">
-                                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                                            </svg>
+                        {reviews.length > 0 ? (
+                            reviews.map((review, idx) => (
+                                <div key={idx} className={styles.reviewItem}>
+                                    <div className={styles.reviewHeader}>
+                                        <div className={styles.reviewerInfo}>
+                                            <div className={styles.reviewerAvatar}>
+                                                {review.profile_photo_url ? (
+                                                    <img src={review.profile_photo_url} alt="User" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
+                                                ) : (
+                                                    review.author_name?.charAt(0) || 'U'
+                                                )}
+                                            </div>
+                                            <div>
+                                                <strong className={styles.reviewerName}>{review.author_name || 'Người dùng Google'}</strong>
+                                                <div className={styles.reviewRating}>
+                                                    {[1, 2, 3, 4, 5].map((star) => (
+                                                        <svg key={star} width="12" height="12" viewBox="0 0 24 24" fill={star <= (review.rating || 5) ? "#FFB800" : "#E0E0E0"}>
+                                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                        </svg>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
+                                        <span className={styles.reviewDate}>{review.relative_time_description || 'Gần đây'}</span>
                                     </div>
+                                    <p className={styles.reviewText}>
+                                        {review.text}
+                                    </p>
                                 </div>
-                                <span className={styles.reviewDate}>1 tuần trước</span>
-                            </div>
-                            <p className={styles.reviewText}>
-                                Khá ổn, view đẹp nhưng hơi ồn vào cuối tuần. Nhìn chung vẫn đáng để thử.
-                            </p>
-                        </div>
-
-                        {totalReviews === 0 && (
-                            <p className={styles.noData}>Chưa có đánh giá nào. Hãy là người đầu tiên đánh giá!</p>
+                            ))
+                        ) : (
+                            <p className={styles.noData}>Chưa có đánh giá chi tiết.</p>
                         )}
                     </div>
                 </div>
@@ -299,20 +325,53 @@ const DetailTabs = ({ selectedItem }) => {
 };
 
 const DetailPanel = memo(({ selectedItem }) => {
-    if (!selectedItem) return null;
+    // Reset image when place changes
+    const [activeImage, setActiveImage] = useState(0);
 
     // Get real data from database
-    const place = selectedItem._originalPlace || selectedItem;
+    const place = useMemo(() => {
+        if (!selectedItem) return null;
+        return selectedItem._originalPlace || selectedItem;
+    }, [selectedItem]);
+
+    useEffect(() => {
+        setActiveImage(0);
+    }, [place?._id]);
+
+    if (!place) return null;
+
     const name = place.name || selectedItem.title;
     const address = place.address || selectedItem.address;
     const priceRange = place.priceRange || { min: selectedItem.price, max: selectedItem.price };
-    const images = place.images || [selectedItem.image];
-    const mainImage = images[0] || selectedItem.image;
+    const images = place.images && place.images.length > 0 ? place.images : [selectedItem.image];
+
+    // Safety check: ensure at least one image exists
+    const safeImages = images.filter(Boolean);
+    if (safeImages.length === 0) safeImages.push('https://via.placeholder.com/400x300?text=No+Image');
 
     return (
         <aside className={styles.detailPanel} onWheel={(e) => e.stopPropagation()}>
             <div className={styles.detailImage}>
-                <img src={mainImage} alt={name} />
+                <div className={styles.mainImageWrapper}>
+                    <img
+                        src={safeImages[activeImage]}
+                        alt={name}
+                    />
+                </div>
+
+                {safeImages.length > 1 && (
+                    <div className={styles.imageThumbnails}>
+                        {safeImages.map((img, idx) => (
+                            <div
+                                key={idx}
+                                className={`${styles.thumbnail} ${activeImage === idx ? styles.active : ''}`}
+                                onClick={() => setActiveImage(idx)}
+                            >
+                                <img src={img} alt={`Thumb ${idx}`} />
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <div className={styles.detailInfo}>
@@ -327,15 +386,9 @@ const DetailPanel = memo(({ selectedItem }) => {
                             {address}
                         </div>
                     </div>
-                    <div className={styles.detailPrice}>
-                        {priceRange.min === priceRange.max 
-                            ? priceRange.min.toLocaleString('vi-VN')
-                            : `${priceRange.min.toLocaleString('vi-VN')} - ${priceRange.max.toLocaleString('vi-VN')}`
-                        } <span>₫</span>
-                    </div>
                 </div>
 
-                <DetailTabs selectedItem={selectedItem} />
+                <DetailTabs place={place} />
 
                 <div className={styles.actionButtons}>
                     <button className={styles.contactBtn}>Liên hệ</button>

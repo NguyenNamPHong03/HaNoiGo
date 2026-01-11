@@ -1,17 +1,36 @@
-import { memo, useState } from 'react';
+import { memo } from 'react';
 import styles from './AISearchSection.module.css';
-import Fong from '../Fong/Fong'
+import Fong from '../Fong/Fong';
 
-const AISearchSection = memo(({ defaultQuery = "", onSearch }) => {
-    const [query, setQuery] = useState(defaultQuery);
-
+/**
+ * AISearchSection - Search input with AI-generated summary
+ * @param {Object} props
+ * @param {string} props.query - Current search query
+ * @param {Function} props.onQueryChange - Callback when query changes
+ * @param {Function} props.onSearch - Callback when search is triggered
+ * @param {Object} props.aiResponse - AI response data
+ * @param {boolean} props.isLoading - Loading state
+ */
+const AISearchSection = memo(({
+    query = "",
+    onQueryChange,
+    onSearch,
+    aiResponse = null,
+    isLoading = false
+}) => {
     const handleClear = () => {
-        setQuery("");
+        onQueryChange?.("");
     };
 
     const handleSearch = () => {
-        if (onSearch) {
+        if (onSearch && query.trim()) {
             onSearch(query);
+        }
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            handleSearch();
         }
     };
 
@@ -21,10 +40,10 @@ const AISearchSection = memo(({ defaultQuery = "", onSearch }) => {
                 <input
                     type="text"
                     className={styles.searchInput}
-                    placeholder="Search for places, apartments, villas..."
+                    placeholder="Tìm quán ốc ngon ở Ba Đình, cafe học bài yên tĩnh..."
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    onChange={(e) => onQueryChange?.(e.target.value)}
+                    onKeyDown={handleKeyDown}
                 />
                 {query && (
                     <button className={styles.searchClearBtn} onClick={handleClear}>
@@ -35,26 +54,20 @@ const AISearchSection = memo(({ defaultQuery = "", onSearch }) => {
                     </button>
                 )}
                 <div className={styles.searchActions}>
-                    <button className={styles.searchActionBtn} title="Grid view">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                            <line x1="3" y1="9" x2="21" y2="9"></line>
-                            <line x1="9" y1="21" x2="9" y2="9"></line>
-                        </svg>
-                    </button>
-                    <button className={styles.searchActionBtn} title="Voice search">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                            <line x1="12" y1="19" x2="12" y2="23"></line>
-                            <line x1="8" y1="23" x2="16" y2="23"></line>
-                        </svg>
-                    </button>
-                    <button className={styles.searchActionBtn} onClick={handleSearch} title="Search">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
+                    <button
+                        className={styles.searchActionBtn}
+                        onClick={handleSearch}
+                        title="Search with AI"
+                        disabled={isLoading || !query.trim()}
+                    >
+                        {isLoading ? (
+                            <div className={styles.spinner}></div>
+                        ) : (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        )}
                     </button>
                 </div>
             </div>
@@ -65,15 +78,31 @@ const AISearchSection = memo(({ defaultQuery = "", onSearch }) => {
                     <span>Fong 1.6 AI-generated overview</span>
                 </div>
                 <div className={styles.aiSummaryContent}>
-                    <p>
-                        <strong>Apartments for rent in Hanoi</strong> are one of the most popular choices for tenants,
-                        especially young families and working professionals. Districts such as Hai Ba Trung, Long Bien, and Tay Ho
-                        offer many quality apartments with full amenities including gym, swimming pool, and 24/7 security.
-                    </p>
-                    <p>
-                        Rental prices range from <strong>10-35 million VND/month</strong> depending on location, area, and amenities.
-                        Notable projects include Vinhomes, Times City, and villas in the Tay Ho area.
-                    </p>
+                    {isLoading ? (
+                        <div className={styles.skeletonContainer}>
+                            <div className={styles.skeleton}></div>
+                            <div className={styles.skeleton}></div>
+                            <div className={styles.skeletonShort}></div>
+                        </div>
+                    ) : aiResponse?.answer ? (
+                        <div
+                            className={styles.aiAnswer}
+                            dangerouslySetInnerHTML={{
+                                __html: aiResponse.answer
+                                    .replace(/\n/g, '<br/>')
+                                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                            }}
+                        />
+                    ) : (
+                        <>
+                            <p>
+                                <strong>Khám phá Hà Nội</strong> - Nhập câu hỏi để AI gợi ý địa điểm phù hợp với bạn.
+                            </p>
+                            <p>
+                                Ví dụ: "Quán cafe yên tĩnh để học bài ở Cầu Giấy" hoặc "Nhà hàng lãng mạn cho buổi hẹn hò".
+                            </p>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

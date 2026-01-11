@@ -16,8 +16,8 @@ const placeSchema = new mongoose.Schema({
     type: String,
     required: [true, 'District is required'],
     enum: [
-      'Ba Đình', 'Hoàn Kiếm', 'Tây Hồ', 'Long Biên', 'Cầu Giấy', 
-      'Đống Đa', 'Thanh Xuân', 'Nam Từ Liêm', 'Bắc Từ Liêm', 
+      'Ba Đình', 'Hoàn Kiếm', 'Tây Hồ', 'Long Biên', 'Cầu Giấy',
+      'Đống Đa', 'Thanh Xuân', 'Nam Từ Liêm', 'Bắc Từ Liêm',
       'Hà Đông', 'Hoàng Mai', 'Hai Bà Trưng'
     ]
   },
@@ -41,7 +41,7 @@ const placeSchema = new mongoose.Schema({
       type: Number,
       required: true,
       validate: {
-        validator: function(value) {
+        validator: function (value) {
           // ✅ Fix: Check null safety để tránh lỗi "Cannot read properties of undefined"
           if (this.priceRange == null || this.priceRange.min == null) {
             return true; // Skip validation nếu min chưa được set
@@ -60,11 +60,11 @@ const placeSchema = new mongoose.Schema({
   images: [{
     type: String,
     validate: {
-      validator: function(value) {
+      validator: function (value) {
         // Allow standard image URLs (.jpg, .png, .webp) and Google Photos URLs (lh3.googleusercontent.com, googleusercontent.com)
-        return /^https?:\/\/.+\.(jpg|jpeg|png|webp)$/i.test(value) || 
-               /^https?:\/\/(lh\d+\.)?googleusercontent\.com\//i.test(value) ||
-               /^https?:\/\/res\.cloudinary\.com\//i.test(value);
+        return /^https?:\/\/.+\.(jpg|jpeg|png|webp)$/i.test(value) ||
+          /^https?:\/\/(lh\d+\.)?googleusercontent\.com\//i.test(value) ||
+          /^https?:\/\/res\.cloudinary\.com\//i.test(value);
       },
       message: 'Invalid image URL'
     }
@@ -183,7 +183,7 @@ const placeSchema = new mongoose.Schema({
     phone: {
       type: String,
       validate: {
-        validator: function(v) {
+        validator: function (v) {
           // Allow undefined/null (optional field)
           if (!v) return true;
           // Validate only if value exists
@@ -199,7 +199,7 @@ const placeSchema = new mongoose.Schema({
     website: {
       type: String,
       validate: {
-        validator: function(v) {
+        validator: function (v) {
           // Allow undefined/null (optional field)
           if (!v) return true;
           // Validate only if value exists
@@ -312,7 +312,7 @@ placeSchema.index({ source: 1, googlePlaceId: 1 }, { unique: true, sparse: true 
 placeSchema.index({ needsEnrich: 1 }); // For AI enrichment queries
 
 // Virtual for price range display
-placeSchema.virtual('priceRangeDisplay').get(function() {
+placeSchema.virtual('priceRangeDisplay').get(function () {
   if (this.priceRange.min === this.priceRange.max) {
     return `${this.priceRange.min.toLocaleString()}₫`;
   }
@@ -320,7 +320,7 @@ placeSchema.virtual('priceRangeDisplay').get(function() {
 });
 
 // Pre-save middleware to ensure data consistency
-placeSchema.pre('save', function(next) {
+placeSchema.pre('save', function (next) {
   if (this.priceRange.max < this.priceRange.min) {
     this.priceRange.max = this.priceRange.min;
   }

@@ -1,20 +1,35 @@
-import { useCallback, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import AISearchSection from "../../components/common/AISearchSection/AISearchSection";
 import DetailPanel from "../../components/common/DetailPanel/DetailPanel";
 import FilterSidebar from "../../components/common/FilterSidebar/FilterSidebar";
 import PropertyCard from "../../components/common/PropertyCard/PropertyCard";
 import usePlaceDetail from "../../hooks/usePlaceDetail.js";
 import { usePlaces } from "../../hooks/usePlaces";
+import useAIChat from "../../hooks/useAIChat";
 import styles from "./SearchResult.module.css";
 
 const SearchResult = () => {
-    const { id } = useParams(); // Get place ID from URL
+    const { id } = useParams();
+    const [searchParams] = useSearchParams();
+    const initialQuery = searchParams.get('q') || "";
+
     const [selectedId, setSelectedId] = useState(null);
+    const [searchQuery, setSearchQuery] = useState(initialQuery);
+
+    // AI Chat Hook
+    const aiChat = useAIChat();
+
+    // Auto-trigger AI search if query exists in URL
+    useEffect(() => {
+        if (initialQuery && !aiChat.data && !aiChat.isPending) {
+            aiChat.mutate({ question: initialQuery });
+        }
+    }, [initialQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Fetch place detail if ID exists in URL
     const { data: placeDetail, isLoading: isLoadingPlace } = usePlaceDetail(id, {
-        enabled: !!id // Only fetch if ID exists
+        enabled: !!id
     });
 
     // Filter States
@@ -24,7 +39,10 @@ const SearchResult = () => {
         minPrice: '',
         maxPrice: '',
         status: 'Published',
-        isActive: true
+        isActive: true,
+        locations: [],
+        priceRanges: [],
+        types: []
     });
 
     // Fetch all places with filters
@@ -34,11 +52,24 @@ const SearchResult = () => {
         isActive: true
     });
 
+    // Handle AI Search
+    const handleAISearch = useCallback((query) => {
+        if (query.trim()) {
+            aiChat.mutate({ question: query });
+        }
+    }, [aiChat]);
+
     const handleFilterChange = useCallback((category, value) => {
-        setFilters(prev => ({
-            ...prev,
-            [category]: value
-        }));
+        setFilters(prev => {
+            if (['locations', 'priceRanges', 'types'].includes(category)) {
+                const currentArray = prev[category] || [];
+                const newArray = currentArray.includes(value)
+                    ? currentArray.filter(item => item !== value)
+                    : [...currentArray, value];
+                return { ...prev, [category]: newArray };
+            }
+            return { ...prev, [category]: value };
+        });
     }, []);
 
     const handlePriceRangeChange = useCallback(({ min, max }) => {
@@ -56,14 +87,21 @@ const SearchResult = () => {
             minPrice: '',
             maxPrice: '',
             status: 'Published',
-            isActive: true
+            isActive: true,
+            locations: [],
+            priceRanges: [],
+            types: []
         });
     }, []);
 
-    // Get places from API
-    const places = placesData?.places || [];
+    // Determine which places to show:
+    // - If AI has responded, use AI-suggested places
+    // - Otherwise, use standard filtered places
+    const aiPlaces = aiChat.data?.data?.places || [];
+    const standardPlaces = placesData?.places || [];
+    const places = aiPlaces.length > 0 ? aiPlaces : standardPlaces;
 
-    // Transform places to match PropertyCard format
+    // Transform places to PropertyCard format
     const transformedPlaces = useMemo(() => {
         return places.map(place => ({
             id: place._id,
@@ -86,18 +124,14 @@ const SearchResult = () => {
                 kitchens: 1,
                 garage: 1
             },
-            // Keep original place data
             _originalPlace: place
         }));
     }, [places]);
 
     // Determine what to show in DetailPanel
-    // If URL has ID → show that place detail
-    // Otherwise → show selected item from grid
-    const displayItem = id && placeDetail 
+    const displayItem = id && placeDetail
         ? {
             ...placeDetail,
-            // Transform to match PropertyCard format
             title: placeDetail.name,
             price: placeDetail.priceRange?.max || 0,
             rating: placeDetail.averageRating || 0,
@@ -116,14 +150,15 @@ const SearchResult = () => {
                 kitchens: 1,
                 garage: 1
             },
-            // Keep original place data
             _originalPlace: placeDetail
         }
         : (transformedPlaces.find(item => item.id === selectedId) || transformedPlaces[0] || null);
 
+    const isLoadingResults = isLoadingPlaces || aiChat.isPending;
+
     return (
         <div className={styles.pageWrapper}>
-            {/* Left Sidebar - Filters (hide if showing place detail) */}
+            {/* Left Sidebar - Filters */}
             {!id && (
                 <FilterSidebar
                     filters={filters}
@@ -135,11 +170,18 @@ const SearchResult = () => {
 
             {/* Middle - Grid or Loading */}
             <main className={styles.mainContent}>
-                {/* Search Input & AI Summary (hide if showing place detail) */}
-                {!id && <AISearchSection defaultQuery="Tìm địa điểm ăn uống, vui chơi tại Hà Nội" />}
+                {/* AI Search Section */}
+                {!id && (
+                    <AISearchSection
+                        query={searchQuery}
+                        onQueryChange={setSearchQuery}
+                        onSearch={handleAISearch}
+                        aiResponse={aiChat.data?.data}
+                        isLoading={aiChat.isPending}
+                    />
+                )}
 
                 {id ? (
-                    // Show loading or message when viewing place detail
                     <div className={styles.placeDetailMode}>
                         {isLoadingPlace ? (
                             <div className={styles.loadingContainer}>
@@ -161,12 +203,11 @@ const SearchResult = () => {
                         )}
                     </div>
                 ) : (
-                    // Show grid when searching
                     <>
-                        {isLoadingPlaces ? (
+                        {isLoadingResults ? (
                             <div className={styles.loadingContainer}>
                                 <div className={styles.spinner}></div>
-                                <p>Đang tải danh sách địa điểm...</p>
+                                <p>{aiChat.isPending ? 'AI đang tìm kiếm...' : 'Đang tải danh sách địa điểm...'}</p>
                             </div>
                         ) : isError ? (
                             <div className={styles.errorMessage}>
@@ -175,17 +216,27 @@ const SearchResult = () => {
                             </div>
                         ) : (
                             <div className={styles.grid}>
-                                {transformedPlaces.length > 0 ? transformedPlaces.map(item => (
-                                    <PropertyCard
-                                        key={item.id}
-                                        item={item}
-                                        isSelected={selectedId === item.id}
-                                        onClick={() => setSelectedId(item.id)}
-                                    />
-                                )) : (
+                                {transformedPlaces.length > 0 ? (
+                                    <>
+                                        {aiPlaces.length > 0 && (
+                                            <div className={styles.aiResultsBadge}>
+                                                <span>🤖 AI gợi ý: {aiPlaces.length} địa điểm phù hợp</span>
+                                            </div>
+                                        )}
+                                        {transformedPlaces.map((item, index) => (
+                                            <PropertyCard
+                                                key={item.id}
+                                                item={item}
+                                                isSelected={selectedId === item.id}
+                                                onClick={() => setSelectedId(item.id)}
+                                                index={aiPlaces.length > 0 ? index + 1 : null}
+                                            />
+                                        ))}
+                                    </>
+                                ) : (
                                     <div className={styles.noResults}>
                                         <h3>Không tìm thấy địa điểm</h3>
-                                        <p>Hãy thử điều chỉnh bộ lọc của bạn.</p>
+                                        <p>Hãy thử điều chỉnh bộ lọc hoặc tìm kiếm bằng AI.</p>
                                     </div>
                                 )}
                             </div>

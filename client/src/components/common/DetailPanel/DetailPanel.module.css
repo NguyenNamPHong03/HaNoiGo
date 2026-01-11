@@ -13,13 +13,64 @@
 
 .detailImage {
     width: 100%;
-    height: 250px;
     border-radius: 16px;
     overflow: hidden;
     margin-bottom: 20px;
 }
 
-.detailImage img {
+.mainImageWrapper {
+    height: 250px;
+    width: 100%;
+    margin-bottom: 8px;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    background: #f0f0f0;
+}
+
+.mainImageWrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+
+.mainImageWrapper:hover img {
+    transform: scale(1.02);
+}
+
+.imageThumbnails {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+.imageThumbnails::-webkit-scrollbar {
+    height: 4px;
+}
+
+.imageThumbnails::-webkit-scrollbar-thumb {
+    background: #ddd;
+    border-radius: 2px;
+}
+
+.thumbnail {
+    width: 70px;
+    height: 50px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.thumbnail.active {
+    border-color: #0066FF;
+}
+
+.thumbnail img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -29,7 +80,65 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.metaRow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     margin-bottom: 15px;
+    font-size: 13px;
+    color: #666;
+}
+
+.viewCount {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #f5f5f5;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    color: #555;
+    font-weight: 500;
+}
+
+.liveStatus {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #d93025;
+    font-weight: 500;
+    font-size: 12px;
+    background: #fce8e6;
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.liveIndicator {
+    width: 6px;
+    height: 6px;
+    background: #d93025;
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.5);
+        opacity: 0.5;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .detailTitleRow h2 {
@@ -346,6 +455,48 @@
 
 .ratingOverview {
     text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.ratingDistribution {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.distBarRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.starLabel {
+    width: 10px;
+}
+
+.barContainer {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.barFill {
+    height: 100%;
+    background: #fff;
+    border-radius: 3px;
+}
+
+.distCount {
+    width: 25px;
+    text-align: right;
+    opacity: 0.9;
 }
 
 .ratingScore {

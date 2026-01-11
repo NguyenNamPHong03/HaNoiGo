@@ -73,7 +73,10 @@ const RangeSlider = ({ min, max, onChange }) => {
     );
 };
 
-const FilterSidebar = memo(({ filters, onFilterChange, onPriceRangeChange, onClearAll }) => {
+const FilterSidebar = memo(({ filters = {}, onFilterChange, onPriceRangeChange, onClearAll }) => {
+    // Destructure with defaults to prevent crashes
+    const { locations = [], priceRanges = [], types = [] } = filters;
+
     const handleCheckboxChange = (category, value) => {
         onFilterChange(category, value);
     };
@@ -86,7 +89,7 @@ const FilterSidebar = memo(({ filters, onFilterChange, onPriceRangeChange, onCle
             </div>
 
             <div className={styles.filtersContainer}>
-                <FilterSection title="Location">
+                <FilterSection title="Khu vực">
                     <div className={styles.inputGroup}>
                         <span className={styles.searchIcon}>
                             <svg xmlns="http://www.w3.org/2000/svg" height="25" viewBox="0 0 50 50" fill="none">
@@ -94,44 +97,44 @@ const FilterSidebar = memo(({ filters, onFilterChange, onPriceRangeChange, onCle
                                 <path d="M25.0002 25.0001C26.1052 25.0001 27.165 24.5611 27.9464 23.7797C28.7278 22.9983 29.1668 21.9385 29.1668 20.8334C29.1668 19.7283 28.7278 18.6685 27.9464 17.8871C27.165 17.1057 26.1052 16.6667 25.0002 16.6667C23.8951 16.6667 22.8353 17.1057 22.0539 17.8871C21.2725 18.6685 20.8335 19.7283 20.8335 20.8334C20.8335 21.9385 21.2725 22.9983 22.0539 23.7797C22.8353 24.5611 23.8951 25.0001 25.0002 25.0001Z" stroke="black" strokeWidth="3.125" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                         </span>
-                        <input type="text" placeholder="Location" defaultValue="Hai Ba Trung, Long Bien" />
+                        <input type="text" placeholder="Nhập khu vực..." defaultValue="Hai Bà Trưng, Long Biên" />
                     </div>
                     <Checkbox
-                        label="Hai Ba Trung, Long Bien"
-                        checked={filters.locations.includes("Hai Ba Trung, Long Bien")}
+                        label="Hai Bà Trưng, Long Biên"
+                        checked={locations.includes("Hai Ba Trung, Long Bien")}
                         onChange={() => handleCheckboxChange("locations", "Hai Ba Trung, Long Bien")}
                     />
                     <Checkbox
-                        label="Long Bien"
-                        checked={filters.locations.includes("Long Bien")}
+                        label="Long Biên"
+                        checked={locations.includes("Long Bien")}
                         onChange={() => handleCheckboxChange("locations", "Long Bien")}
                     />
                 </FilterSection>
 
-                <FilterSection title="Price Range">
+                <FilterSection title="Mức giá">
                     <div className={styles.priceRangeLabels}>
                         <Checkbox
-                            label="Under $1,000"
-                            checked={filters.priceRanges.includes("Under $1,000")}
+                            label="Dưới $1,000"
+                            checked={priceRanges.includes("Under $1,000")}
                             onChange={() => handleCheckboxChange("priceRanges", "Under $1,000")}
                         />
                         <Checkbox
                             label="$1,000 - $15,000"
-                            checked={filters.priceRanges.includes("$1,000 - $15,000")}
+                            checked={priceRanges.includes("$1,000 - $15,000")}
                             onChange={() => handleCheckboxChange("priceRanges", "$1,000 - $15,000")}
                         />
                         <Checkbox
-                            label="More Than $15,000"
-                            checked={filters.priceRanges.includes("More Than $15,000")}
+                            label="Trên $15,000"
+                            checked={priceRanges.includes("More Than $15,000")}
                             onChange={() => handleCheckboxChange("priceRanges", "More Than $15,000")}
                         />
                         <Checkbox
-                            label="Custom"
-                            checked={filters.priceRanges.includes("Custom")}
+                            label="Tùy chọn"
+                            checked={priceRanges.includes("Custom")}
                             onChange={() => handleCheckboxChange("priceRanges", "Custom")}
                         />
                     </div>
-                    {filters.priceRanges.includes("Custom") && (
+                    {priceRanges.includes("Custom") && (
                         <RangeSlider
                             min={0}
                             max={1000}
@@ -140,25 +143,25 @@ const FilterSidebar = memo(({ filters, onFilterChange, onPriceRangeChange, onCle
                     )}
                 </FilterSection>
 
-                <FilterSection title="Type Of Place">
+                <FilterSection title="Loại hình">
                     <Checkbox
-                        label="Single Familly Home"
-                        checked={filters.types.includes("Single Familly Home")}
+                        label="Nhà riêng"
+                        checked={types.includes("Single Familly Home")}
                         onChange={() => handleCheckboxChange("types", "Single Familly Home")}
                     />
                     <Checkbox
-                        label="Condo/Townhouse"
-                        checked={filters.types.includes("Condo/Townhouse")}
+                        label="Nhà phố"
+                        checked={types.includes("Condo/Townhouse")}
                         onChange={() => handleCheckboxChange("types", "Condo/Townhouse")}
                     />
                     <Checkbox
-                        label="Apartment"
-                        checked={filters.types.includes("Apartment")}
+                        label="Căn hộ"
+                        checked={types.includes("Apartment")}
                         onChange={() => handleCheckboxChange("types", "Apartment")}
                     />
                     <Checkbox
-                        label="Bungalow"
-                        checked={filters.types.includes("Bungalow")}
+                        label="Nhà gỗ (Bungalow)"
+                        checked={types.includes("Bungalow")}
                         onChange={() => handleCheckboxChange("types", "Bungalow")}
                     />
                 </FilterSection>
