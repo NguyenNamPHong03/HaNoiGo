@@ -37,12 +37,7 @@ function UserMenu() {
   }
 
   const getAvatarUrl = () => {
-    console.log('🎨 UserMenu - Getting avatar URL for user:', user);
-    console.log('🎨 UserMenu - user.avatarUrl:', user?.avatarUrl);
-    console.log('🎨 UserMenu - user.displayName:', user?.displayName);
-    
     if (user?.avatarUrl) {
-      console.log('✅ Using user avatarUrl:', user.avatarUrl);
       return user.avatarUrl;
     }
     

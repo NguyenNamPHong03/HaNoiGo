@@ -23,23 +23,15 @@ export const UserProvider = ({ children }) => {
     try {
       const token = localStorage.getItem('userToken');
       if (token) {
-        console.log('🔍 Checking auth status with token:', token.substring(0, 20) + '...');
         const response = await authAPI.getProfile();
-        console.log('📥 Auth check response:', response);
         
         if (response.success) {
           // Backend trả về: { success: true, data: { user: {...} } }
           const userData = response.data.user;
-          console.log('👤 Setting user from checkAuthStatus:', userData);
-          console.log('👤 User avatarUrl:', userData?.avatarUrl);
           setUser(userData);
         }
-      } else {
-        console.log('⚠️ No token found in localStorage');
       }
     } catch (error) {
-      console.error('❌ Auth check failed:', error);
-      console.error('❌ Error response:', error.response?.data);
       localStorage.removeItem('userToken');
     } finally {
       setLoading(false);
@@ -62,11 +54,8 @@ export const UserProvider = ({ children }) => {
   };
 
   const updateUser = (updatedData) => {
-    console.log('🔄 UserContext - Updating user with:', updatedData);
-    console.log('🔄 UserContext - Previous user:', user);
-    setUser(prev => {
-      const newUser = { ...prev, ...updatedData };
-      console.log('✅ UserContext - New user:', newUser);
+    setUser((prevUser) => {
+      const newUser = { ...prevUser, ...updatedData };
       return newUser;
     });
   };

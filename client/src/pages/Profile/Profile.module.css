@@ -1,6 +1,13 @@
 .pageContainer {
   min-height: 100vh;
-  background: white;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 230, 240, 0.5) 0%,     /* Hồng nhạt trắng trầm */
+    rgba(255, 240, 235, 0.4) 25%,    /* Cam nhạt */
+    rgba(245, 235, 255, 0.4) 50%,    /* Tím nhạt */
+    rgba(250, 240, 255, 0.3) 75%,    /* Tím pastel */
+    rgba(255, 250, 250, 0.2) 100%    /* Trắng hồng nhạt */
+  );
   padding-bottom: 80px;
 }
 
