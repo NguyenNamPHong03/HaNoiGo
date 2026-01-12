@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
-import { memo, useState, useEffect, useMemo, useCallback } from 'react';
-import styles from './DetailPanel.module.css';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import ImageViewer from '../ImageViewer/ImageViewer';
+import styles from './DetailPanel.module.css';
 
 const DetailTabs = ({ place }) => {
     const [activeTab, setActiveTab] = useState('overview');
@@ -388,6 +388,25 @@ const DetailPanel = memo(({ selectedItem }) => {
         setActiveImage(0);
     }, [place?._id]);
 
+    // Handler: Open Google Maps with GPS coordinates (MUST be before early return)
+    const handleOpenGoogleMaps = useCallback(() => {
+        if (!place) return;
+        
+        const address = place.address || selectedItem?.address || '';
+        const location = place.location;
+        
+        if (location && location.coordinates && location.coordinates.length === 2) {
+            const [lng, lat] = location.coordinates;
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+            window.open(url, '_blank', 'noopener,noreferrer');
+        } else {
+            // Fallback: search by address
+            const encodedAddress = encodeURIComponent(address);
+            const url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+            window.open(url, '_blank', 'noopener,noreferrer');
+        }
+    }, [place, selectedItem]);
+
     if (!place) return null;
 
     const name = place.name || selectedItem.title;
@@ -443,6 +462,17 @@ const DetailPanel = memo(({ selectedItem }) => {
                 <div className={styles.actionButtons}>
                     <button className={styles.contactBtn}>Liên hệ</button>
                     <button className={styles.orderBtn}>Đặt ngay</button>
+                    <button 
+                        className={styles.directionsBtn}
+                        onClick={handleOpenGoogleMaps}
+                        title="Mở Google Maps để chỉ đường"
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                            <circle cx="12" cy="10" r="3"/>
+                        </svg>
+                        Chỉ đường
+                    </button>
                 </div>
             </div>
         </aside>

@@ -258,10 +258,12 @@
     display: flex;
     gap: 15px;
     margin-bottom: 30px;
+    flex-wrap: wrap;
 }
 
 .contactBtn,
-.orderBtn {
+.orderBtn,
+.directionsBtn {
     flex: 1;
     padding: 15px;
     border-radius: 12px;
@@ -270,6 +272,11 @@
     font-size: 14px;
     transition: 0.2s;
     font-family: 'Google Sans Flex', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 150px;
 }
 
 .contactBtn {
@@ -290,6 +297,21 @@
 
 .orderBtn:hover {
     background: #0052cc;
+}
+
+.directionsBtn {
+    background: #10B981;
+    color: #fff;
+    border: none;
+}
+
+.directionsBtn:hover {
+    background: #059669;
+    transform: translateY(-1px);
+}
+
+.directionsBtn svg {
+    fill: currentColor;
 }
 
 .mapPreview {
