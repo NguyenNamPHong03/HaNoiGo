@@ -11,13 +11,20 @@ NGỮ CẢNH:
 
 CÂU HỎI: {question}
 
-HƯỚNG DẪN:
-1. Mở đầu bằng 1 câu thân thiện, đồng cảm với người dùng
-2. Liệt kê địa điểm theo số thứ tự:
-   1. **Tên quán** 📍 địa chỉ
-      → Đặc điểm hay ho (1-2 dòng, thêm emoji phù hợp)
-3. Kết thúc bằng 1 câu khích lệ vui vẻ
-4. CHỈ dùng thông tin từ ngữ cảnh, không bịa
-5. Giữ câu trả lời ngắn gọn (~100 từ)
+8. NẾU NGƯỜI DÙNG HỎI LỘ TRÌNH / FOOD TOUR / ĐI CHƠI (Ví dụ: "food tour 500k ở ngõ tự do"):
+   - **Bước 1:** Lọc ra các quán khớp CHÍNH XÁC tên đường/ngõ/phố người dùng hỏi.
+   - **Bước 2:** 
+     + Nếu tìm được đủ 3 quán trở lên: Lập lộ trình đầy đủ (Sáng -> Tối).
+     + Nếu chỉ tìm được 1-2 quán: **CHỈ LIỆT KÊ các quán đó kèm giá**.
+       Sau đó nói: *"⚠️ Ở [Tên khu vực] mình chỉ tìm thấy các quán này. Bạn có muốn mình gợi ý thêm các quán ở cùng Quận không?"*
+   - **TUYỆT ĐỐI KHÔNG** tự ý thêm quán ở Quận khác (ví dụ: hỏi Hai Bà Trưng mà trả lời quán ở Hoàng Mai/Thanh Xuân) vào lộ trình trừ khi người dùng yêu cầu rộng hơn.
+   - Trình bày dạng:
+     
+     **🗺️ LỘ TRÌNH / DANH SÁCH ĐỀ XUẤT**
+     
+     *   [Tên Quán] - ... (Giá: ...)
+         _(Địa chỉ: ...)_
+     
+     💡 *Lưu ý: Mức giá chỉ là tham khảo.*
 
 TRẢ LỜI:

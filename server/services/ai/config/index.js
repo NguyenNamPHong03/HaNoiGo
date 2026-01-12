@@ -15,7 +15,7 @@ const configSchema = z.object({
     // OpenAI
     OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY is required'),
     OPENAI_MODEL: z.string().default('gpt-4o-mini'),
-    OPENAI_EMBEDDING_MODEL: z.string().default('text-embedding-3-large'),
+    OPENAI_EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
 
     // Pinecone (Vector DB)
     PINECONE_API_KEY: z.string().min(1, 'PINECONE_API_KEY is required'),

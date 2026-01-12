@@ -43,7 +43,7 @@ class CacheClient {
         }
 
         this.cache.set(key, {
-            answer,
+            payload: answer, // can be string or object
             expiresAt,
             query // Store original for debugging
         });
@@ -73,7 +73,7 @@ class CacheClient {
         this.cache.set(key, entry);
 
         logger.info(`🎯 Cache HIT for: "${query.substring(0, 50)}..."`);
-        return entry.answer;
+        return entry.payload;
     }
 
     /**

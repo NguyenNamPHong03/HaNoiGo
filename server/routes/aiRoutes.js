@@ -5,6 +5,7 @@
 import express from 'express';
 import { processMessage, healthCheck } from '../services/ai/index.js';
 import Place from '../models/Place.js';
+import { sortPlacesByAnswerOrder } from '../services/ai/utils/reorderUtils.js';
 
 const router = express.Router();
 
@@ -73,6 +74,12 @@ router.post('/chat', async (req, res) => {
         .filter(Boolean);
     }
 
+    // REORDERING FIX 2.1: Use shared utility
+    // Sort places by appearance in AI answer
+    if (aiResult.answer && places.length > 0) {
+      places = sortPlacesByAnswerOrder(places, aiResult.answer);
+    }
+
     // Build sources with actual names
     const enrichedSources = (aiResult.sources || []).map((src, idx) => ({
       name: src.metadata?.name || src.name || `Source ${idx + 1}`,
@@ -99,7 +106,9 @@ router.post('/chat', async (req, res) => {
           averageRating: p.averageRating,
           totalReviews: p.totalReviews,
           images: p.images,
-          aiTags: p.aiTags
+          aiTags: p.aiTags,
+          additionalInfo: p.additionalInfo,
+          googleData: p.googleData
         }))
       }
     });
@@ -163,6 +172,11 @@ router.post('/chat/stream', async (req, res) => {
         .filter(Boolean);
     }
 
+    // REORDERING FIX 2.1 (Stream): Use shared utility
+    if (aiResult.answer && places.length > 0) {
+      places = sortPlacesByAnswerOrder(places, aiResult.answer);
+    }
+
     // Send places event
     res.write(`data: ${JSON.stringify({
       type: 'places',
@@ -175,7 +189,9 @@ router.post('/chat/stream', async (req, res) => {
         totalReviews: p.totalReviews,
         images: p.images,
         category: p.category,
-        aiTags: p.aiTags
+        aiTags: p.aiTags,
+        additionalInfo: p.additionalInfo,
+        googleData: p.googleData
       }))
     })}\n\n`);
 

@@ -642,3 +642,20 @@
         display: none;
     }
 }
+
+.reviewImages {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+.reviewImgThumb {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    object-fit: cover;
+    cursor: pointer;
+    border: 1px solid #eee;
+}

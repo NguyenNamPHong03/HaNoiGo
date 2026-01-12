@@ -40,7 +40,7 @@ class VectorStoreFactory {
             this.embeddings = new OpenAIEmbeddings({
                 apiKey: config.openai.apiKey,
                 modelName: config.openai.embeddingModel,
-                dimensions: 1024, // Optimized dimension
+                dimensions: 1536, // Standard dimension for text-embedding-3-small
             });
 
             // Test connection

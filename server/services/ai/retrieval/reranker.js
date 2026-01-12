@@ -28,6 +28,7 @@ class Reranker {
 
             this.reranker = new CohereRerank({
                 apiKey: config.cohere.apiKey,
+                model: RETRIEVAL_CONFIG.RERANK_MODEL,
                 topN: RETRIEVAL_CONFIG.RERANK_TOP_K,
             });
 

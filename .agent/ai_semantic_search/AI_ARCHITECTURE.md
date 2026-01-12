@@ -1,12 +1,11 @@
 ## 1. Tổng Quan (Overview)
 
-Tài liệu này mô tả kiến trúc kỹ thuật cho phân hệ AI (AI Module) của dự án **HanoiGo**. Hệ thống được thiết kế theo mô hình **RAG (Retrieval-Augmented Generation) Enterprise-grade**, tập trung vào khả năng cá nhân hóa cao, độ trễ thấp và độ chính xác của dữ liệu.
+Tài liệu này mô tả kiến trúc kỹ thuật cho phân hệ AI (AI Module) của dự án **HanoiGo**. Hệ thống được thiết kế theo mô hình **RAG (Retrieval-Augmented Generation) Enterprise-grade**, tích hợp các kỹ thuật tìm kiếm lai (Hybrid Search) và tối ưu hóa thứ hạng (Re-ranking) để xử lý chính xác các truy vấn địa điểm phức tạp (ví dụ: tìm theo ngõ, ngách).
 
 Mục tiêu chính:
-*   **High Availability:** Hệ thống hoạt động ổn định dưới tải cao.
+*   **Accuracy:** Ưu tiên độ chính xác tuyệt đối cho các truy vấn địa chỉ cụ thể (Address-Aware).
 *   **Cost Optimization:** Tối ưu chi phí Token thông qua Caching và chiến lược Context Window hiệu quả.
-*   **Modular:** Dễ dàng thay thế Model (LLM), Vector DB hoặc chiến lược truy xuất mà không ảnh hưởng toàn bộ hệ thống.
-*   **Traceability:** Giám sát được toàn bộ luồng suy luận của AI để debug và cải thiện chất lượng.
+*   **Modular:** Dễ dàng thay thế Model (LLM), Vector DB hoặc chiến lược truy xuất.
 
 ***
 
@@ -14,148 +13,128 @@ Mục tiêu chính:
 
 ### Core AI Engine
 *   **Orchestration Framework:** [LangChain.js](https://js.langchain.com/) (v0.2+) - Quản lý luồng xử lý (Chain/LCEL).
-*   **LLM Provider:** OpenAI API (`gpt-5-mini-2025-08-07` cho tác vụ thường, `gpt-4o` cho tác vụ phức tạp). Chuẩn bị sẵn Adapter để switch sang Azure OpenAI nếu cần bảo mật cao hơn.
-*   **Vector Database:** [Pinecone](https://www.pinecone.io/) (Serverless mode) - Lưu trữ Embeddings với khả năng Metadata Filtering mạnh mẽ.
-*   **Embedding Model:** `text-embedding-3-small` (OpenAI) - Tối ưu cân bằng giữa chi phí và hiệu năng (MTEB benchmark cao).
+*   **LLM Provider:** OpenAI API (`gpt-4o-mini`) - Model cân bằng tốt nhất giữa hiệu năng và chi phí.
+*   **Vector Database:** [Pinecone](https://www.pinecone.io/) (Serverless mode) - Lưu trữ Embeddings.
+*   **Embedding Model:** `text-embedding-3-large` (OpenAI).
 
 ### Performance & Quality
-*   **Reranking:** [Cohere Rerank](https://cohere.com/rerank) - Sắp xếp lại kết quả tìm kiếm vector để tăng độ chính xác (Relevance).
-*   **Semantic Caching:** [Redis](https://redis.io/) (hoặc Upstash) - Cache câu trả lời dựa trên ngữ nghĩa câu hỏi để giảm latency và chi phí API.
-*   **Evaluation:** [Ragas](https://docs.ragas.io/) hoặc [LangSmith](https://smith.langchain.com/) - Đánh giá tự động chất lượng câu trả lời (Faithfulness, Answer Relevance).
+*   **Retrieval Strategy:** **Hybrid Search**
+    *   Vector Search (Semantic): Tìm kiếm theo ngữ nghĩa.
+    *   Keyword Search (MongoDB): Tìm kiếm Text & Regex (hỗ trợ "ngõ", "ngách", "phố" smart matching).
+*   **Reranking:** [Cohere Rerank](https://cohere.com/rerank) (`rerank-multilingual-v3.0`) - Sắp xếp lại danh sách kết quả dựa trên độ liên quan ngữ nghĩa sâu.
+*   **Local Reordering:** Thuật toán tùy chỉnh để boost điểm cho các địa điểm khớp chính xác tên hoặc địa chỉ (Address Boosting).
+*   **Semantic Caching:** Redis (In-Memory) - Cache toàn bộ **Payload** (Câu trả lời + Danh sách địa điểm + Context) để đảm bảo đồng nhất UI khi cache hit.
 
 ### Infrastructure
 *   **Runtime:** Node.js (v20+ LTS).
-*   **Language:** JavaScript (ES Modules) hoặc TypeScript (Khuyến nghị).
+*   **Language:** JavaScript (ES Modules).
 
 ***
 
 ## 3. Cấu Trúc Dự Án (Enterprise Folder Structure)
 
-Cấu trúc thư mục được thiết kế theo nguyên lý **Separation of Concerns** (Phân tách mối quan tâm).
-
 ```plaintext
 server/services/ai/
-├── config/                     \# Cấu hình tập trung
-│   ├── index.js                \# Env vars (API Keys, Configs)
-│   └── constants.js            \# Các hằng số (Model names, limits)
+├── config/                     # Cấu hình tập trung
+│   ├── index.js                # Env vars & Zod validation
+│   └── constants.js            # Constants (Models, Retrieve Config)
 │
-├── core/                       \# Core Factories (Design Patterns)
-│   ├── llmFactory.js           \# Singleton quản lý khởi tạo LLM
-│   ├── vectorStoreFactory.js   \# Singleton quản lý kết nối Pinecone
-│   ├── cacheClient.js          \# Redis client cho Semantic Cache
-│   └── telemetry.js            \# Cấu hình LangSmith/OpenTelemetry
+├── core/
+│   ├── llmFactory.js           # LLM Singleton
+│   ├── vectorStoreFactory.js   # Pinecone Connection
+│   └── cacheClient.js          # Redis Cache
 │
-├── prompts/                    \# Quản lý Prompt (Prompt Engineering)
-│   ├── templates/              \# File text thuần chứa prompt
-│   │   ├── system.v1.txt       \# Persona của Bot
-│   │   ├── rag_query.v1.txt    \# Prompt RAG tiêu chuẩn
-│   │   └── query_rewrite.txt   \# Prompt viết lại câu hỏi
-│   └── promptLoader.js         \# Logic load và inject variables vào prompt
+├── prompts/
+│   ├── templates/
+│   │   ├── system.v1.txt       # Persona (Fong)
+│   │   ├── rag_query.v1.txt    # RAG Prompt (kèm Rank Instruction)
+│   │   └── query_rewrite.v1.txt # Prompt viết lại câu hỏi
+│   └── promptLoader.js         # Template Management
 │
-├── retrieval/                  \# Logic tìm kiếm \& Truy xuất dữ liệu
-│   ├── loaders/                \# Xử lý Ingestion (Load data từ MongoDB)
-│   ├── splitters/              \# Logic Chunking (Propositions/Semantic Splitter)
-│   ├── strategies/             \# Các chiến lược tìm kiếm
-│   │   ├── basicRetriever.js   \# Vector Search thuần
-│   │   └── hybridRetriever.js  \# Vector + Keyword (BM25)
-│   └── reranker.js             \# Logic gọi Cohere để rerank kết quả
+├── retrieval/
+│   ├── reranker.js             # Cohere Rerank Implementation
+│   └── strategies/
+│       └── basicRetriever.js   # Base Retriever
 │
-├── pipelines/                  \# (Workflows) Các luồng xử lý chính - LCEL
-│   ├── mainChatPipeline.js     \# Luồng Chatbot chính (Guard -> Cache -> RAG -> LLM)
-│   ├── ingestionPipeline.js    \# Luồng nạp dữ liệu (ETL)
-│   └── feedbackPipeline.js     \# Xử lý feedback từ user để fine-tune
+├── pipelines/
+│   └── mainChatPipeline.js     # Orchestrator chính:
+│                               # 1. Guard -> 2. Rewrite -> 3. Hybrid Retrieve
+│                               # 4. Cohere Rerank -> 5. Local Reorder -> 6. LLM
 │
-├── tools/                      \# Các function calling tools (nếu cần mở rộng Agent)
-│   ├── bookingTool.js          \# Tool đặt bàn
-│   └── weatherTool.js          \# Tool xem thời tiết
+├── guardrails/
+│   ├── inputGuard.js           # Validation đầu vào
+│   └── outputGuard.js          # Validation đầu ra
 │
-├── guardrails/                 \# Bảo mật \& An toàn nội dung
-│   ├── inputGuard.js           \# Chặn PII, Prompt Injection
-│   └── outputGuard.js          \# Chặn nội dung độc hại, hallucination check
-│
-├── utils/                      \# Tiện ích bổ trợ
-│   ├── tokenCounter.js         \# Đếm token để estimate chi phí
-│   ├── outputParsers.js        \# Format JSON/String đầu ra
-│   └── errHandler.js           \# Xử lý lỗi AI tập trung
-│
-└── index.js                    \# Entry point (Export các Service ra bên ngoài)
+└── index.js                    # Service Export
 ```
 
 ***
 
 ## 4. Luồng Dữ Liệu Chi Tiết (Data Flow)
 
-Biểu đồ luồng xử lý request chuẩn doanh nghiệp cho `mainChatPipeline.js`:
+Biểu đồ luồng xử lý request chuẩn cho `mainChatPipeline.js` & `aiRoutes.js`:
 
 ```mermaid
 graph TD
     A[User Request] --> B{Input Guardrails}
     B -- Vi phạm --> C[Block Response]
-    B -- Hợp lệ --> D{Semantic Cache (Redis)}
+    B -- Hợp lệ --> D{Semantic Cache}
     
-    D -- Hit (Đã có câu hỏi tương tự) --> E[Return Cached Answer]
+    D -- Hit --> E[Return Cached Answer]
     D -- Miss --> F[Query Rewriter]
     
-    F --> G[Hybrid Retrieval]
-    G --> G1[Pinecone (Vector)]
-    G --> G2[Metadata Filter (MongoDB Prefs)]
+    F --> G[Hybrid Retrieval Operations]
     
-    G1 & G2 --> H[Raw Documents]
-    H --> I[Reranker (Cohere)]
-    I --> J[Top K Relevant Docs]
+    subgraph "Stage 3.5: Hybrid Retrieval"
+        G --> H1[Pinecone Vector Search]
+        G --> H2[Mongo Text/Regex Search]
+        H2 -- Address Detection --> H3[Smart Address Regex]
+    end
     
-    J --> K[LLM Generation (GPT-5-Mini)]
-    K --> L{Output Guardrails}
+    H1 & H2 & H3 --> I[Raw Candidate List (Top 20)]
     
-    L -- Vi phạm --> M[Fallback Response]
-    L -- Hợp lệ --> N[Update Cache]
-    N --> O[Final Response to User]
+    I --> J[Cohere Reranker (Top 10)]
+    J -- Semantic Filter --> K[Local Reorder]
+    
+    K -- Name/Address Boost --> L[Optimized Context]
+    
+    L --> M[LLM Generation (GPT-4o-mini)]
+    M --> N[Generated Answer]
+    
+    subgraph "Post-Processing (Route Layer)"
+        N --> O[Extract Place IDs]
+        O --> P[Fetch Full Data (MongoDB)]
+        P --> Q[**Answer-Aware Reordering**]
+        Q -- Sync UI with Text --> R[Final JSON Response]
+    end
 ```
 
 ***
 
-## 5. Các Mẫu Thiết Kế Chính (Key Design Patterns)
+## 5. Tối Ưu Hóa Hiệu Năng & Chất Lượng (Optimization Config)
 
-1.  **Factory Pattern (`core/llmFactory.js`):**
-    *   Giúp dễ dàng chuyển đổi giữa `ChatOpenAI`, `ChatAnthropic` hoặc `AzureChatOpenAI` dựa trên biến môi trường mà không cần sửa code logic nghiệp vụ.
+Hệ thống được tinh chỉnh với các tham số "Vàng" để cân bằng giữa tốc độ và độ chính xác:
 
-2.  **Strategy Pattern (`retrieval/strategies/`):**
-    *   Cho phép runtime switch giữa các chiến lược tìm kiếm: `Basic` (nhanh, rẻ) hoặc `Hybrid` (chậm hơn, chính xác hơn) tùy thuộc vào gói dịch vụ của user hoặc loại câu hỏi.
+### 🚀 Performance (Hiệu Suất)
+*   **Model**: `gpt-4o-mini` (latency < 4s, cost ~1/30 GPT-4).
+*   **Vector Search**: `TOP_K = 20`. Lấy rộng để tránh bỏ sót (High Recall).
+*   **Caching**: Redis Semantic Cache (TTL 1h) giúp giảm 30-50% request lặp lại.
 
-3.  **Singleton Pattern (`core/vectorStoreFactory.js`):**
-    *   Đảm bảo chỉ có một kết nối duy nhất tới Pinecone/Redis trong suốt vòng đời ứng dụng để tránh leak connection.
+### ⭐ Quality (Chất Lượng)
+*   **Reranking**: `Cohere v3` (`TOP_K = 10`). Lọc kỹ lại 20 kết quả thô để chọn ra 10 kết quả tinh túy nhất cho LLM.
+*   **Strict Location**: Prompt được cấu hình để "Cảnh báo" nếu không tìm thấy quán đúng khu vực (tránh Hallucination).
+*   **UI Synchronization**: Thuật toán "Answer-Aware Reordering" sắp xếp lại danh sách hiển thị khớp 100% với thứ tự xuất hiện trong câu trả lời (xử lý cả viết tắt, tên phụ).
 
-4.  **Chain of Responsibility (Pipelines):**
-    *   Sử dụng LCEL (LangChain Expression Language) để nối các bước xử lý thành một chuỗi: `Retriever | Prompt | Model | OutputParser`.
-
-***
-
-## 6. Tiêu Chuẩn Bảo Mật & An Toàn (Security & Safety)
-
-1.  **PII Redaction (Ẩn danh hóa):**
-    *   Sử dụng middleware trong `inputGuard` để phát hiện và mask các thông tin nhạy cảm (SĐT, Email) trước khi gửi sang OpenAI.
-
-2.  **Prompt Injection Defense:**
-    *   Sử dụng delimiters (ví dụ: `"""Query"""`) trong System Prompt.
-    *   Kiểm tra độ dài và các ký tự đặc biệt trong input.
-
-3.  **Rate Limiting:**
-    *   Giới hạn số request AI/phút cho từng User ID để tránh bị DoS bill (cạn kiệt ngân sách API).
+### 🧩 Review & Multilingual Strategy (Chiến lược Đánh giá & Đa ngôn ngữ)
+*   **Tại sao lưu Review vào Pinecone?**
+    *   Review chứa các "từ khóa cảm xúc" (clean, cozy, noisy, friendly) mà dữ liệu tĩnh không có.
+    *   Ví dụ: User tìm *"quán toilet sạch"*, chỉ có trong review mới nhắc đến.
+*   **Cách thức (Aggregation)**:
+    *   Thay vì lưu mỗi review là 1 vector (gây loãng kết quả), ta **gộp Top 3 review chất lượng nhất** ( > 4 sao, dài > 10 ký tự) vào thẳng văn bản mô tả của địa điểm (`PageContent`).
+    *   Khi tìm kiếm, nếu vector khớp với nội dung review, hệ thống sẽ trả về **Địa điểm** đó.
+*   **Đa ngôn ngữ (Multilingual)**:
+    *   Model `text-embedding-3-small` hỗ trợ tốt việc mapping ý nghĩa xuyên ngôn ngữ.
+    *   Review tiếng Hàn ("matjib" - ngon) vẫn sẽ khớp với query tiếng Việt ("quán ngon") hoặc tiếng Anh ("tasty").
 
 ***
-
-## 7. Chiến Lược Đánh Giá & Cải Tiến (Evaluation Loop)
-
-1.  **Feedback Loop:**
-    *   Mỗi câu trả lời của Bot đều có nút Like/Dislike.
-    *   Dữ liệu Dislike + Conversation ID sẽ được log lại vào DB để dev review.
-
-2.  **Automated Testing:**
-    *   Sử dụng **Ragas** để chạy test hàng đêm trên bộ dataset mẫu (Golden Dataset).
-    *   Các chỉ số cần đo:
-        *   **Faithfulness:** Câu trả lời có bịa ra ngoài context không?
-        *   **Answer Relevance:** Câu trả lời có đúng trọng tâm câu hỏi không?
-        *   **Context Precision:** Các doc tìm được có đúng thứ cần tìm không?
-
-***
-*Tài liệu này được cập nhật lần cuối vào: 11/01/2026 bởi HanoiGo Team.*
+*Tài liệu này được cập nhật lần cuối vào: 12/01/2026 bởi HanoiGo Team.*

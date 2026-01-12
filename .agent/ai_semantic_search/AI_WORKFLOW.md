@@ -33,57 +33,59 @@ Tài liệu này mô tả chi tiết luồng dữ liệu (Data Flow) của tính
 
 ---
 
-## 3. 🧠 AI Pipeline Execution (Luồng Xử Lý Thông Minh)
+## 3. 🧠 AI Pipeline Execution (Luồng Xử lý Thông Minh)
 
-Đây là "bộ não" của hệ thống, được định nghĩa trong `server/services/ai/pipelines/mainChatPipeline.js`. Pipeline chạy tuần tự qua các bước sau:
+Đây là "bộ não" của hệ thống, được định nghĩa trong `server/services/ai/pipelines/mainChatPipeline.js`. Pipeline chạy tuần tự theo logic **Hybrid Search + Re-ranking**:
 
 ### Bước 4: Input Guard & Caching
-*   **Input Guard**: Kiểm tra câu hỏi có hợp lệ/an toàn không (độ dài, từ khóa cấm).
-*   **Semantic Cache**:
-    *   Kiểm tra trong bộ nhớ đệm (LRU Cache/Redis) xem câu hỏi này (hoặc câu tương tự) đã được trả lời chưa.
-    *   ✅ **Hit**: Trả về kết quả ngay lập tức (Latency < 10ms).
-    *   ❌ **Miss**: Tiếp tục sang Bước 5.
+*   **Input Guard**: Kiểm tra câu hỏi có hợp lệ/an toàn không.
+*   **Semantic Cache**: Kiểm tra xem câu hỏi tương tự đã có câu trả lời chưa (Redis). ✅ Hit -> Return ngay.
 
-### Bước 5: Retrieval (Tìm Kiến Thức)
-*   **Embedding**: Chuyển câu hỏi người dùng thành vector (dãy số) sử dụng model `text-embedding-3-large`.
-*   **Vector Search**: Truy vấn database **Pinecone**.
-    *   Tìm các đoạn văn bản (Documents) có vector *gần giống nhất* với vector câu hỏi.
-    *   Lấy về Top K kết quả (ví dụ: 3-5 địa điểm phù hợp nhất).
-*   **Reranking (Optional)**: Sắp xếp lại kết quả một lần nữa để đảm bảo độ chính xác cao nhất (hiện tại skip nều không cấu hình Cohere).
+### Bước 5: Query Understanding (Hiểu Câu Hỏi)
+*   **Query Rewrite**: Sử dụng LLM để viết lại câu hỏi, làm rõ ý định và chuẩn hóa địa danh (ví dụ: "chè bk" -> "quán chè khu vực Đại học Bách Khoa").
 
-### Bước 6: Prompt Construction (Xây Dựng Ngữ Cảnh)
-*   Hệ thống ghép nối các thông tin để tạo thành một "Prompt" gửi cho LLM:
-    *   **System Persona**: "Bạn là Fong, hướng dẫn viên du lịch thân thiện, am hiểu Hà Nội..."
-    *   **Context**: Thông tin các địa điểm tìm được ở Bước 5 (Tên, địa chỉ, đặc điểm...).
-    *   **User Question**: Câu hỏi gốc của người dùng.
+### Bước 6: Hybrid Retrieval (Tìm Kiếm Lai)
+Hệ thống thực hiện song song 2 chiến lược tìm kiếm:
+1.  **Vector Search (Pinecone)**: Tìm kiếm theo ngữ nghĩa (Semantic), hiểu được các mô tả trừu tượng (ví dụ: "quán lãng mạn").
+2.  **Keyword/Regex Search (MongoDB)**:
+    *   Tìm kiếm Text thông thường.
+    *   **Smart Address Regex**: Tự động phát hiện các mẫu địa chỉ (Ngõ, Ngách, Phố) để tìm chính xác địa điểm theo vị trí địa lý (ví dụ: "Ngõ Tự Do").
 
-### Bước 7: LLM Inference (Suy Luận)
-*   **Model**: Sử dụng **OpenAI GPT-4o-mini**.
-*   **Nhiệm vụ**: LLM đọc context và sinh ra câu trả lời tự nhiên, trích xuất ID của các địa điểm được nhắc đến.
-*   **Output**: Trả về câu trả lời dạng text (kèm emojis, format) và danh sách nguồn tham khảo.
+### Bước 7: Optimize Ranking (Tối Ưu Thứ Hạng)
+Kết quả từ Bước 6 được gộp lại và xử lý qua 2 tầng lọc:
+1.  **Cohere Rerank**: Sử dụng model AI chuyên dụng (`rerank-multilingual-v3.0`) để sắp xếp lại danh sách dựa trên độ liên quan ngữ nghĩa sâu.
+2.  **Local Reordering (Golden Fix)**:
+    *   Tầng xử lý logic cuối cùng.
+    *   Kiểm tra nếu có địa điểm khớp chính xác Tên hoặc Địa chỉ với câu hỏi gốc.
+    *   **Boost** địa điểm đó lên vị trí đầu tiên (RANK #1).
+
+### Bước 8: LLM Generation (Sinh Câu Trả Lời)
+*   **Context Assembly**: Ghép các địa điểm đã sắp xếp vào prompt, đánh số thứ tự rõ ràng (`RANK #1`, `RANK #2`...).
+*   **Instruction**: Yêu cầu LLM ưu tiên tuyệt đối thông tin từ `RANK #1` nếu có.
+*   **Generation**: Sinh câu trả lời tự nhiên, trích xuất ID địa điểm.
 
 ---
 
-## 4. 📦 Data Enrichment & Response (Làm Giàu Dữ Liệu)
+## 4. 📦 Data Enrichment & Response
 
-Sau khi Pipeline trả về kết quả thô, `aiRoutes.js` tiếp tục xử lý:
-
-### Bước 8: Fetch Full Data
-*   Từ danh sách ID địa điểm mà AI gợi ý, Server truy vấn ngược lại **MongoDB** (`Place.find(...)`).
-*   **Mục đích**: Lấy đầy đủ thông tin chi tiết nhất (Hình ảnh, Giá, Đánh giá, Giờ mở cửa...) mà Vector DB có thể không lưu hết.
-
-### Bước 9: Reordering
-*   Sắp xếp lại danh sách địa điểm từ MongoDB sao cho đúng thứ tự độ liên quan mà AI đã tìm ra (Tránh việc MongoDB trả về lộn xộn).
+### Bước 9: Reordering Strategy (Chiến Thuật Sắp Xếp)
+*   **Vấn đề**: Thứ tự địa điểm trả về từ MongoDB có thể không khớp với thứ tự mà AI đã "nghĩ" trong đầu.
+*   **Giải pháp (Answer-Aware Sorting)**:
+    1.  Server phân tích câu trả lời text của AI.
+    2.  Sử dụng thuật toán **Fuzzy Matching** (tìm tên chính xác, tên ngắn, hoặc 3 từ đầu) để định vị quán trong văn bản.
+    3.  Đảm bảo sự đồng nhất tuyệt đối giữa "Lời nói" (Text) và "Hành động" (UI Card).
 
 ### Bước 10: Final Response
-Server trả về JSON cho Client:
+Server trả về JSON cho Client, client chỉ việc render theo đúng thứ tự mảng `places`:
 ```json
 {
   "success": true,
   "data": {
-    "answer": "Chào bạn! Mình gợi ý quán X ở Cầu Giấy...",
-    "places": [ ...chi tiết đầy đủ các quán... ],
-    "sources": [ ...nguồn tham khảo... ]
+    "answer": "Theo mình, bạn nên thử quán [X] vì...",
+    "places": [
+       { "name": "X", ... }, // Luôn nằm đầu
+       { "name": "Y", ... }
+    ]
   }
 }
 ```
@@ -93,9 +95,8 @@ Server trả về JSON cho Client:
 ## 5. 🎨 Client Display (Hiển Thị Kết Quả)
 
 ### Bước 11: Render UI (`SearchResult.jsx`)
-*   **AI Answer**: Hiển thị câu trả lời của Fong trong khung `AISearchSection`.
-*   **Place List**: Render danh sách `PropertyCard` phía dưới.
-*   **Detail Panel**: Khi người dùng click vào card, hiển thị thông tin chi tiết (lấy từ dữ liệu đã fetch ở Bước 8).
+*   **AI Answer**: Hiển thị câu trả lời của Fong.
+*   **Place List**: Render danh sách card. Do Server đã sort sẵn, Client không cần xử lý logic phức tạp.
 
 ---
 
@@ -104,32 +105,51 @@ Server trả về JSON cho Client:
 ```mermaid
 sequenceDiagram
     participant User
-    participant Client (React)
-    participant Server (API)
-    participant Pipeline (Controller)
-    participant VectorDB (Pinecone)
-    participant LLM (OpenAI)
-    participant DB (MongoDB)
+    participant Client
+    participant Server
+    participant Pipeline
+    participant VectorDB
+    participant MongoDB
+    participant Cohere
+    participant LLM
 
-    User->>Client: Nhập câu hỏi "Tìm quán cafe..."
+    User->>Client: Nhập câu hỏi "Tìm quán chè ở ngõ tự do"
     Client->>Server: POST /api/ai/chat
-    Server->>Pipeline: processMessage()
+    Server->>Pipeline: execute()
     
-    rect rgb(200, 255, 200)
-        Note over Pipeline: AI Core Logic
-        Pipeline->>Pipeline: Check Cache
-        Pipeline->>VectorDB: Semantic Search (Get Context)
-        VectorDB-->>Pipeline: Return Relevant Docs
-        Pipeline->>LLM: Gửi Prompt (Persona + Context + Query)
-        LLM-->>Pipeline: Trả về câu trả lời & IDs
+    rect rgb(240, 248, 255)
+        Note over Pipeline: Giai đoạn 1: Hiểu & Tìm kiếm
+        Pipeline->>Pipeline: Query Rewrite (Chuẩn hóa câu hỏi)
+        par Parallel Search
+            Pipeline->>VectorDB: Semantic Search
+            Pipeline->>MongoDB: Regex Address Search
+        end
+        VectorDB-->>Pipeline: Docs A
+        MongoDB-->>Pipeline: Docs B
     end
 
-    Pipeline-->>Server: Kết quả AI (Answer + PlaceIDs)
+    rect rgb(255, 240, 245)
+        Note over Pipeline: Giai đoạn 2: Xếp hạng (Critical)
+        Pipeline->>Cohere: Rerank (Docs A + B)
+        Cohere-->>Pipeline: Top 5 Semantic Matches
+        Pipeline->>Pipeline: Local Reorder (Boost khớp địa chỉ)
+        Note right of Pipeline: "Chè Anh Đẹp Trai" -> Rank #1
+    end
+
+    rect rgb(230, 255, 230)
+        Note over Pipeline: Giai đoạn 3: Sinh câu trả lời
+        Pipeline->>LLM: Prompt (Context có Rank #1...)
+        LLM-->>Pipeline: Câu trả lời tự nhiên
+    end
     
-    Server->>DB: Fetch chi tiết địa điểm theo IDs
-    DB-->>Server: Full Place Data
-    Server->>Server: Sắp xếp lại địa điểm
+    Pipeline-->>Server: Result (Answer + PlaceIDs)
     
-    Server-->>Client: JSON Response (Answer + Places)
-    Client-->>User: Hiển thị câu trả lời & Danh sách quán
+    rect rgb(255, 250, 240)
+        Note over Server: Giai đoạn 4: Làm giàu & Sắp xếp lại
+        Server->>MongoDB: Fetch Full Data for PlaceIDs
+        Server->>Server: **Answer-Aware Sorting**
+        Note right of Server: Nếu AI nhắc "Quán X" trước, Quán X lên đầu
+    end
+    
+    Server-->>Client: Final Response (Answer + Sorted Places)
 ```

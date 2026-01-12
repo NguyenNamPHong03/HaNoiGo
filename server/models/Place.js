@@ -294,7 +294,7 @@ const placeSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-placeSchema.index({ name: 'text', description: 'text' });
+placeSchema.index({ name: 'text', description: 'text', address: 'text' });
 placeSchema.index({ category: 1, status: 1, isActive: 1 });
 placeSchema.index({ district: 1 });
 placeSchema.index({ 'priceRange.min': 1, 'priceRange.max': 1 });

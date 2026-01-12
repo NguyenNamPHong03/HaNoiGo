@@ -1,9 +1,26 @@
 /* eslint-disable react/prop-types */
-import { memo, useState, useEffect, useMemo } from 'react';
+import { memo, useState, useEffect, useMemo, useCallback } from 'react';
 import styles from './DetailPanel.module.css';
+import ImageViewer from '../ImageViewer/ImageViewer';
 
 const DetailTabs = ({ place }) => {
     const [activeTab, setActiveTab] = useState('overview');
+
+    // ImageViewer State
+    const [lightboxImages, setLightboxImages] = useState([]);
+    const [lightboxIndex, setLightboxIndex] = useState(0);
+    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
+    // Open lightbox with specific images and starting index
+    const openLightbox = useCallback((images, startIndex = 0) => {
+        setLightboxImages(images);
+        setLightboxIndex(startIndex);
+        setIsLightboxOpen(true);
+    }, []);
+
+    const closeLightbox = useCallback(() => {
+        setIsLightboxOpen(false);
+    }, []);
 
     const description = place.description || `Welcome to ${place.name}`;
     const address = place.address;
@@ -290,28 +307,51 @@ const DetailTabs = ({ place }) => {
                                     <div className={styles.reviewHeader}>
                                         <div className={styles.reviewerInfo}>
                                             <div className={styles.reviewerAvatar}>
-                                                {review.profile_photo_url ? (
-                                                    <img src={review.profile_photo_url} alt="User" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
+                                                {(review.profile_photo_url || review.reviewerPhotoUrl) ? (
+                                                    <img
+                                                        src={review.profile_photo_url || review.reviewerPhotoUrl}
+                                                        alt="User"
+                                                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                                                    />
                                                 ) : (
-                                                    review.author_name?.charAt(0) || 'U'
+                                                    (review.author_name || review.name || 'U').charAt(0)
                                                 )}
                                             </div>
                                             <div>
-                                                <strong className={styles.reviewerName}>{review.author_name || 'Người dùng Google'}</strong>
+                                                <strong className={styles.reviewerName}>
+                                                    {review.author_name || review.name || 'Người dùng Google'}
+                                                </strong>
                                                 <div className={styles.reviewRating}>
                                                     {[1, 2, 3, 4, 5].map((star) => (
-                                                        <svg key={star} width="12" height="12" viewBox="0 0 24 24" fill={star <= (review.rating || 5) ? "#FFB800" : "#E0E0E0"}>
+                                                        <svg key={star} width="12" height="12" viewBox="0 0 24 24" fill={star <= (review.rating || review.stars || 5) ? "#FFB800" : "#E0E0E0"}>
                                                             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                                                         </svg>
                                                     ))}
                                                 </div>
                                             </div>
                                         </div>
-                                        <span className={styles.reviewDate}>{review.relative_time_description || 'Gần đây'}</span>
+                                        <span className={styles.reviewDate}>
+                                            {review.relative_time_description || review.publishAt || 'Gần đây'}
+                                        </span>
                                     </div>
                                     <p className={styles.reviewText}>
                                         {review.text}
                                     </p>
+
+                                    {/* Support Review Images */}
+                                    {review.reviewImageUrls && review.reviewImageUrls.length > 0 && (
+                                        <div className={styles.reviewImages}>
+                                            {review.reviewImageUrls.map((img, i) => (
+                                                <img
+                                                    key={i}
+                                                    src={img}
+                                                    alt="Review attachment"
+                                                    className={styles.reviewImgThumb}
+                                                    onClick={() => openLightbox(review.reviewImageUrls, i)}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             ))
                         ) : (
@@ -319,6 +359,16 @@ const DetailTabs = ({ place }) => {
                         )}
                     </div>
                 </div>
+            )}
+
+            {/* Image Lightbox */}
+            {isLightboxOpen && (
+                <ImageViewer
+                    images={lightboxImages}
+                    currentIndex={lightboxIndex}
+                    onClose={closeLightbox}
+                    onNavigate={setLightboxIndex}
+                />
             )}
         </>
     );

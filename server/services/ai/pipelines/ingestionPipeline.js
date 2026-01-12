@@ -46,7 +46,37 @@ class IngestionPipeline {
             }
 
             // 3. TRANSFORM: Convert to LangChain Document format
-            const documents = this.prepareDocuments(rawDocs, collectionName);
+
+            // OPTIMIZATION: Fetch relevant reviews if we are ingesting places
+            let reviewsMap = {};
+            if (collectionName === 'places' && rawDocs.length > 0) {
+                try {
+                    logger.info('⭐ Fetching top reviews for context enrichment...');
+                    const placeIds = rawDocs.map(doc => doc._id);
+                    // Fetch high-quality published reviews
+                    const reviews = await mongoLoader.loadDocuments('reviews', {
+                        place: { $in: placeIds },
+                        status: 'published',
+                        rating: { $gte: 4 } // Prioritize positive feedback
+                    }, 5000); // Reasonable limit for batch processing
+
+                    // Group reviews by placeId
+                    reviews.forEach(review => {
+                        const pid = review.place.toString();
+                        if (!reviewsMap[pid]) reviewsMap[pid] = [];
+                        if (reviewsMap[pid].length < 3) { // Limit to top 3 reviews per place
+                            if (review.comment && review.comment.length > 10) {
+                                reviewsMap[pid].push(review.comment);
+                            }
+                        }
+                    });
+                    logger.info(`✅ Attached reviews to ${Object.keys(reviewsMap).length} places`);
+                } catch (err) {
+                    logger.warn('⚠️ Failed to fetch reviews, proceeding without them:', err);
+                }
+            }
+
+            const documents = this.prepareDocuments(rawDocs, collectionName, reviewsMap);
 
             // 4. SPLIT: Chunking
             let chunks = [];
@@ -79,7 +109,7 @@ class IngestionPipeline {
     /**
      * Prepare documents based on PropertyCard requirements
      */
-    prepareDocuments(rawDocs, collectionName) {
+    prepareDocuments(rawDocs, collectionName, reviewsMap = {}) {
         return rawDocs.map((doc) => {
             let pageContent = '';
 
@@ -90,6 +120,7 @@ class IngestionPipeline {
                 originalId: doc._id.toString(),
                 name: doc.name,
                 address: doc.address || '',
+                district: doc.district || '', // Added District
                 category: doc.category || '',
                 // Ensure numbers
                 price: doc.priceRange?.max || doc.priceRange?.min || 0,
@@ -102,18 +133,63 @@ class IngestionPipeline {
 
             if (collectionName === 'places') {
                 pageContent = doc.description || '';
-                // Enrich pageContent with AI tags so Proposition Splitter captures them
+
+                // 1. Enrich with Price Range
+                if (doc.priceRange) {
+                    pageContent += `\nPrice range: ${doc.priceRange.min} - ${doc.priceRange.max} VND.`;
+                }
+
+                // 2. Enrich with Operating Hours
+                if (doc.operatingHours) {
+                    const times = Object.entries(doc.operatingHours)
+                        .map(([day, time]) => `${day}: ${time.open}-${time.close}`)
+                        .join(', ');
+                    pageContent += `\nOpening hours: ${times}.`;
+                }
+
+                // 3. Enrich with Contact Info
+                if (doc.contact?.phone) pageContent += `\nPhone number: ${doc.contact.phone}.`;
+
+                // 4. Enrich with AI Tags (Mood, Space, Features)
                 if (doc.aiTags) {
                     const moodText = doc.aiTags.mood?.length ? `Mood: ${doc.aiTags.mood.join(', ')}.` : '';
                     const spaceText = doc.aiTags.space?.length ? `Space: ${doc.aiTags.space.join(', ')}.` : '';
                     const featureText = doc.aiTags.specialFeatures?.length ? `Features: ${doc.aiTags.specialFeatures.join(', ')}.` : '';
 
-                    pageContent = `${pageContent}\n\n${moodText} ${spaceText} ${featureText}`.trim();
+                    pageContent = `${pageContent}\n${moodText} ${spaceText} ${featureText}`;
 
                     metadata.space = doc.aiTags.space?.join(', ') || '';
                     metadata.mood = doc.aiTags.mood?.join(', ') || '';
                     metadata.specialFeatures = doc.aiTags.specialFeatures?.join(', ') || '';
                 }
+
+                // 5. Enrich with Guest Reviews (Hybrid Strategy: Internal + Google)
+                let reviewsText = [];
+                const pid = doc._id.toString();
+
+                // A. Internal Reviews (fetched separately)
+                if (reviewsMap[pid] && reviewsMap[pid].length > 0) {
+                    reviewsMap[pid].forEach(r => reviewsText.push(`"${r}"`));
+                }
+
+                // B. Google Reviews (Embedded in Place doc)
+                if (doc.additionalInfo && doc.additionalInfo.reviews && Array.isArray(doc.additionalInfo.reviews)) {
+                    // Filter good reviews (> 3 stars) and meaningful text
+                    const googleReviews = doc.additionalInfo.reviews
+                        .filter(r => (r.stars || 5) >= 4 && r.text && r.text.length > 20)
+                        .slice(0, 3) // Top 3 Google reviews
+                        .map(r => `"${r.text}"`);
+
+                    reviewsText.push(...googleReviews);
+                }
+
+                if (reviewsText.length > 0) {
+                    // Limit total appended reviews to avoid context token overflow (e.g., top 5 total)
+                    const finalReviews = reviewsText.slice(0, 5).join('; ');
+                    pageContent += `\nGuest Reviews: ${finalReviews}`;
+                }
+
+                pageContent = pageContent.trim();
             } else {
                 pageContent = JSON.stringify(doc);
             }

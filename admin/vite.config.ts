@@ -18,3 +18,4 @@ export default defineConfig({
     host: true
   }
 })
+// Trigger restart for .env update

@@ -51,9 +51,10 @@ export const CACHE_CONFIG = {
 
 // Retrieval Settings
 export const RETRIEVAL_CONFIG = {
-    TOP_K: 3,                    // Số documents lấy từ vector DB (reduced for speed)
-    RERANK_TOP_K: 3,            // Số documents sau reranking
-    MIN_SIMILARITY_SCORE: 0.3,   // Ngưỡng relevance (Lowered for better recall)
+    TOP_K: 20,                   // Tăng lên 20 để bao quát nhiều kết quả hơn (Diversity)
+    RERANK_TOP_K: 10,            // Lấy top 10 sau khi rerank để LLM có đủ lựa chọn
+    RERANK_MODEL: 'rerank-multilingual-v3.0', // Cohere Rerank Model
+    MIN_SIMILARITY_SCORE: 0.25,  // Giảm nhẹ ngưỡng filter để bắt được các kết quả "ngõ ngách"
     CHUNK_SIZE: 1024,            // Document chunk size
     CHUNK_OVERLAP: 256,          // Overlap giữa chunks
 };
