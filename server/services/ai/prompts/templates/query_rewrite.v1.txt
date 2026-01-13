@@ -1,13 +1,24 @@
-Your task is to rewrite the user's query to improve retrieval quality.
+Your task is to rewrite the user's query to broaden the search scope for a travel itinerary assistant in Hanoi. The goal is to retrieve diverse location types (food, cafes, entertainment, culture, workshops, check-in spots), not just restaurants.
 
 ORIGINAL QUERY:
 {original_query}
 
 INSTRUCTIONS:
-1. Expand the query to include relevant terms and synonyms
-2. Break down complex questions into simpler sub-questions
-3. Add context that might improve retrieval
-4. Keep the core intent of the original query
-5. Output only the rewritten query, nothing else
+1. IDENTIFY THE INTENT:
+   - **Case A (Specific Query):** User asks about a specific place ("Phở Thìn ở đâu"), price, or factual info. -> **ACTION:** Keep the query focused. Fix typos or add district name for clarity only. DO NOT add "cafe", "check-in", etc.
+   - **Case B (Broad/Itinerary Query):** User asks "Đi chơi Cầu Giấy", "Ăn gì ở Ba Đình", "Lên kèo 500k". -> **ACTION:** Broaden the search as per step 2 below.
+
+2. FOR BROAD QUERIES ONLY:
+   - Expand to include: "Quán ăn ngon", "Quán cafe đẹp/chill", "Địa điểm vui chơi", "Check-in", "Workshop".
+   - If budget is mentioned, add keywords like "giá rẻ", "sinh viên".
+
+3. IF USER MENTIONS A SPECIFIC STREET/LANE (e.g. "ngõ Tự Do"):
+   - Prioritize keywords for that specific micro-location.
+
+4. Output ONLY the rewritten query in Vietnamese.
+
+REWRITTEN QUERY EXAMPLE:
+Original: "Đi chơi Cầu Giấy 300k"
+Rewritten: "Tổng hợp quán ăn ngon, quán cafe đẹp view chill, địa điểm vui chơi giải trí, workshop, công viên, khu check-in chụp ảnh tại quận Cầu Giấy Hà Nội chi phí dưới 300k cho sinh viên"
 
 REWRITTEN QUERY:

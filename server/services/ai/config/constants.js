@@ -6,7 +6,8 @@
 // Model Names
 export const MODELS = {
     LLM: {
-        GPT_5_MINI: 'gpt-5-mini-2025-08-07',
+        GPT_4O: 'gpt-4o',
+        GPT_4O_MINI: 'gpt-4o-mini',
         GPT_4_TURBO: 'gpt-4-turbo',
         GPT_4: 'gpt-4',
         GPT_35_TURBO: 'gpt-3.5-turbo',
@@ -20,7 +21,11 @@ export const MODELS = {
 
 // Token Limits (để tính toán giới hạn context window)
 export const TOKEN_LIMITS = {
-    GPT_5_MINI: {
+    GPT_4O: {
+        input: 128000,
+        output: 4096,
+    },
+    GPT_4O_MINI: {
         input: 128000,
         output: 16384,
     },

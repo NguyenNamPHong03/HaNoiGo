@@ -432,7 +432,7 @@ class MainChatPipeline {
                 ...metadata,
             });
 
-            logger.info(`✅ Response generated`);
+            logger.info(`✅ Response generated using model: ${config.openai.model}`);
 
             // Deduplicate places from retrieved docs
             const uniquePlacesMap = new Map();
@@ -472,6 +472,10 @@ class MainChatPipeline {
                     score: doc.score,
                     metadata: doc.metadata
                 })) || [],
+                // Add debug info about model used
+                _meta: {
+                    model: config.openai.model,
+                }
             };
         } catch (error) {
             logger.error('❌ Pipeline execution failed:', error);

@@ -49,11 +49,31 @@ class TokenCounter {
     }
 
     /**
+     * Get limit for current model
+     */
+    getCurrentModelLimit() {
+        const currentModel = config.openai.model;
+
+        // Basic fallback
+        let limit = 128000; // Default to high context for modern models
+
+        // Simple mapping based on checking substrings
+        if (currentModel.includes('gpt-4o')) limit = 128000;
+        else if (currentModel.includes('gpt-4.1')) limit = 128000; // New future model
+        else if (currentModel.includes('mini')) limit = 128000; // All mini models tend to have high context
+        else if (currentModel.includes('gpt-4-turbo')) limit = 128000;
+        else if (currentModel.includes('gpt-3.5')) limit = 16385;
+        else if (currentModel.includes('gpt-4')) limit = 8192; // Classic GPT-4
+
+        return limit;
+    }
+
+    /**
      * Check if text fits in context window
      */
     fitsInContext(text, maxTokens = null) {
         const tokens = this.countTokens(text);
-        const limit = maxTokens || TOKEN_LIMITS.GPT_4_TURBO.input; // Fallback default
+        const limit = maxTokens || this.getCurrentModelLimit();
 
         return tokens <= limit;
     }
