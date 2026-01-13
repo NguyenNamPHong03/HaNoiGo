@@ -318,32 +318,100 @@ server/
 │   │                            #   - getLatestPlaces() - Lấy 5 địa điểm mới nhất
 │   ├── userController.js        # User management
 │   ├── uploadController.js      # File uploads
-│   └── adminImportController.js # Goong auto import
+│   ├── reviewController.js      # Review management
+│   └── adminImportController.js # Goong/Google auto import
 │
 ├── models/                      # MongoDB schemas
 │   ├── User.js                  # User model
-│   └── Place.js                 # Place model (với aiTags, goongId)
+│   ├── Place.js                 # Place model (với aiTags, goongId, googlePlaceId)
+│   └── Review.js                # Review model
 │
 ├── routes/                      # API routes
 │   ├── authRoutes.js            # /api/auth/*
 │   ├── placeRoutes.js           # /api/places/*
 │   │                            #   - GET /latest (5 địa điểm mới)
 │   ├── adminRoutes.js           # /api/admin/*
-│   ├── adminImportRoutes.js     # /api/admin/import/* (Goong)
-│   ├── chatRoutes.js            # /api/chat/*
+│   ├── adminImportRoutes.js     # /api/admin/import/* (Goong/Google)
+│   ├── chatRoutes.js            # /api/chat/* (RAG chatbot)
 │   ├── reviewRoutes.js          # /api/reviews/*
 │   ├── userRoutes.js            # /api/users/*
-│   └── aiRoutes.js              # /api/ai/*
+│   └── aiRoutes.js              # /api/ai/* (AI operations)
 │
 ├── services/                    # Service layer
 │   ├── authService.js           # Auth logic
 │   ├── placeService.js          # Place logic
 │   ├── userService.js           # User logic
 │   ├── uploadService.js         # Upload logic
+│   ├── reviewService.js         # Review logic
+│   ├── autoTaggerService.js     # Auto-tagging với AI
+│   │
+│   ├── ai/                      # 🤖 AI Service Module (RAG Architecture)
+│   │   ├── index.js             # Main exports
+│   │   ├── test-health.js       # Health check
+│   │   │
+│   │   ├── config/              # Configuration
+│   │   │   ├── constants.js     # AI constants
+│   │   │   └── index.js         # Config exports
+│   │   │
+│   │   ├── core/                # Core AI components
+│   │   │   ├── cacheClient.js   # Redis cache
+│   │   │   ├── llmFactory.js    # LLM provider factory
+│   │   │   ├── telemetry.js     # Logging & monitoring
+│   │   │   └── vectorStoreFactory.js # Vector DB factory
+│   │   │
+│   │   ├── guardrails/          # Input/Output validation
+│   │   │   ├── inputGuard.js    # Input sanitization
+│   │   │   └── outputGuard.js   # Output validation
+│   │   │
+│   │   ├── pipelines/           # AI Processing Pipelines
+│   │   │   ├── mainChatPipeline.js    # Main RAG chat flow
+│   │   │   ├── ingestionPipeline.js   # Data ingestion
+│   │   │   └── feedbackPipeline.js    # Feedback learning
+│   │   │
+│   │   ├── prompts/             # Prompt Engineering
+│   │   │   ├── promptLoader.js  # Dynamic prompt loader
+│   │   │   └── templates/       # Prompt templates
+│   │   │       ├── system.v1.txt         # System prompt
+│   │   │       ├── rag_query.v1.txt      # RAG query
+│   │   │       └── query_rewrite.v1.txt  # Query rewriting
+│   │   │
+│   │   ├── retrieval/           # RAG Retrieval Components
+│   │   │   ├── reranker.js      # Result reranking
+│   │   │   ├── extractors/
+│   │   │   │   └── intentExtractor.js    # Intent extraction
+│   │   │   ├── loaders/
+│   │   │   │   └── mongoLoader.js        # MongoDB data loader
+│   │   │   ├── splitters/
+│   │   │   │   ├── semanticSplitter.js   # Semantic chunking
+│   │   │   │   └── propositionSplitter.js # Proposition-based
+│   │   │   └── strategies/
+│   │   │       ├── basicRetriever.js     # Basic retrieval
+│   │   │       ├── hybridRetriever.js    # Hybrid search
+│   │   │       └── hybridSearch.js       # Search strategy
+│   │   │
+│   │   ├── scripts/             # Utility scripts
+│   │   │   ├── runIngestion.js  # Run data ingestion
+│   │   │   └── testChat.js      # Test chatbot
+│   │   │
+│   │   ├── tools/               # AI Tools (Function Calling)
+│   │   │   ├── index.js         # Tool registry
+│   │   │   ├── bookingTool.js   # Booking integration
+│   │   │   └── weatherTool.js   # Weather API
+│   │   │
+│   │   └── utils/               # AI Utilities
+│   │       ├── documentProcessor.js  # Document processing
+│   │       ├── errorHandler.js       # Error handling
+│   │       ├── logger.js             # Logging
+│   │       ├── outputParsers.js      # Output parsing
+│   │       ├── reorderUtils.js       # Result reordering
+│   │       └── tokenCounter.js       # Token counting
+│   │
 │   ├── imports/                 # Import services
-│   │   └── placeImportService.js # Goong import logic
+│   │   └── placeImportService.js # Goong/Google import logic
+│   │
 │   └── providers/               # External API providers
-│       └── goongProvider.js     # Goong Maps API client
+│       ├── goongProvider.js     # Goong Maps API client
+│       └── googleProvider.js    # Google Places API client (nếu có)
 │
 ├── middleware/                  # Express middleware
 │   ├── auth.js                  # JWT authentication
@@ -351,13 +419,22 @@ server/
 │   └── notFound.js              # 404 handler
 │
 ├── utils/                       # Utilities
-│   └── placeMapper.js           # Map Goong data → Place schema
+│   ├── placeMapper.js           # Map Goong data → Place schema
+│   └── googlePlaceMapper.js     # Map Google data → Place schema
+│
+├── scripts/                     # Database & utility scripts
+│   ├── importGooglePlaces.js    # Import từ Google Places
+│   ├── updateGoogleReviews.js   # Sync Google reviews
+│   ├── check-data.js            # Data validation
+│   ├── make-admin.js            # Create admin user
+│   └── ingest-data.js           # Ingest data vào vector DB
+│
 ├── uploads/                     # Local storage (dev)
 │   ├── avatars/
 │   └── places/
 │
 ├── server.js                    # Main entry point
-├── server-simple.js             # Simple server
+├── server-simple.js             # Simple server (testing)
 ├── MIGRATION_GUIDE.md           # Documentation
 ├── GOONG_MODULE_README.md       # Goong import guide
 ├── GOONG_IMPORT_GUIDE.md        # API detailed guide
@@ -369,31 +446,75 @@ server/
 └── package.json
 ```
 
-## 📂 Cấu trúc AI Service
+## 📂 Cấu trúc AI Service (Legacy - Deprecated)
+
+**Lưu ý**: AI service đã được tích hợp trực tiếp vào `server/services/ai/`. Folder này không còn được sử dụng.
 
 ```
-ai-service/
-├── main.py                      # FastAPI application
+ai-service/ (DEPRECATED)
+├── main.py                      # FastAPI application (không dùng)
 ├── requirements.txt             # Python dependencies
 └── .env                         # Environment variables
 ```
+
+**Migration**: Toàn bộ AI logic đã chuyển sang Node.js trong `server/services/ai/` với kiến trúc RAG hoàn chỉnh.
 
 ## 📂 Root Structure
 
 ```
 HaNoiGo/
 ├── .github/
-│   └── copilot-instructions.md  # Tài liệu này
-├── client/                      # Frontend người dùng
-├── admin/                       # Admin dashboard
-├── server/                      # Backend API
-├── ai-service/                  # AI service
-├── docs/                        # Documentation
-├── package.json                 # Workspace config
+│   └── copilot-instructions.md  # Tài liệu này (hướng dẫn cho Copilot)
+│
+├── client/                      # 🎨 Frontend người dùng (React + Vite)
+│   ├── src/
+│   │   ├── components/          # UI components
+│   │   ├── pages/               # Route pages
+│   │   ├── hooks/               # Custom hooks
+│   │   ├── contexts/            # React contexts
+│   │   └── services/            # API services
+│   └── docs/rules/              # Frontend coding rules
+│
+├── admin/                       # 🛠️ Admin Dashboard (React + TypeScript + Vite)
+│   └── src/
+│       ├── features/            # Feature modules
+│       │   ├── places/          # Places management
+│       │   ├── imports/         # Goong/Google import
+│       │   └── users/           # User management
+│       ├── components/          # Shared components
+│       └── pages/               # Admin pages
+│
+├── server/                      # ⚙️ Backend API (Node.js + Express)
+│   ├── controllers/             # Request handlers
+│   ├── models/                  # MongoDB schemas
+│   ├── routes/                  # API routes
+│   ├── services/                # Business logic
+│   │   ├── ai/                  # 🤖 RAG AI Service (Node.js)
+│   │   ├── imports/             # Import services
+│   │   └── providers/           # External API clients
+│   ├── middleware/              # Express middleware
+│   ├── scripts/                 # Utility scripts
+│   └── utils/                   # Helper functions
+│
+├── ai-service/ (DEPRECATED)     # ❌ Old Python AI service (không dùng)
+│
+├── docs/                        # 📚 Project documentation
+│
+├── dataset_crawler-google-places_*.json # Google Places dataset
+├── package.json                 # Workspace config (monorepo)
 ├── PROJECT_OVERVIEW.md          # Project overview
-├── AI.md                        # AI features
-└── README.md                    # Getting started
+├── AI.md                        # AI architecture documentation
+├── FEATURE_GOOGLE_MAPS_DIRECTIONS.md # Google Maps integration
+└── README.md                    # Getting started guide
 ```
+
+**🎯 Tech Stack Summary:**
+- **Frontend**: React 18 + Vite + React Query + Axios
+- **Admin**: React + TypeScript + Vite + TailwindCSS + shadcn/ui
+- **Backend**: Node.js + Express + MongoDB + Redis
+- **AI Engine**: OpenAI API + RAG Architecture (LangChain.js)
+- **Maps**: Goong Maps API, Google Places API
+- **Storage**: Cloudinary (images), MongoDB (data), Redis (cache)
 
 ***
 

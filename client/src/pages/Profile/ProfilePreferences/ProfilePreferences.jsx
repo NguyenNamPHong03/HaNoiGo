@@ -15,10 +15,11 @@ const STYLE_OPTIONS = [
 const DIETARY_OPTIONS = [
   { value: 'vegetarian', label: 'Chay', color: '#22c55e' },
   { value: 'vegan', label: 'Thuần chay', color: '#84cc16' },
-  { value: 'halal', label: 'Halal', color: '#14b8a6' },
-  { value: 'kosher', label: 'Kosher', color: '#06b6d4' },
-  { value: 'gluten-free', label: 'Không gluten', color: '#f59e0b' },
-  { value: 'dairy-free', label: 'Không lactose', color: '#a855f7' }
+  { value: 'non-vegetarian', label: 'Ăn mặn', color: '#ef4444' },
+  { value: 'healthy', label: 'Ăn healthy', color: '#10b981' },
+  { value: 'low-spicy', label: 'Ít cay', color: '#f59e0b' },
+  { value: 'low-fat', label: 'Ít dầu mỡ', color: '#06b6d4' },
+  { value: 'low-carb', label: 'Ít tinh bột', color: '#a855f7' }
 ];
 
 const ProfilePreferences = ({ user, onUpdateSuccess }) => {

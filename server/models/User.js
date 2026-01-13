@@ -63,7 +63,7 @@ const userSchema = new mongoose.Schema({
     }],
     dietary: [{
       type: String,
-      enum: ['vegetarian', 'vegan', 'halal', 'kosher', 'gluten-free', 'dairy-free']
+      enum: ['vegetarian', 'vegan', 'non-vegetarian', 'healthy', 'low-spicy', 'low-fat', 'low-carb']
     }],
     priceRange: {
       min: { type: Number, default: 0 },
