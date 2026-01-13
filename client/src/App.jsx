@@ -11,6 +11,7 @@ const Login = lazy(() => import('./pages/Authentication/Login'))
 const Register = lazy(() => import('./pages/Authentication/Register'))
 const OAuthSuccess = lazy(() => import('./pages/Authentication/OAuthSuccess'))
 const SearchResult = lazy(() => import('./pages/SearchResult/SearchResult'))
+const PlaceDetail = lazy(() => import('./pages/PlaceDetail/PlaceDetail'))
 const Profile = lazy(() => import('./pages/Profile/Profile'))
 
 // Simple Loading Fallback
@@ -36,7 +37,7 @@ function App() {
               <Route path="/" element={<Layout />}>
                 <Route index element={<Home />} />
                 <Route path="/search" element={<SearchResult />} />
-                <Route path="/places/:id" element={<SearchResult />} />
+                <Route path="/places/:id" element={<PlaceDetail />} />
                 <Route path="/profile" element={<Profile />} />
               </Route>
             </Routes>
