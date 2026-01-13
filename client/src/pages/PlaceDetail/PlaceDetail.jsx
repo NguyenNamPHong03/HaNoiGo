@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
+import PlaceMap from "../../components/common/PlaceMap/PlaceMap.jsx";
 import usePlaceDetail from "../../hooks/usePlaceDetail.js";
 import styles from "./PlaceDetail.module.css";
 
@@ -48,7 +49,14 @@ const PlaceDetail = () => {
     const contact = place.contact || {};
     const menu = place.menu || [];
     const reviews = place.additionalInfo?.reviews || place.googleData?.reviews || [];
-    const location = place.location || place.coordinates || null;
+    
+    // Convert GeoJSON to {lat, lng} format for PlaceMap
+    const location = place.location?.coordinates 
+        ? {
+            lng: place.location.coordinates[0], // GeoJSON: [longitude, latitude]
+            lat: place.location.coordinates[1]
+          }
+        : null;
 
     // Handler: Mở Google Maps để chỉ đường
     const handleGetDirections = () => {
@@ -80,7 +88,7 @@ const PlaceDetail = () => {
     return (
         <div className={styles.pageWrapper}>
             {/* LEFT SIDEBAR - Promotions & Deals */}
-            <aside className={styles.sidebar}>
+            <aside className={styles.leftSidebar}>
                 <div className={styles.sidebarContent}>
                     <h2 className={styles.sidebarTitle}>Ưu đãi & Món mới</h2>
                     
@@ -123,8 +131,8 @@ const PlaceDetail = () => {
                 </div>
             </aside>
 
-            {/* RIGHT MAIN CONTENT - Thông tin chi tiết quán */}
-            <main className={styles.mainContent}>
+            {/* MIDDLE CONTENT - Thông tin chi tiết quán */}
+            <main className={styles.contentColumn}>
                 {/* Hero Image */}
                 {images.length > 0 && (
                     <div className={styles.heroImage}>
@@ -387,6 +395,19 @@ const PlaceDetail = () => {
                     )}
                 </div>
             </main>
+
+            {/* RIGHT SIDEBAR - Map Only */}
+            <aside className={styles.rightSidebar}>
+                {/* Map Section */}
+                <div className={styles.mapSection}>
+                    <h2 className={styles.mapTitle}>📍 Vị trí</h2>
+                    <PlaceMap 
+                        location={location}
+                        placeName={name}
+                        address={`${address}, ${district}`}
+                    />
+                </div>
+            </aside>
         </div>
     );
 };

@@ -1,16 +1,32 @@
 .pageWrapper {
-    display: flex;
+    display: grid;
+    grid-template-columns: 380px 1fr 450px; /* left sidebar | content | right sidebar */
     width: 100%;
     min-height: 100vh;
     margin-top: 85px;
+    gap: 0;
     background: linear-gradient(135deg, 
         rgba(255, 182, 193, 0.4) 0%, 
         rgba(216, 191, 216, 0.4) 50%, 
         rgba(173, 216, 230, 0.2) 100%);
 }
 
-/* ========== LEFT - MAIN CONTENT (Lớn) ========== */
-.mainContent {
+/* ========== LEFT SIDEBAR - Promotions ========== */
+.leftSidebar {
+    width: 380px;
+    background: linear-gradient(135deg, 
+        rgba(255, 240, 245, 0.7) 0%, 
+        rgba(240, 248, 255, 0.7) 100%);
+    border-right: 1px solid rgba(238, 238, 238, 0.6);
+ 
+    top: 85px;
+   
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(10px);
+}
+
+/* ========== MIDDLE - CONTENT COLUMN ========== */
+.contentColumn {
     flex: 1;
     background: linear-gradient(135deg, 
         rgba(255, 255, 255, 0.6) 0%, 
@@ -599,16 +615,107 @@
 }
 
 /* ========== RIGHT - SIDEBAR (Nhỏ - Promotions) ========== */
+/* DEPRECATED - Renamed to leftSidebar */
+
+/* ========== RIGHT SIDEBAR - Map & Reviews ========== */
+.rightSidebar {
+    width: 450px;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.7) 0%, 
+        rgba(245, 247, 250, 0.7) 100%);
+    border-left: 1px solid rgba(238, 238, 238, 0.6);
+
+    top: 85px;
+
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(10px);
+    padding: 30px 25px;
+}
+
+/* Map Section */
+.mapSection {
+    margin-bottom: 30px;
+}
+
+.mapTitle {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 15px;
+    color: #222;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Reviews Section in Right Sidebar */
+.reviewsSection {
+    margin-top: 30px;
+}
+
+.reviewsSection .ratingSummaryBox {
+    margin: 0 0 20px 0;
+    max-width: 100%;
+}
+
+.reviewsSection .reviewsList {
+    max-height: 600px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.reviewsSection .reviewsList::-webkit-scrollbar {
+    width: 6px;
+}
+
+.reviewsSection .reviewsList::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+}
+
+.reviewsSection .reviewsList::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+}
+
+.reviewsSection .reviewsList::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+.reviewsSection .reviewItem {
+    margin-bottom: 15px;
+    padding: 20px;
+}
+
+.reviewsSection .reviewText {
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* Reviews Notice in Tab */
+.reviewsNotice {
+    padding: 60px 20px;
+    text-align: center;
+    background: linear-gradient(135deg, #e8f0fe 0%, #f0e8ff 100%);
+    border-radius: 12px;
+    border: 2px dashed rgba(102, 126, 234, 0.3);
+}
+
+.reviewsNotice p {
+    font-size: 18px;
+    color: #667eea;
+    font-weight: 600;
+    margin: 0;
+}
+
 .sidebar {
     width: 450px;
     background: linear-gradient(135deg, 
         rgba(255, 240, 245, 0.7) 0%, 
         rgba(240, 248, 255, 0.7) 100%);
     border-right: 1px solid rgba(238, 238, 238, 0.6);
-    overflow-y: auto;
-    position: sticky;
+  
     top: 85px;
-    height: calc(100vh - 85px);
+  
     box-shadow: 10px 0 30px rgba(0, 0, 0, 0.05);
     backdrop-filter: blur(10px);
 }
@@ -757,9 +864,47 @@
 }
 
 /* Responsive */
+@media (max-width: 1400px) {
+    .pageWrapper {
+        grid-template-columns: 320px 1fr 400px;
+    }
+    
+    .leftSidebar {
+        width: 320px;
+    }
+    
+    .rightSidebar {
+        width: 400px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .pageWrapper {
+        grid-template-columns: 280px 1fr 380px;
+    }
+    
+    .leftSidebar {
+        width: 280px;
+    }
+    
+    .rightSidebar {
+        width: 380px;
+    }
+}
+
 @media (max-width: 1024px) {
-    .sidebar {
-        width: 350px;
+    .pageWrapper {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+    }
+    
+    .leftSidebar,
+    .rightSidebar {
+        width: 100%;
+        position: static;
+        height: auto;
+        border: none;
+        border-bottom: 1px solid #eee;
     }
     
     .heroOverlay {
@@ -773,15 +918,16 @@
 
 @media (max-width: 768px) {
     .pageWrapper {
-        flex-direction: column;
+        grid-template-columns: 1fr;
     }
     
-    .sidebar {
+    .leftSidebar,
+    .rightSidebar {
         width: 100%;
         position: static;
         height: auto;
-        border-left: none;
-        border-top: 1px solid #eee;
+        border: none;
+        border-bottom: 1px solid #eee;
     }
     
     .menuGrid {

@@ -144,7 +144,7 @@ const Introduction = () => {
             {/* Header */}
             <div className={styles.header}>
                 <div className={styles.titleGroup}>
-                    <h2 className={styles.mainTitle}>Featured Properties</h2>
+                    <h2 className={styles.mainTitle}>Địa điểm nổi bật</h2>
                     <p className={styles.subTitle}>
                         Khám phá danh sách các địa điểm nổi bật và được yêu thích nhất của chúng tôi,
                         được tuyển chọn kỹ lưỡng cho trải nghiệm tuyệt vời.
