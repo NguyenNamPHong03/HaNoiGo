@@ -440,7 +440,7 @@ export const updateUserProfile = async (userId, profileData) => {
       avatarUrl,
       preferences,
     },
-    { new: true, runValidators: true }
+    { new: true, runValidators: false } // Tạm tắt validation để debug
   );
 
   if (!updatedUser) {

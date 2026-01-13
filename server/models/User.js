@@ -65,6 +65,14 @@ const userSchema = new mongoose.Schema({
       type: String,
       enum: ['vegetarian', 'vegan', 'non-vegetarian', 'healthy', 'low-spicy', 'low-fat', 'low-carb']
     }],
+    atmosphere: [{
+      type: String,
+      enum: ['quiet', 'lively', 'cheerful', 'romantic', 'cozy', 'elegant', 'outdoor']
+    }],
+    activities: [{
+      type: String,
+      enum: ['singing', 'live-music', 'watch-football', 'hangout', 'dating', 'work-study']
+    }],
     priceRange: {
       min: { type: Number, default: 0 },
       max: { type: Number, default: 1000000 }

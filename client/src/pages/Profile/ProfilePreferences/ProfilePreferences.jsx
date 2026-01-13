@@ -22,6 +22,25 @@ const DIETARY_OPTIONS = [
   { value: 'low-carb', label: 'Ít tinh bột', color: '#a855f7' }
 ];
 
+const ATMOSPHERE_OPTIONS = [
+  { value: 'quiet', label: 'Yên tĩnh', color: '#06b6d4' },
+  { value: 'lively', label: 'Sôi động', color: '#ef4444' },
+  { value: 'cheerful', label: 'Vui nhộn', color: '#f59e0b' },
+  { value: 'romantic', label: 'Lãng mạn', color: '#ec4899' },
+  { value: 'cozy', label: 'Ấm cúng', color: '#f97316' },
+  { value: 'elegant', label: 'Thanh lịch', color: '#8b5cf6' },
+  { value: 'outdoor', label: 'Ngoài trời', color: '#22c55e' }
+];
+
+const ACTIVITY_OPTIONS = [
+  { value: 'singing', label: 'Hát hò', color: '#ec4899' },
+  { value: 'live-music', label: 'Live music', color: '#8b5cf6' },
+  { value: 'watch-football', label: 'Xem bóng đá', color: '#10b981' },
+  { value: 'hangout', label: 'Tụ tập bạn bè', color: '#f59e0b' },
+  { value: 'dating', label: 'Hẹn hò', color: '#ef4444' },
+  { value: 'work-study', label: 'Làm việc/học bài', color: '#06b6d4' }
+];
+
 const ProfilePreferences = ({ user, onUpdateSuccess }) => {
   const { updateUser } = useUser();
   const [isEditing, setIsEditing] = useState(false);
@@ -29,7 +48,9 @@ const ProfilePreferences = ({ user, onUpdateSuccess }) => {
   const [formData, setFormData] = useState({
     favoriteFoods: user.preferences?.favoriteFoods || [],
     styles: user.preferences?.styles || [],
-    dietary: user.preferences?.dietary || []
+    dietary: user.preferences?.dietary || [],
+    atmosphere: user.preferences?.atmosphere || [],
+    activities: user.preferences?.activities || []
   });
   const [newFood, setNewFood] = useState('');
 
@@ -68,6 +89,24 @@ const ProfilePreferences = ({ user, onUpdateSuccess }) => {
     }));
   };
 
+  const handleToggleAtmosphere = (value) => {
+    setFormData(prev => ({
+      ...prev,
+      atmosphere: prev.atmosphere.includes(value)
+        ? prev.atmosphere.filter(a => a !== value)
+        : [...prev.atmosphere, value]
+    }));
+  };
+
+  const handleToggleActivity = (value) => {
+    setFormData(prev => ({
+      ...prev,
+      activities: prev.activities.includes(value)
+        ? prev.activities.filter(a => a !== value)
+        : [...prev.activities, value]
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -96,7 +135,9 @@ const ProfilePreferences = ({ user, onUpdateSuccess }) => {
     setFormData({
       favoriteFoods: user.preferences?.favoriteFoods || [],
       styles: user.preferences?.styles || [],
-      dietary: user.preferences?.dietary || []
+      dietary: user.preferences?.dietary || [],
+      atmosphere: user.preferences?.atmosphere || [],
+      activities: user.preferences?.activities || []
     });
     setIsEditing(false);
   };
@@ -206,6 +247,52 @@ const ProfilePreferences = ({ user, onUpdateSuccess }) => {
                 onClick={() => isEditing && handleToggleDietary(option.value)}
                 className={`${styles.option} ${
                   formData.dietary.includes(option.value) ? styles.optionActive : ''
+                } ${!isEditing ? styles.optionDisabled : ''}`}
+                disabled={!isEditing}
+                style={{
+                  '--option-color': option.color
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Atmosphere */}
+        <div className={styles.preferenceGroup}>
+          <h3 className={styles.groupTitle}>KHÔNG KHÍ</h3>
+          <div className={styles.optionsGrid}>
+            {ATMOSPHERE_OPTIONS.map(option => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => isEditing && handleToggleAtmosphere(option.value)}
+                className={`${styles.option} ${
+                  formData.atmosphere.includes(option.value) ? styles.optionActive : ''
+                } ${!isEditing ? styles.optionDisabled : ''}`}
+                disabled={!isEditing}
+                style={{
+                  '--option-color': option.color
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Activities */}
+        <div className={styles.preferenceGroup}>
+          <h3 className={styles.groupTitle}>HOẠT ĐỘNG</h3>
+          <div className={styles.optionsGrid}>
+            {ACTIVITY_OPTIONS.map(option => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => isEditing && handleToggleActivity(option.value)}
+                className={`${styles.option} ${
+                  formData.activities.includes(option.value) ? styles.optionActive : ''
                 } ${!isEditing ? styles.optionDisabled : ''}`}
                 disabled={!isEditing}
                 style={{

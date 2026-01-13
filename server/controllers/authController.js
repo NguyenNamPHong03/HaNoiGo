@@ -156,6 +156,14 @@ export const updateProfile = async (req, res, next) => {
     const { displayName, avatarUrl, preferences } = req.body;
     const userId = req.user._id;
 
+    // Debug logging
+    console.log('📝 Update Profile Request:', {
+      userId,
+      displayName,
+      avatarUrl: avatarUrl ? 'provided' : 'not provided',
+      preferences
+    });
+
     // Call service layer
     const updatedUser = await authService.updateUserProfile(userId, {
       displayName,
@@ -170,7 +178,18 @@ export const updateProfile = async (req, res, next) => {
     });
 
   } catch (error) {
-    console.error('Update Profile Error:', error);
+    console.error('❌ Update Profile Error:', error.message);
+    console.error('Error details:', error);
+    
+    // Mongoose validation error
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: messages
+      });
+    }
     
     if (error.message.includes('required') || error.message.includes('not found')) {
       return res.status(400).json({
