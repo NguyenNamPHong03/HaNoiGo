@@ -1,0 +1,8 @@
+Classify the user intent into one of two categories:
+1. "CHAT": The user is asking a specific question, looking for a single place, comparing places, or just chatting. Examples: "quán cafe nào đẹp", "phở bát đàn ở đâu", "chỗ nào bán bún chả ngon", "thời tiết thế nào".
+2. "ITINERARY": The user is asking for a plan, a schedule, a tour, or "what to do" over a period of time (tonight, 1 day, half day). The request implies a sequence of activities/places. Examples: "lên lịch đi chơi tối nay", "dẫn bạn gái đi đâu chơi 1 ngày", "cuối tuần đi đâu", "ăn gì chơi gì ở hồ tây".
+
+Return ONLY the category name: CHAT or ITINERARY.
+
+User Question: "{question}"
+Intent:

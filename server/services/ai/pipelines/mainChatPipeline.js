@@ -17,6 +17,7 @@ import { RAG_STAGES } from '../config/constants.js';
 import logger from '../utils/logger.js';
 import config from '../config/index.js';
 import { searchPlaces, searchPlacesByRegex } from '../../placeService.js';
+import weatherService from '../../weather/weatherService.js';
 
 class MainChatPipeline {
     constructor() {
@@ -89,6 +90,36 @@ class MainChatPipeline {
                 });
             };
 
+            // Stage 2.5: Intent Classification
+            const classifyIntent = async (input) => {
+                if (input.cached) return input;
+
+                return await telemetry.measureTime('INTENT_CLASSIFY', async () => {
+                    try {
+                        const prompt = await promptLoader.formatIntentClassify(input.question);
+                        const response = await llm.invoke(prompt);
+                        let intent = typeof response === 'string' ? response : response.content;
+                        intent = intent.trim().toUpperCase();
+
+                        // Defaut to CHAT if unclear
+                        if (intent.includes('ITINERARY')) {
+                            intent = 'ITINERARY';
+                        } else {
+                            intent = 'CHAT';
+                        }
+
+                        logger.info(`🧠 Intent detected: ${intent}`);
+                        return {
+                            ...input,
+                            intent
+                        };
+                    } catch (error) {
+                        logger.error('Intent classification failed', error);
+                        return { ...input, intent: 'CHAT' };
+                    }
+                });
+            };
+
             // Stage 3: Retrieval
             const retrieve = async (input) => {
                 if (input.cached) return input;
@@ -96,6 +127,9 @@ class MainChatPipeline {
                 return await telemetry.measureTime(RAG_STAGES.RETRIEVAL, async () => {
                     // Use refined query if available, otherwise original
                     const queryToUse = input.refinedQuery || input.question;
+
+                    // If ITINERARY, we might want to fetch more results or different strategy
+                    // For now, keep it simple but maybe increase limit later if needed
                     const results = await basicRetriever.retrieve(queryToUse);
                     return {
                         ...input,
@@ -109,13 +143,35 @@ class MainChatPipeline {
                 if (input.cached) return input;
 
                 return await telemetry.measureTime('KEYWORD_AUGMENT', async () => {
-                    const query = (input.refinedQuery || input.question).toLowerCase().trim();
+                    let query = (input.refinedQuery || input.question).toLowerCase().trim();
+
+                    // --- Context Awareness: Time ---
+                    const now = new Date();
+                    const hour = now.getHours();
+                    const isLateNight = hour >= 22 || hour < 4;
+
+                    if (isLateNight) {
+                        // Automatically append "late night" context to search
+                        // This helps find places that are actually open or tagged for nightlife
+                        logger.info('🌙 Late night detected, augmenting search query...');
+                        // We don't change the visible query, but the search query
+                        // Actually searchPlaces does fuzzy search, so appending might dilute if not careful
+                        // But specialized tags like "xuyên đêm" are useful.
+                        // Let's rely on filter/scoring later? 
+                        // For now, let's append only if the user didn't ask about time.
+                        if (!query.includes('đêm') && !query.includes('muộn')) {
+                            // query += " mở xuyên đêm"; // Risky if exact match
+                        }
+                    }
 
                     try {
                         const promises = [];
 
+                        // Increase limit for itinerary to get diversity
+                        const textLimit = input.intent === 'ITINERARY' ? 20 : 10;
+
                         // 1. Text Search (General) (increased limit)
-                        promises.push(searchPlaces(query, 10));
+                        promises.push(searchPlaces(query, textLimit));
 
                         // 2. Smart Address Regex Search
                         // Detect patterns: "ngõ tự do" -> search for /(ngõ|ng\.?)\s*tự\s*do/i
@@ -195,7 +251,9 @@ class MainChatPipeline {
                                 price: p.priceRange?.min || 0,
                                 rating: p.averageRating || 0,
                                 reviewCount: p.totalReviews || 0,
-                                source: 'mongo-hybrid'
+                                source: 'mongo-hybrid',
+                                // Pass coordinates for distance calculation
+                                coordinates: p.location?.coordinates || null
                             }
                         }));
 
@@ -222,15 +280,94 @@ class MainChatPipeline {
                 });
             };
 
-            // Stage 4: Reranking (Cohere)
+            // Stage 4: Reranking (Cohere + Location)
             const rerank = async (input) => {
                 if (input.cached || !input.retrievedDocs?.length) return input;
 
                 return await telemetry.measureTime(RAG_STAGES.RERANKING, async () => {
-                    const reranked = await reranker.rerank(
-                        input.question, // Always rerank against original intent
-                        input.retrievedDocs
+                    let docs = input.retrievedDocs;
+
+                    // --- Context Awareness: Location ---
+                    if (input.context?.location) {
+                        const { lat: userLat, lng: userLng } = input.context.location;
+                        const queryLower = input.question.toLowerCase();
+
+                        // Check if user explicitly asked for proximity
+                        const isProximityQuery =
+                            queryLower.includes('gần') ||
+                            queryLower.includes('quanh') ||
+                            queryLower.includes('near');
+
+                        if (isProximityQuery) {
+                            logger.info('📍 Proximity query detected. Calculating distances...');
+
+                            // Simple Haversine distance
+                            const calculateDistance = (lat1, lon1, lat2, lon2) => {
+                                const R = 6371; // km
+                                const dLat = (lat2 - lat1) * Math.PI / 180;
+                                const dLon = (lon2 - lon1) * Math.PI / 180;
+                                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                                return R * c;
+                            };
+
+                            // Calculate distances for all docs that have coordinates
+                            docs = docs.map(doc => {
+                                let distance = Infinity;
+                                if (doc.metadata?.coordinates && Array.isArray(doc.metadata.coordinates)) {
+                                    // MongoDB stores [lng, lat]
+                                    const [lng, lat] = doc.metadata.coordinates;
+                                    if (lat && lng) {
+                                        distance = calculateDistance(userLat, userLng, lat, lng);
+                                    }
+                                }
+                                return { ...doc, metadata: { ...doc.metadata, distance } };
+                            });
+
+                            // Re-sort primarily by distance if it's a proximity query
+                            docs = docs.sort((a, b) => (a.metadata.distance || Infinity) - (b.metadata.distance || Infinity));
+                            logger.info('📍 Sorted results by distance.');
+                        }
+                    }
+
+                    // We stick to the plan: Rerank top results with Cohere first for Semantic Relevance
+                    // Then if proximity is key, we perform a final re-sort or boost.
+
+                    let reranked = await reranker.rerank(
+                        input.question,
+                        docs
                     );
+
+                    // Post-Rerank Adjustment for Proximity
+                    // If proximity query, we prioritize strictly by distance among the top semantic candidates
+                    if (input.context?.location) {
+                        const { lat: userLat, lng: userLng } = input.context.location;
+                        const queryLower = input.question.toLowerCase();
+                        if (queryLower.includes('gần') || queryLower.includes('quanh') || queryLower.includes('near') || queryLower.includes('tôi')) {
+                            const calculateDistance = (lat1, lon1, lat2, lon2) => {
+                                const R = 6371;
+                                const dLat = (lat2 - lat1) * Math.PI / 180;
+                                const dLon = (lon2 - lon1) * Math.PI / 180;
+                                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                                return R * c;
+                            };
+
+                            reranked = reranked.map(doc => {
+                                let distance = Infinity;
+                                if (doc.metadata?.coordinates) {
+                                    const [lng, lat] = doc.metadata.coordinates;
+                                    if (lat && lng) distance = calculateDistance(userLat, userLng, lat, lng);
+                                }
+                                return { ...doc, metadata: { ...doc.metadata, distance } };
+                            }).sort((a, b) => (a.metadata.distance || Infinity) - (b.metadata.distance || Infinity));
+                        }
+                    }
+
                     return {
                         ...input,
                         retrievedDocs: reranked,
@@ -320,10 +457,62 @@ class MainChatPipeline {
                 if (input.cached) return input;
 
                 return await telemetry.measureTime(RAG_STAGES.PROMPT_CONSTRUCTION, async () => {
-                    const formatted = await promptLoader.formatRAGQuery(
-                        input.context,
-                        input.question
-                    );
+                    // Fetch dynamic context
+                    const weatherData = await weatherService.getCurrentWeather();
+                    const now = new Date();
+                    // Format: 14:30 - Thứ 3, 16/01/2024
+                    const datetime = now.toLocaleString('vi-VN', {
+                        hour: '2-digit', minute: '2-digit',
+                        weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+                        timeZone: 'Asia/Bangkok'
+                    });
+
+                    // --- Context Awareness: Weather ---
+                    // --- Context Awareness: Weather ---
+                    let weatherWarning = "";
+                    const desc = weatherData?.description || "";
+                    const sky = weatherData?.skyConditions || "";
+
+                    const isRaining = desc.toLowerCase().includes('mưa') ||
+                        desc.toLowerCase().includes('rain') ||
+                        (sky && sky.includes('Rain'));
+
+                    if (isRaining) {
+                        weatherWarning = "⚠️ WARNING: It is currently RAINING in Hanoi. You MUST prioritize Indoor places. " +
+                            "Do NOT suggest open-air rooftops, street food (vỉa hè) without cover, or parks unless explicitly asked. " +
+                            "Highlight 'cozy', 'warm', 'shelter' qualities.";
+                        logger.info('☔️ Rain detected, injecting strict prompt warning.');
+                    }
+
+                    // --- Context Awareness: Time ---
+                    const currentHour = now.getHours();
+                    let timeContext = "";
+                    if (currentHour >= 22 || currentHour < 5) {
+                        timeContext = "It is Late Night. Ensure suggested places are OPEN LATE or 24/7. " +
+                            "Prioritize nightlife, 24h cafes, or late-night food spots (Xôi Yến, Phở gánh, etc).";
+                    }
+
+                    // Append to system instructions effectively
+                    // We'll append this to the weather description field for now 
+                    // since the prompt templates use {currentWeather}
+                    const enhancedWeatherDesc = `${weatherData.fullDescription}\n${weatherWarning}\n${timeContext}`;
+
+                    let formatted;
+                    if (input.intent === 'ITINERARY') {
+                        formatted = await promptLoader.formatItineraryGen(
+                            input.context,
+                            input.question,
+                            enhancedWeatherDesc, // Pass enhanced description
+                            datetime
+                        );
+                    } else {
+                        formatted = await promptLoader.formatRAGQuery(
+                            input.context,
+                            input.question,
+                            enhancedWeatherDesc, // Pass enhanced description
+                            datetime
+                        );
+                    }
 
                     return {
                         ...input,
@@ -337,9 +526,12 @@ class MainChatPipeline {
                 if (input.cached) return input;
 
                 return await telemetry.measureTime(RAG_STAGES.LLM_INFERENCE, async () => {
+
+                    // We rely on the robust parsing logic below instead of strict json_mode
+                    // to avoid potential compatibility issues with llm.bind()
+
                     const response = await llm.invoke(input.prompt);
-                    // ChatOpenAI returns AIMessage object
-                    // Try multiple ways to extract the content
+
                     let answer = '';
                     if (typeof response === 'string') {
                         answer = response;
@@ -351,9 +543,37 @@ class MainChatPipeline {
                         answer = response.text;
                     }
 
+                    // If itinerary, try to parse JSON
+                    let structuredData = null;
+                    if (input.intent === 'ITINERARY') {
+                        try {
+                            // Locate JSON boundaries
+                            const firstOpen = answer.indexOf('{');
+                            const lastClose = answer.lastIndexOf('}');
+
+                            let jsonString = answer;
+                            if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
+                                jsonString = answer.substring(firstOpen, lastClose + 1);
+                            }
+
+                            // Basic Cleanup
+                            jsonString = jsonString
+                                .replace(/[\u0000-\u0019]+/g, "") // Remove control chars
+                                .trim();
+
+                            structuredData = JSON.parse(jsonString);
+                            logger.info('✅ Successfully parsed Itinerary JSON');
+                        } catch (e) {
+                            logger.warn('⚠️ Failed to parse itinerary JSON', e);
+                            logger.debug('Raw answer:', answer);
+                            // Fallback attempts could go here (e.g. fix keys)
+                        }
+                    }
+
                     return {
                         ...input,
                         answer,
+                        structuredData
                     };
                 });
             };
@@ -376,7 +596,9 @@ class MainChatPipeline {
                         question: input.question,
                         answer: input.answer,
                         retrievedDocs: input.retrievedDocs,
-                        context: input.context
+                        context: input.context,
+                        intent: input.intent,
+                        structuredData: input.structuredData
                     });
                 }
                 return input;
@@ -387,6 +609,7 @@ class MainChatPipeline {
                 guardedInput,
                 cachedResponse,
                 rewriteQuery,
+                classifyIntent, // New Step
                 retrieve,
                 keywordAugment, // Hybrid Search
                 rerank,
@@ -472,6 +695,8 @@ class MainChatPipeline {
                     score: doc.score,
                     metadata: doc.metadata
                 })) || [],
+                intent: result.intent,
+                structuredData: result.structuredData,
                 // Add debug info about model used
                 _meta: {
                     model: config.openai.model,

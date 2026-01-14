@@ -9,10 +9,15 @@ import api from './api';
  * Send a chat message to the AI and get response
  * @param {string} question - Natural language query
  * @param {string} userId - Optional user identifier
+ * @param {Object} context - Optional context data (location, time)
  * @returns {Promise<Object>} AI response with answer and places
  */
-export const sendChatMessage = async (question, userId = 'anonymous') => {
-    const response = await api.post('/ai/chat', { question, userId });
+export const sendChatMessage = async (question, userId = 'anonymous', context = {}) => {
+    const response = await api.post('/ai/chat', {
+        question,
+        userId,
+        ...context
+    });
     return response.data;
 };
 

@@ -69,9 +69,9 @@ async function healthCheck() {
 /**
  * Process chat message
  */
-async function processMessage(question, userId = 'anonymous') {
+async function processMessage(question, userId = 'anonymous', context = {}) {
     try {
-        const result = await mainChatPipeline.execute(question, { userId });
+        const result = await mainChatPipeline.execute(question, { userId, ...context });
         return result;
     } catch (error) {
         throw errorHandler.handle(error, { component: 'processMessage' });

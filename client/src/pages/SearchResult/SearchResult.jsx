@@ -46,9 +46,9 @@ const SearchResult = () => {
     });
 
     // Handle AI Search
-    const handleAISearch = useCallback((query) => {
+    const handleAISearch = useCallback((query, context = {}) => {
         if (query.trim()) {
-            aiChat.mutate({ question: query });
+            aiChat.mutate({ question: query, context });
         }
     }, [aiChat]);
 

@@ -1,196 +1,206 @@
-/* --- Sidebar --- */
+/* --- Sidebar Container --- */
 .sidebar {
     width: 350px;
-    padding: 20px 30px;
+    padding: 20px;
     background-color: #fff;
+    /* Requested white background */
     border-right: 1px solid #eee;
     overflow-y: auto;
     flex-shrink: 0;
     position: sticky;
     top: 0;
     height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #333;
 }
 
-.sidebarHeader {
+/* --- Header --- */
+.weatherHeader {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.topNav {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 16px;
 }
 
-.sidebarHeader h2 {
-    font-size: 18px;
-    font-weight: 500;
-}
-
-.resetBtn {
+.backBtn,
+.dots {
     background: none;
     border: none;
+    font-size: 20px;
     cursor: pointer;
+    color: #666;
+}
+
+.topNav h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.currentWeather {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.temp {
+    font-size: 64px;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1;
+    color: #000;
+}
+
+.timeLabel {
     font-size: 14px;
-    font-family: 'Google Sans Flex', sans-serif;
+    font-weight: 600;
+    margin-top: 8px;
+    color: #666;
 }
 
-.filtersContainer {
-    display: flex;
-    flex-direction: column;
-    gap: 25px;
-}
-
-.filterSection {
-    border-bottom: 1px solid #f0f0f0;
-    padding-bottom: 20px;
-}
-
-.filterSection:last-child {
-    border-bottom: none;
-}
-
-.filterHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    margin-bottom: 15px;
-}
-
-.filterHeader h3 {
+.tempRange {
     font-size: 16px;
+    color: #666;
+    margin-top: 8px;
     font-weight: 500;
 }
 
-.expandIcon {
-    font-size: 18px;
+/* --- 7-Day Forecast Card --- */
+.forecastCard {
+    background-color: #f5f7fa;
+    /* Light gray to distinguish from white bg */
+    border-radius: 20px;
+    padding: 16px;
+    margin-bottom: 24px;
 }
 
-/* Inputs & Checkboxes */
-.inputGroup {
+.cardHeader {
+    font-size: 12px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 16px;
     display: flex;
     align-items: center;
-    background: #f5f5f5;
-    padding: 10px 15px;
-    border-radius: 30px;
-    margin-bottom: 15px;
+    gap: 6px;
 }
 
-.inputGroup input {
-    border: none;
-    background: transparent;
-    flex: 1;
-    margin-left: 10px;
-    font-size: 14px;
-    outline: none;
-}
-
-.checkboxWrapper {
+.forecastList {
     display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.forecastItem {
+    display: grid;
+    grid-template-columns: 40px 40px 30px 1fr 30px;
     align-items: center;
-    margin-bottom: 10px;
-    cursor: pointer;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 500;
 }
 
-.checkboxWrapper input {
-    width: 16px;
-    height: 16px;
-    margin-right: 10px;
-    cursor: pointer;
-    accent-color: #000;
+.dayName {
+    font-weight: 600;
 }
 
-.checkboxLabel {
-    font-size: 14px;
-}
-
-/* Range Slider */
-.rangeSliderWrapper {
-    margin-top: 10px;
-}
-
-.sliderContainer {
-    position: relative;
-    width: 100%;
-    height: 40px;
-    margin-top: 10px;
+.iconWrapper {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
 }
 
-.sliderTrack {
-    position: absolute;
-    border-radius: 3px;
+.rainChance {
+    font-size: 10px;
+    color: #4FC3F7;
+    font-weight: 700;
+    margin-top: -2px;
+}
+
+.tempLow {
+    color: #888;
+    text-align: right;
+}
+
+.tempHigh {
+    color: #333;
+    text-align: left;
+}
+
+/* Temperature Bar */
+.tempBar {
     height: 4px;
     background-color: #e0e0e0;
-    width: 100%;
-    z-index: 1;
-}
-
-.sliderRange {
-    position: absolute;
-    border-radius: 3px;
-    height: 4px;
-    background-color: #0066FF;
-    z-index: 2;
-}
-
-.thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    -webkit-tap-highlight-color: transparent;
-    pointer-events: none;
-    position: absolute;
-    height: 0;
-    width: 100%;
-    outline: none;
-    z-index: 3;
-}
-
-.thumb::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    -webkit-tap-highlight-color: transparent;
-    background-color: #0066FF;
-    border: 2px solid #fff;
-    border-radius: 50%;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    cursor: pointer;
-    height: 18px;
-    width: 18px;
-    pointer-events: all;
+    border-radius: 2px;
     position: relative;
+    width: 100%;
 }
 
-.thumb::-moz-range-thumb {
-    background-color: #0066FF;
-    border: 2px solid #fff;
-    border-radius: 50%;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    cursor: pointer;
-    height: 18px;
-    width: 18px;
-    pointer-events: all;
-    position: relative;
+.tempFill {
+    position: absolute;
+    height: 100%;
+    background: linear-gradient(90deg, #FBC02D 0%, #FF8F00 100%);
+    border-radius: 2px;
 }
 
-.rangeValues {
+/* --- Hourly Section --- */
+.hourlySection {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    /* Nice purple gradient for contrast */
+    border-radius: 20px;
+    padding: 16px;
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.sectionTitle {
     display: flex;
     justify-content: space-between;
-    font-size: 13px;
-    font-weight: 500;
-    color: #333;
+    align-items: center;
+    margin-bottom: 16px;
+    font-weight: 600;
 }
 
-.priceRangeLabels {
+.dateLabel {
+    opacity: 0.8;
+}
+
+.hourlyList {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.hourlyItem {
     display: flex;
     flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.hourTime {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.hourTemp {
+    font-size: 16px;
+    font-weight: 600;
 }
 
 @media (max-width: 768px) {
     .sidebar {
         width: 100%;
         height: auto;
+        position: relative;
         border-right: none;
         border-bottom: 1px solid #eee;
-        position: relative;
     }
 }

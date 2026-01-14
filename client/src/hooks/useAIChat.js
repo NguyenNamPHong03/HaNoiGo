@@ -12,7 +12,7 @@ import { sendChatMessage } from '../services/aiService';
  */
 export const useAIChat = () => {
     return useMutation({
-        mutationFn: ({ question, userId }) => sendChatMessage(question, userId),
+        mutationFn: ({ question, userId, context }) => sendChatMessage(question, userId, context),
         mutationKey: ['ai', 'chat'],
     });
 };

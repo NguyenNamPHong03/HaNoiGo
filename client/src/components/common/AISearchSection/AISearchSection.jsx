@@ -1,6 +1,36 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import styles from './AISearchSection.module.css';
 import Fong from '../Fong/Fong';
+
+import ItineraryTimeline from './ItineraryTimeline';
+
+// Helper to attempt parsing itinerary data
+const tryParseItinerary = (text) => {
+    try {
+        if (!text || typeof text !== 'string') return null;
+
+        // Basic check for JSON object symbols
+        const firstOpen = text.indexOf('{');
+        const lastClose = text.lastIndexOf('}');
+
+        if (firstOpen === -1 || lastClose === -1 || lastClose <= firstOpen) return null;
+
+        let jsonString = text.substring(firstOpen, lastClose + 1);
+
+        // Fix trailing commas which are common in LLM JSON
+        // Regex looks for comma followed by optional whitespace and then closing brace/bracket
+        jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
+
+        const data = JSON.parse(jsonString);
+
+        // Validate it has "schedule" array which is unique to our itinerary
+        if (data && Array.isArray(data.schedule)) return data;
+        return null;
+    } catch (e) {
+        // console.debug('JSON Parse failed', e);
+        return null;
+    }
+};
 
 /**
  * AISearchSection - Search input with AI-generated summary
@@ -34,6 +64,23 @@ const AISearchSection = memo(({
         }
     };
 
+    // Robustly determine if we have timeline data to show
+    const timelineData = useMemo(() => {
+        if (!aiResponse) return null;
+
+        // 1. Check structured data from server
+        if (aiResponse.structuredData) {
+            return aiResponse.structuredData;
+        }
+
+        // 2. Fallback: Parse answer text
+        if (aiResponse.answer) {
+            return tryParseItinerary(aiResponse.answer);
+        }
+
+        return null;
+    }, [aiResponse]);
+
     return (
         <div className={styles.searchSection}>
             <div className={styles.searchInputWrapper}>
@@ -54,6 +101,33 @@ const AISearchSection = memo(({
                     </button>
                 )}
                 <div className={styles.searchActions}>
+                    <button
+                        className={`${styles.searchActionBtn} ${styles.locationBtn}`}
+                        onClick={() => {
+                            if (navigator.geolocation) {
+                                navigator.geolocation.getCurrentPosition(
+                                    (position) => {
+                                        const { latitude, longitude } = position.coords;
+                                        // Pass specific prompt for "Near Me"
+                                        onSearch("Gợi ý địa điểm gần tôi nhất", { latitude, longitude });
+                                    },
+                                    (error) => {
+                                        console.error("Geolocation error:", error);
+                                        alert("Không thể lấy vị trí. Vui lòng cấp quyền truy cập vị trí.");
+                                    }
+                                );
+                            } else {
+                                alert("Trình duyệt không hỗ trợ định vị.");
+                            }
+                        }}
+                        title="Tìm quanh đây"
+                        disabled={isLoading}
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                    </button>
                     <button
                         className={styles.searchActionBtn}
                         onClick={handleSearch}
@@ -84,15 +158,19 @@ const AISearchSection = memo(({
                             <div className={styles.skeleton}></div>
                             <div className={styles.skeletonShort}></div>
                         </div>
-                    ) : aiResponse?.answer ? (
-                        <div
-                            className={styles.aiAnswer}
-                            dangerouslySetInnerHTML={{
-                                __html: aiResponse.answer
-                                    .replace(/\n/g, '<br/>')
-                                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                            }}
-                        />
+                    ) : aiResponse ? (
+                        timelineData ? (
+                            <ItineraryTimeline data={timelineData} />
+                        ) : (
+                            <div
+                                className={styles.aiAnswer}
+                                dangerouslySetInnerHTML={{
+                                    __html: (aiResponse.answer || '')
+                                        .replace(/\n/g, '<br/>')
+                                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                }}
+                            />
+                        )
                     ) : (
                         <>
                             <p>

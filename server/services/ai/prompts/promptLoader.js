@@ -43,7 +43,7 @@ class PromptLoader {
             );
             this.templates.ragQuery = new PromptTemplate({
                 template: ragQueryPrompt,
-                inputVariables: ['context', 'question'],
+                inputVariables: ['context', 'question', 'weather', 'datetime'],
             });
 
             // Load query rewrite prompt
@@ -54,6 +54,26 @@ class PromptLoader {
             this.templates.queryRewrite = new PromptTemplate({
                 template: queryRewritePrompt,
                 inputVariables: ['original_query'],
+            });
+
+            // Load intent classify prompt
+            const intentClassifyPrompt = await fs.readFile(
+                path.join(templatesDir, 'intent_classify.v1.txt'),
+                'utf-8'
+            );
+            this.templates.intentClassify = new PromptTemplate({
+                template: intentClassifyPrompt,
+                inputVariables: ['question'],
+            });
+
+            // Load itinerary generation prompt
+            const itineraryGenPrompt = await fs.readFile(
+                path.join(templatesDir, 'itinerary_gen.v1.txt'),
+                'utf-8'
+            );
+            this.templates.itineraryGen = new PromptTemplate({
+                template: itineraryGenPrompt,
+                inputVariables: ['question', 'context', 'weather', 'datetime'],
             });
 
             this.initialized = true;
@@ -77,12 +97,14 @@ class PromptLoader {
     /**
      * Format RAG query prompt
      */
-    async formatRAGQuery(context, question) {
+    async formatRAGQuery(context, question, weather = 'Không xác định', datetime = '') {
         if (!this.initialized) await this.initialize();
 
         return this.templates.ragQuery.format({
             context,
             question,
+            weather,
+            datetime
         });
     }
 
@@ -94,6 +116,31 @@ class PromptLoader {
 
         return this.templates.queryRewrite.format({
             original_query: originalQuery,
+        });
+    }
+
+    /**
+     * Format intent classification prompt
+     */
+    async formatIntentClassify(question) {
+        if (!this.initialized) await this.initialize();
+
+        return this.templates.intentClassify.format({
+            question,
+        });
+    }
+
+    /**
+     * Format itinerary generation prompt
+     */
+    async formatItineraryGen(context, question, weather = 'Không xác định', datetime = '') {
+        if (!this.initialized) await this.initialize();
+
+        return this.templates.itineraryGen.format({
+            context,
+            question,
+            weather,
+            datetime
         });
     }
 

@@ -15,7 +15,12 @@ const router = express.Router();
  */
 router.post('/chat', async (req, res) => {
   try {
-    const { question, userId = 'anonymous' } = req.body;
+    const { question, userId = 'anonymous', latitude, longitude, localTime } = req.body;
+
+    const context = {
+      location: (latitude && longitude) ? { lat: latitude, lng: longitude } : null,
+      localTime
+    };
 
     if (!question || typeof question !== 'string') {
       return res.status(400).json({
@@ -25,7 +30,7 @@ router.post('/chat', async (req, res) => {
     }
 
     // Process the question through AI pipeline
-    const aiResult = await processMessage(question, userId);
+    const aiResult = await processMessage(question, userId, context);
 
     // Extract place identifiers from sources
     // Try id first, fallback to name
@@ -95,6 +100,8 @@ router.post('/chat', async (req, res) => {
         answer: aiResult.answer,
         cached: aiResult.cached,
         sources: enrichedSources,
+        intent: aiResult.intent,
+        structuredData: aiResult.structuredData,
         places: places.map(p => ({
           _id: p._id,
           name: p.name,

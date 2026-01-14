@@ -41,6 +41,7 @@ import chatRoutes from './routes/chatRoutes.js';
 import placeRoutes from './routes/placeRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import weatherRoutes from './routes/weatherRoutes.js';
 
 // Import middleware
 import errorHandler from './middleware/errorHandler.js';
@@ -115,6 +116,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/import', adminImportRoutes); // ✅ Goong import routes
 app.use('/api/ai', aiRoutes);
+app.use('/api/weather', weatherRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

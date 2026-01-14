@@ -1,0 +1,131 @@
+.timelineContainer {
+    padding: 1rem;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #111827;
+    font-weight: 600;
+}
+
+.badge {
+    background-color: #fce7f3;
+    color: #be185d;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 1rem;
+    font-weight: 500;
+}
+
+.timeline {
+    position: relative;
+    padding-left: 0.5rem;
+}
+
+.timelineItem {
+    display: flex;
+    gap: 1.5rem;
+    position: relative;
+    padding-bottom: 2rem;
+}
+
+.timelineItem:last-child {
+    padding-bottom: 0;
+}
+
+.timelineItem::before {
+    content: '';
+    position: absolute;
+    left: 2rem;
+    /* Adjusted for timeColumn width + gap */
+    top: 2rem;
+    /* Start after the dot */
+    bottom: 0;
+    width: 2px;
+    background-color: #e5e7eb;
+    display: block;
+}
+
+.timelineItem:last-child::before {
+    display: none;
+}
+
+.timeColumn {
+    min-width: 3rem;
+    text-align: right;
+    padding-top: 0.25rem;
+    position: relative;
+    z-index: 1;
+    /* Above timeline line */
+}
+
+.time {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.contentColumn {
+    flex: 1;
+}
+
+.card {
+    background-color: #f9fafb;
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid #f3f4f6;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    background-color: white;
+    border-color: #e5e7eb;
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.activityType {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.placeName {
+    margin: 0;
+    font-size: 1rem;
+    color: #1f2937;
+    flex: 1;
+    margin-left: 0.75rem;
+    text-align: right;
+}
+
+.reason {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #4b5563;
+    line-height: 1.5;
+}

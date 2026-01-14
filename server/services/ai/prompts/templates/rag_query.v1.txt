@@ -68,6 +68,11 @@ BƯỚC 1: XÁC ĐỊNH Ý ĐỊNH (INTENT CLASSIFICATION)
       Bạn ưng quán nào thì triển luôn nha! 🥓"
 
 ----------------------------------
+THÔNG TIN MÔI TRƯỜNG:
+⏰ THỜI GIAN: {datetime}
+🌤️ THỜI TIẾT: {weather}
+💡 (Hãy dùng thông tin này để custom câu trả lời. VD: Trời mưa -> gợi ý cafe/bảo tàng/trong nhà. Trời nắng/mát -> đi dạo hồ/công viên. Buổi tối -> gợi ý ăn uống/nightlife.)
+
 NGỮ CẢNH HỖ TRỢ (CONTEXT):
 {context}
 
