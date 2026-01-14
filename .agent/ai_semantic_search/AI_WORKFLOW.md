@@ -14,11 +14,13 @@ Tài liệu này mô tả chi tiết luồng dữ liệu (Data Flow) của tính
     2.  Kích hoạt callback `onSearch` được truyền từ `SearchResult` page.
 
 ### Bước 2: Gọi API (`Service Layer`)
-*   **Hook quản lý**: `useAIChat` (file `hooks/useAIChat.js`) sử dụng React Query (`useMutation`) để quản lý trạng thái loading/error.
-*   **Service call**: `useAIChat` gọi hàm `sendChatMessage` trong `services/aiService.js`.
+*   **Context Gathering**:
+    *   Client thu thập tọa độ GPS (nếu User click "Near Me").
+    *   Lấy thời gian hiện tại của thiết bị (`localTime`).
+*   **Service call**: `useAIChat` gọi hàm `sendChatMessage`
 *   **Request**: Gửi HTTP POST request tới server.
     *   **URL**: `/api/ai/chat`
-    *   **Body**: `{ question: "Quán cafe...", userId: "..." }`
+    *   **Body**: `{ question: "...", context: { lat, lon, localTime } }`
 
 ---
 
@@ -37,32 +39,26 @@ Tài liệu này mô tả chi tiết luồng dữ liệu (Data Flow) của tính
 
 Đây là "bộ não" của hệ thống, được định nghĩa trong `server/services/ai/pipelines/mainChatPipeline.js`. Pipeline chạy tuần tự theo logic **Hybrid Search + Re-ranking**:
 
-### Bước 4: Input Guard & Caching
-*   **Input Guard**: Kiểm tra câu hỏi có hợp lệ/an toàn không.
-*   **Semantic Cache**: Kiểm tra xem câu hỏi tương tự đã có câu trả lời chưa (Redis). ✅ Hit -> Return ngay.
+### Bước 4: Pipeline Execution & Routing
+*   **Router Pattern**:
+    1.  **Input Guard**: Kiểm tra an toàn.
+    2.  **Intent Classification**: LLM phân loại ý định User: `CHAT` hay `ITINERARY`.
+    3.  **Context Injection**:
+        *   Gọi Weather Service (Open-Meteo) lấy thời tiết hiện tại.
+        *   Xác định khung giờ (Sáng/Trưa/Tối/Đêm).
 
-### Bước 5: Query Understanding (Hiểu Câu Hỏi)
-*   **Query Rewrite**: Sử dụng LLM để viết lại câu hỏi, làm rõ ý định và chuẩn hóa địa danh (ví dụ: "chè bk" -> "quán chè khu vực Đại học Bách Khoa").
+### Bước 5: Branch 1 - General Chat (RAG)
+Nếu Intent là `CHAT`:
+1.  **Semantic Search**: Query Pinecone + MongoDB.
+2.  **Re-ranking**:
+    *   Cohere Rerank (Semantic).
+    *   **Distance Sorting**: Nếu User cung cấp Location, ưu tiên địa điểm gần (Haversine Distance).
+3.  **LLM Generation**: Prompt chứa thông tin thời tiết (ví dụ: "Cảnh báo mưa, ưu tiên quán trong nhà").
 
-### Bước 6: Hybrid Retrieval (Tìm Kiếm Lai)
-Hệ thống thực hiện song song 2 chiến lược tìm kiếm:
-1.  **Vector Search (Pinecone)**: Tìm kiếm theo ngữ nghĩa (Semantic), hiểu được các mô tả trừu tượng (ví dụ: "quán lãng mạn").
-2.  **Keyword/Regex Search (MongoDB)**:
-    *   Tìm kiếm Text thông thường.
-    *   **Smart Address Regex**: Tự động phát hiện các mẫu địa chỉ (Ngõ, Ngách, Phố) để tìm chính xác địa điểm theo vị trí địa lý (ví dụ: "Ngõ Tự Do").
-
-### Bước 7: Optimize Ranking (Tối Ưu Thứ Hạng)
-Kết quả từ Bước 6 được gộp lại và xử lý qua 2 tầng lọc:
-1.  **Cohere Rerank**: Sử dụng model AI chuyên dụng (`rerank-multilingual-v3.0`) để sắp xếp lại danh sách dựa trên độ liên quan ngữ nghĩa sâu.
-2.  **Local Reordering (Golden Fix)**:
-    *   Tầng xử lý logic cuối cùng.
-    *   Kiểm tra nếu có địa điểm khớp chính xác Tên hoặc Địa chỉ với câu hỏi gốc.
-    *   **Boost** địa điểm đó lên vị trí đầu tiên (RANK #1).
-
-### Bước 8: LLM Generation (Sinh Câu Trả Lời)
-*   **Context Assembly**: Ghép các địa điểm đã sắp xếp vào prompt, đánh số thứ tự rõ ràng (`RANK #1`, `RANK #2`...).
-*   **Instruction**: Yêu cầu LLM ưu tiên tuyệt đối thông tin từ `RANK #1` nếu có.
-*   **Generation**: Sinh câu trả lời tự nhiên, trích xuất ID địa điểm.
+### Bước 6: Branch 2 - Itinerary Planning
+Nếu Intent là `ITINERARY`:
+1.  **Broad Retrieval**: Tìm kiếm đa dạng (Ăn uống + Cafe + Vui chơi).
+2.  **Structured Generation**: LLM trả về JSON theo schema lịch trình (Sáng/Chiều/Tối).
 
 ---
 
@@ -72,20 +68,23 @@ Kết quả từ Bước 6 được gộp lại và xử lý qua 2 tầng lọc:
 *   **Vấn đề**: Thứ tự địa điểm trả về từ MongoDB có thể không khớp với thứ tự mà AI đã "nghĩ" trong đầu.
 *   **Giải pháp (Answer-Aware Sorting)**:
     1.  Server phân tích câu trả lời text của AI.
-    2.  Sử dụng thuật toán **Fuzzy Matching** (tìm tên chính xác, tên ngắn, hoặc 3 từ đầu) để định vị quán trong văn bản.
-    3.  Đảm bảo sự đồng nhất tuyệt đối giữa "Lời nói" (Text) và "Hành động" (UI Card).
+### Bước 9: Reordering & Formatting
+Nếu là `CHAT`:
+*   **Answer-Aware Sorting**: Sắp xếp lại danh sách `places` để khớp với thứ tự AI nhắc đến trong câu trả lời.
+
+Nếu là `ITINERARY`:
+*   **Structured Formatting**: Kiểm tra tính hợp lệ của JSON lịch trình.
 
 ### Bước 10: Final Response
-Server trả về JSON cho Client, client chỉ việc render theo đúng thứ tự mảng `places`:
+Server trả về JSON cho Client:
 ```json
 {
   "success": true,
   "data": {
-    "answer": "Theo mình, bạn nên thử quán [X] vì...",
-    "places": [
-       { "name": "X", ... }, // Luôn nằm đầu
-       { "name": "Y", ... }
-    ]
+    "intent": "CHAT" | "ITINERARY",
+    "answer": "...", // Text trả lời hoặc JSON string
+    "structuredData": { ... }, // Nếu là Itinerary
+    "places": [...] // Danh sách địa điểm liên quan
   }
 }
 ```
@@ -95,8 +94,9 @@ Server trả về JSON cho Client, client chỉ việc render theo đúng thứ 
 ## 5. 🎨 Client Display (Hiển Thị Kết Quả)
 
 ### Bước 11: Render UI (`SearchResult.jsx`)
-*   **AI Answer**: Hiển thị câu trả lời của Fong.
-*   **Place List**: Render danh sách card. Do Server đã sort sẵn, Client không cần xử lý logic phức tạp.
+*   Kiểm tra `intent`:
+    *   **CHAT**: Hiển thị Markdown Answer + List Card (`AISearchSection` + `PlaceList`).
+    *   **ITINERARY**: Hiển thị `ItineraryTimeline` (Timeline Component) + List Card.
 
 ---
 

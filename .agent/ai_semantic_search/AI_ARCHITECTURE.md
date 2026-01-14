@@ -36,52 +36,62 @@ Mục tiêu chính:
 ```plaintext
 server/services/ai/
 ├── config/                     # Cấu hình tập trung
-│   ├── index.js                # Env vars & Zod validation
-│   └── constants.js            # Constants (Models, Retrieve Config)
-│
-├── core/
-│   ├── llmFactory.js           # LLM Singleton
-│   ├── vectorStoreFactory.js   # Pinecone Connection
-│   └── cacheClient.js          # Redis Cache
-│
+├── core/                       # LLM & DB Connection
 ├── prompts/
 │   ├── templates/
 │   │   ├── system.v1.txt       # Persona (Fong)
-│   │   ├── rag_query.v1.txt    # RAG Prompt (kèm Rank Instruction)
-│   │   └── query_rewrite.v1.txt # Prompt viết lại câu hỏi
-│   └── promptLoader.js         # Template Management
-│
-├── retrieval/
-│   ├── reranker.js             # Cohere Rerank Implementation
-│   └── strategies/
-│       └── basicRetriever.js   # Base Retriever
-│
+│   │   ├── rag_query.v1.txt    # Standard RAG Prompt
+│   │   ├── itinerary_gen.v1.txt # JSON Prompt cho lịch trình
+│   │   ├── intent_classify.v1.txt # Prompt phân loại ý định
+│   └── promptLoader.js         
+├── retrieval/                  # Search strategies & Reranker
 ├── pipelines/
-│   └── mainChatPipeline.js     # Orchestrator chính:
-│                               # 1. Guard -> 2. Rewrite -> 3. Hybrid Retrieve
-│                               # 4. Cohere Rerank -> 5. Local Reorder -> 6. LLM
-│
+│   └── mainChatPipeline.js     # Router Pattern Orchestrator:
+│                               # 1. Input Guard
+│                               # 2. Intent Classify (Itinerary vs Chat)
+│                               # 3. Weather/Time Context Injection
+│                               # 4. Branch Execution
+│                               # 5. Output Format
 ├── guardrails/
-│   ├── inputGuard.js           # Validation đầu vào
-│   └── outputGuard.js          # Validation đầu ra
-│
-└── index.js                    # Service Export
+└── index.js                    
 ```
+
+### External Services
+*   **Weather Provider:** [Open-Meteo](https://open-meteo.com/) - Dữ liệu thời tiết Real-time & Forecast.
+*   **LLM Provider:** OpenAI API (`gpt-4o-mini`).
+*   **Vector DB:** Pinecone (Serverless).
+*   **Reranker:** Cohere Rerank.
 
 ***
 
-## 4. Luồng Dữ Liệu Chi Tiết (Data Flow)
+### 4. Luồng Dữ Liệu Chi Tiết (Data Flow)
 
-Biểu đồ luồng xử lý request chuẩn cho `mainChatPipeline.js` & `aiRoutes.js`:
+Biểu đồ luồng xử lý request chuẩn cho `mainChatPipeline.js`:
 
 ```mermaid
 graph TD
-    A[User Request] --> B{Input Guardrails}
-    B -- Vi phạm --> C[Block Response]
-    B -- Hợp lệ --> D{Semantic Cache}
+    A[Request + Context (Loc, Time)] --> B{Input Guard}
+    B -- Safe --> C[Intent Classifier]
     
-    D -- Hit --> E[Return Cached Answer]
-    D -- Miss --> F[Query Rewriter]
+    C -- "ITINERARY" --> D1[Itinerary Pipeline]
+    C -- "CHAT" --> D2[General Pipeline]
+
+    subgraph "D2: General Pipeline"
+        D2 --> E1[Inject Weather/Time Context]
+        E1 --> E2[Hybrid Retrieval (Vector + Keyword)]
+        E2 --> E3[Distance & Semantic Rerank]
+        E3 --> E4[LLM Generation (Answer + Place IDs)]
+    end
+
+    subgraph "D1: Itinerary Pipeline"
+        D1 --> F1[Broad Retrieval]
+        F1 --> F2[Structured Planner LLM]
+        F2 --> F3[JSON-Based Plan Generation]
+    end
+    
+    E4 & F3 --> G{Response Formatter}
+    G --> H[Final Client Response]
+```
     
     F --> G[Hybrid Retrieval Operations]
     

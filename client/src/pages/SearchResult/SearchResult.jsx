@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import AISearchSection from "../../components/common/AISearchSection/AISearchSection";
 import DetailPanel from "../../components/common/DetailPanel/DetailPanel";
-import FilterSidebar from "../../components/common/FilterSidebar/FilterSidebar";
+import WeatherSidebar from "../../components/common/WeatherSidebar/WeatherSidebar";
 import PropertyCard from "../../components/common/PropertyCard/PropertyCard";
 import useAIChat from "../../hooks/useAIChat";
 import { usePlaces } from "../../hooks/usePlaces";
@@ -131,13 +131,8 @@ const SearchResult = () => {
 
     return (
         <div className={styles.pageWrapper}>
-            {/* Left Sidebar - Filters */}
-            <FilterSidebar
-                filters={filters}
-                onFilterChange={handleFilterChange}
-                onPriceRangeChange={handlePriceRangeChange}
-                onClearAll={handleClearAll}
-            />
+            {/* Left Sidebar - Weather */}
+            <WeatherSidebar />
 
             {/* Middle - Grid or Loading */}
             <main className={styles.mainContent}>

@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getWeatherForecast } from '../../../services/weatherService';
-import styles from './FilterSidebar.module.css';
+import styles from './WeatherSidebar.module.css';
 
 const WeatherIcon = ({ type, size = 24, className }) => {
     // Simple SVG paths for weather icons
@@ -22,7 +22,7 @@ const WeatherIcon = ({ type, size = 24, className }) => {
     );
 };
 
-const FilterSidebar = memo(() => {
+const WeatherSidebar = memo(() => {
     // Fetch real weather data
     const { data: weather, isLoading } = useQuery({
         queryKey: ['weather', 'hanoi'],
@@ -117,5 +117,5 @@ const FilterSidebar = memo(() => {
     );
 });
 
-FilterSidebar.displayName = 'FilterSidebar';
-export default FilterSidebar;
+WeatherSidebar.displayName = 'WeatherSidebar';
+export default WeatherSidebar;

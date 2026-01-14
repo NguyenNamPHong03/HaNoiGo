@@ -99,15 +99,19 @@
 
 .forecastItem {
     display: grid;
-    grid-template-columns: 40px 40px 30px 1fr 30px;
+    grid-template-columns: 70px 40px 30px 1fr 30px;
+    /* Adjusted column for Vietnamese Text */
     align-items: center;
-    gap: 8px;
+    gap: 4px;
+    /* Reduced gap */
     font-size: 15px;
     font-weight: 500;
 }
 
 .dayName {
     font-weight: 600;
+    white-space: nowrap;
+    /* Prevent wrap for "Hôm nay" */
 }
 
 .iconWrapper {
