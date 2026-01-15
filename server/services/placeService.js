@@ -602,11 +602,25 @@ export const getFeaturedPlaces = async (limit = 10) => {
  * Search places by text (name, description, address)
  * @param {string} searchText - Search query
  * @param {number} limit - Result limit
+ * @param {string} category - Optional category filter
+ * @param {number} minPrice - Optional minimum price filter
  * @returns {array} Places array
  */
-export const searchPlaces = async (searchText, limit = 20) => {
+export const searchPlaces = async (searchText, limit = 20, category = null, minPrice = null) => {
+  const query = { $text: { $search: searchText } };
+  
+  // Add category filter if provided
+  if (category) {
+    query.category = category;
+  }
+  
+  // Add price filter if provided (for luxury mode)
+  if (minPrice) {
+    query['priceRange.min'] = { $gte: minPrice };
+  }
+  
   const places = await Place.find(
-    { $text: { $search: searchText } },
+    query,
     { score: { $meta: 'textScore' } } // Projection
   )
     .sort({ score: { $meta: 'textScore' } }) // Sort by relevance
@@ -620,9 +634,23 @@ export const searchPlaces = async (searchText, limit = 20) => {
  * Search places by regex on specific field (address)
  * @param {RegExp} regex - Regex to search
  * @param {number} limit
+ * @param {string} category - Optional category filter
+ * @param {number} minPrice - Optional minimum price filter
  */
-export const searchPlacesByRegex = async (regex, limit = 5) => {
-  return await Place.find({ address: regex }).limit(limit).lean();
+export const searchPlacesByRegex = async (regex, limit = 5, category = null, minPrice = null) => {
+  const query = { address: regex };
+  
+  // Add category filter if provided
+  if (category) {
+    query.category = category;
+  }
+  
+  // Add price filter if provided (for luxury mode)
+  if (minPrice) {
+    query['priceRange.min'] = { $gte: minPrice };
+  }
+  
+  return await Place.find(query).limit(limit).lean();
 };
 
 // ========== HELPER FUNCTIONS ==========

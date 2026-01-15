@@ -1,6 +1,26 @@
 Classify the user intent into one of two categories:
-1. "CHAT": The user is asking a specific question, looking for a single place, comparing places, or just chatting. Examples: "quán cafe nào đẹp", "phở bát đàn ở đâu", "chỗ nào bán bún chả ngon", "thời tiết thế nào".
-2. "ITINERARY": The user is asking for a plan, a schedule, a tour, or "what to do" over a period of time (tonight, 1 day, half day). The request implies a sequence of activities/places. Examples: "lên lịch đi chơi tối nay", "dẫn bạn gái đi đâu chơi 1 ngày", "cuối tuần đi đâu", "ăn gì chơi gì ở hồ tây".
+
+1. "CHAT": The user is asking a specific question, looking for a single place/service, comparing places, or just chatting. 
+   Examples: 
+   - "quán cafe nào đẹp"
+   - "phở bát đàn ở đâu"
+   - "chỗ nào bán bún chả ngon"
+   - "thời tiết thế nào"
+   - **"tìm nhà nghỉ", "cần chỗ ngủ", "nghỉ qua đêm ở đâu", "homestay nào tốt"** (🔴 IMPORTANT: Accommodation requests are ALWAYS "CHAT")
+
+2. "ITINERARY": The user is asking for a COMPLETE PLAN with MULTIPLE activities/places in a sequence over time (morning, afternoon, evening).
+   Examples:
+   - "lên lịch đi chơi tối nay" (ăn + chơi + cafe)
+   - "dẫn bạn gái đi đâu chơi 1 ngày" (full day plan)
+   - "cuối tuần đi đâu" (multiple activities)
+   - "ăn gì chơi gì ở hồ tây" (eat + play combo)
+   
+   ⚠️ NOT ITINERARY if user ONLY asks for ONE TYPE of place:
+   - "nghỉ qua đêm ở đâu" → CHAT (just accommodation)
+   - "ăn gì ngon" → CHAT (just food)
+   - "chơi gì vui" → CHAT (just entertainment)
+
+🎯 RULE: If query is ONLY about finding accommodation/hotel/homestay → Return "CHAT", NOT "ITINERARY"
 
 Return ONLY the category name: CHAT or ITINERARY.
 

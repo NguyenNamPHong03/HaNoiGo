@@ -24,7 +24,7 @@ const placeSchema = new mongoose.Schema({
   category: {
     type: String,
     required: [true, 'Category is required'],
-    enum: ['Ăn uống', 'Vui chơi', 'Mua sắm', 'Dịch vụ', 'Khác']
+    enum: ['Ăn uống', 'Vui chơi', 'Mua sắm', 'Dịch vụ', 'Lưu trú', 'Khác']
   },
   description: {
     type: String,

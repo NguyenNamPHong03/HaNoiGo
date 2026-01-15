@@ -5,19 +5,19 @@
  */
 
 import { RunnableSequence } from '@langchain/core/runnables';
-import llmFactory from '../core/llmFactory.js';
-import cacheClient from '../core/cacheClient.js';
-import promptLoader from '../prompts/promptLoader.js';
-import inputGuard from '../guardrails/inputGuard.js';
-import outputGuard from '../guardrails/outputGuard.js';
-import basicRetriever from '../retrieval/strategies/basicRetriever.js';
-import reranker from '../retrieval/reranker.js';
-import telemetry from '../core/telemetry.js';
-import { RAG_STAGES } from '../config/constants.js';
-import logger from '../utils/logger.js';
-import config from '../config/index.js';
 import { searchPlaces, searchPlacesByRegex } from '../../placeService.js';
 import weatherService from '../../weather/weatherService.js';
+import { RAG_STAGES } from '../config/constants.js';
+import config from '../config/index.js';
+import cacheClient from '../core/cacheClient.js';
+import llmFactory from '../core/llmFactory.js';
+import telemetry from '../core/telemetry.js';
+import inputGuard from '../guardrails/inputGuard.js';
+import outputGuard from '../guardrails/outputGuard.js';
+import promptLoader from '../prompts/promptLoader.js';
+import reranker from '../retrieval/reranker.js';
+import basicRetriever from '../retrieval/strategies/basicRetriever.js';
+import logger from '../utils/logger.js';
 
 class MainChatPipeline {
     constructor() {
@@ -150,6 +150,41 @@ class MainChatPipeline {
                     const hour = now.getHours();
                     const isLateNight = hour >= 22 || hour < 4;
 
+                    // 🏨 ACCOMMODATION DETECTION (Nhận diện yêu cầu lưu trú)
+                    const accommodationKeywords = [
+                        'về muộn', 'về khuya', 'hẹn hò về muộn', 'hẹn hò tối muộn',
+                        'cần chỗ nghỉ', 'ở lại qua đêm', 'chỗ nghỉ qua đêm',
+                        'nghỉ qua đêm', 'ngủ qua đêm', 'nghỉ đêm', 'qua đêm',
+                        'nhà nghỉ', 'homestay', 'khách sạn', 'resort', 'chỗ ngủ',
+                        'chỗ ở', 'thuê phòng', 'đặt phòng', 'book phòng'
+                    ];
+                    
+                    // 💎 LUXURY TIER DETECTION (Nhận diện nhu cầu cao cấp)
+                    const luxuryKeywords = [
+                        'cao cấp', 'xịn', 'sang trọng', 'luxury', 'đẳng cấp',
+                        'high-end', 'premium', '5 sao', 'sang', 'vip',
+                        'đắt', 'chất lượng cao', 'resort', 'khách sạn tốt'
+                    ];
+                    
+                    const needsAccommodation = accommodationKeywords.some(kw => query.includes(kw));
+                    const needsLuxury = luxuryKeywords.some(kw => query.includes(kw));
+                    
+                    if (needsAccommodation) {
+                        logger.info('🏨 Accommodation request detected! Filtering category="Lưu trú"');
+                        input.accommodationMode = true;
+                        
+                        // Determine price tier
+                        if (needsLuxury) {
+                            logger.info('💎 LUXURY MODE: Filtering high-end accommodations (≥500k)');
+                            input.luxuryMode = true;
+                            input.minPrice = 500000; // 500k+ for luxury
+                        } else {
+                            logger.info('🏠 STANDARD MODE: Mix of budget & mid-range accommodations');
+                            input.luxuryMode = false;
+                            input.minPrice = null; // No filter, random mix
+                        }
+                    }
+
                     if (isLateNight) {
                         // Automatically append "late night" context to search
                         // This helps find places that are actually open or tagged for nightlife
@@ -169,9 +204,15 @@ class MainChatPipeline {
 
                         // Increase limit for itinerary to get diversity
                         const textLimit = input.intent === 'ITINERARY' ? 20 : 10;
+                        
+                        // 🏨 Apply category filter for accommodation mode
+                        const categoryFilter = input.accommodationMode ? 'Lưu trú' : null;
+                        
+                        // 💎 Apply price filter for luxury mode
+                        const priceFilter = input.minPrice || null;
 
-                        // 1. Text Search (General) (increased limit)
-                        promises.push(searchPlaces(query, textLimit));
+                        // 1. Text Search (General) with filters
+                        promises.push(searchPlaces(query, textLimit, categoryFilter, priceFilter));
 
                         // 2. Smart Address Regex Search
                         // Detect patterns: "ngõ tự do" -> search for /(ngõ|ng\.?)\s*tự\s*do/i
@@ -230,7 +271,7 @@ class MainChatPipeline {
                             const regex = new RegExp(`${prefixRegex}\\s+${flexibleSuffix}`, 'i');
 
                             logger.info(`🎯 Address Regex detected: ${regex}`);
-                            promises.push(searchPlacesByRegex(regex, 5));
+                            promises.push(searchPlacesByRegex(regex, 5, categoryFilter, priceFilter));
                         }
 
                         const results = await Promise.all(promises);
