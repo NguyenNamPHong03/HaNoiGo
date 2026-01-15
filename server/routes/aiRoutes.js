@@ -3,8 +3,8 @@
  */
 
 import express from 'express';
-import { processMessage, healthCheck } from '../services/ai/index.js';
 import Place from '../models/Place.js';
+import { healthCheck, processMessage } from '../services/ai/index.js';
 import { sortPlacesByAnswerOrder } from '../services/ai/utils/reorderUtils.js';
 
 const router = express.Router();
@@ -114,6 +114,9 @@ router.post('/chat', async (req, res) => {
           totalReviews: p.totalReviews,
           images: p.images,
           aiTags: p.aiTags,
+          openingHours: p.openingHours,
+          operatingHours: p.operatingHours,
+          contact: p.contact,
           additionalInfo: p.additionalInfo,
           googleData: p.googleData
         }))
@@ -197,6 +200,9 @@ router.post('/chat/stream', async (req, res) => {
         images: p.images,
         category: p.category,
         aiTags: p.aiTags,
+        openingHours: p.openingHours,
+        operatingHours: p.operatingHours,
+        contact: p.contact,
         additionalInfo: p.additionalInfo,
         googleData: p.googleData
       }))

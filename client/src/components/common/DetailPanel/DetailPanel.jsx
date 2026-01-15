@@ -3,6 +3,44 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import ImageViewer from '../ImageViewer/ImageViewer';
 import styles from './DetailPanel.module.css';
 
+// Helper: Convert English day names to Vietnamese
+const convertDayToVietnamese = (dayName) => {
+    const dayMap = {
+        'Monday': 'Thứ Hai',
+        'Tuesday': 'Thứ Ba', 
+        'Wednesday': 'Thứ Tư',
+        'Thursday': 'Thứ Năm',
+        'Friday': 'Thứ Sáu',
+        'Saturday': 'Thứ Bảy',
+        'Sunday': 'Chủ nhật'
+    };
+    return dayMap[dayName] || dayName;
+};
+
+// Helper: Convert "10 AM to 10 PM" to "10:00 - 22:00"
+const convertTimeFormat = (timeStr) => {
+    if (!timeStr) return timeStr;
+    
+    // Replace "to" with "-"
+    let result = timeStr.replace(' to ', ' - ');
+    
+    // Convert AM/PM to 24h format
+    result = result.replace(/(\d+)(?::(\d+))?\s*(AM|PM)/gi, (match, hour, minute, period) => {
+        let h = parseInt(hour);
+        const m = minute || '00';
+        
+        if (period.toUpperCase() === 'PM' && h !== 12) {
+            h += 12;
+        } else if (period.toUpperCase() === 'AM' && h === 12) {
+            h = 0;
+        }
+        
+        return `${h.toString().padStart(2, '0')}:${m}`;
+    });
+    
+    return result;
+};
+
 const DetailTabs = ({ place }) => {
     const [activeTab, setActiveTab] = useState('overview');
 
@@ -28,7 +66,8 @@ const DetailTabs = ({ place }) => {
     const priceRange = place.priceRange || { min: 0, max: 0 };
     const district = place.district || '';
     const menu = place.menu || [];
-    const operatingHours = place.operatingHours || {};
+    const openingHours = place.openingHours || []; // Format mới từ Google
+    const operatingHours = place.operatingHours || {}; // Format cũ
     const contact = place.contact || {};
     const aiTags = place.aiTags || {};
     const averageRating = place.averageRating || 0;
@@ -176,34 +215,49 @@ const DetailTabs = ({ place }) => {
                         </div>
                     )}
 
-                    {/* Operating Hours */}
-                    {operatingHours && Object.keys(operatingHours).length > 0 && (
+                    {/* Operating Hours - Hiển thị openingHours (từ Google) hoặc operatingHours (legacy) */}
+                    {(openingHours.length > 0 || Object.keys(operatingHours).length > 0) && (
                         <div className={styles.hoursSection}>
                             <p className={styles.label}>Giờ mở cửa:</p>
                             <div className={styles.hoursList}>
-                                {Object.entries(operatingHours)
-                                    .filter(([, hours]) => hours?.open || hours?.close)
-                                    .map(([day, hours]) => (
-                                        <div key={day} className={styles.hoursItem}>
+                                {/* Ưu tiên openingHours (format mới từ Google) */}
+                                {openingHours.length > 0 ? (
+                                    openingHours.map((item, idx) => (
+                                        <div key={idx} className={styles.hoursItem}>
                                             <span className={styles.dayName}>
-                                                {day === 'monday' && 'Thứ 2'}
-                                                {day === 'tuesday' && 'Thứ 3'}
-                                                {day === 'wednesday' && 'Thứ 4'}
-                                                {day === 'thursday' && 'Thứ 5'}
-                                                {day === 'friday' && 'Thứ 6'}
-                                                {day === 'saturday' && 'Thứ 7'}
-                                                {day === 'sunday' && 'Chủ nhật'}
+                                                {convertDayToVietnamese(item.day)}
                                             </span>
                                             <span className={styles.hourTime}>
-                                                {hours.open && hours.close
-                                                    ? `${hours.open} - ${hours.close}`
-                                                    : hours.open
-                                                        ? `Mở cửa: ${hours.open}`
-                                                        : `Đóng cửa: ${hours.close}`
-                                                }
+                                                {convertTimeFormat(item.hours)}
                                             </span>
                                         </div>
-                                    ))}
+                                    ))
+                                ) : (
+                                    /* Fallback: operatingHours (format cũ) */
+                                    Object.entries(operatingHours)
+                                        .filter(([, hours]) => hours?.open || hours?.close)
+                                        .map(([day, hours]) => (
+                                            <div key={day} className={styles.hoursItem}>
+                                                <span className={styles.dayName}>
+                                                    {day === 'monday' && 'Thứ 2'}
+                                                    {day === 'tuesday' && 'Thứ 3'}
+                                                    {day === 'wednesday' && 'Thứ 4'}
+                                                    {day === 'thursday' && 'Thứ 5'}
+                                                    {day === 'friday' && 'Thứ 6'}
+                                                    {day === 'saturday' && 'Thứ 7'}
+                                                    {day === 'sunday' && 'Chủ nhật'}
+                                                </span>
+                                                <span className={styles.hourTime}>
+                                                    {hours.open && hours.close
+                                                        ? `${hours.open} - ${hours.close}`
+                                                        : hours.open
+                                                            ? `Mở cửa: ${hours.open}`
+                                                            : `Đóng cửa: ${hours.close}`
+                                                    }
+                                                </span>
+                                            </div>
+                                        ))
+                                )}
                             </div>
                         </div>
                     )}

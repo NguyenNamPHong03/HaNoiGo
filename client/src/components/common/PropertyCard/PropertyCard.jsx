@@ -1,7 +1,42 @@
-import React, { memo } from 'react';
+import { memo, useMemo } from 'react';
 import styles from './PropertyCard.module.css';
 
 const PropertyCard = memo(({ item, isSelected, onClick, index = null }) => {
+    // Get current opening hours (today)
+    const currentHours = useMemo(() => {
+        const place = item._originalPlace || item;
+        if (!place) return null;
+
+        const openingHours = place.openingHours || [];
+        const operatingHours = place.operatingHours || {};
+
+        // Ưu tiên openingHours (từ Google)
+        if (openingHours.length > 0) {
+            const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, ...
+            const daysMap = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+            const todayName = daysMap[today];
+            
+            const todayHours = openingHours.find(h => h.day === todayName);
+            if (todayHours && todayHours.hours) {
+                return todayHours.hours.replace(' to ', ' - ');
+            }
+        }
+
+        // Fallback: operatingHours (legacy format)
+        if (Object.keys(operatingHours).length > 0) {
+            const today = new Date().getDay();
+            const daysMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const todayKey = daysMap[today];
+            const hours = operatingHours[todayKey];
+            
+            if (hours?.open && hours?.close) {
+                return `${hours.open} - ${hours.close}`;
+            }
+        }
+
+        return null;
+    }, [item]);
+
     return (
         <div
             className={`${styles.card} ${isSelected ? styles.selectedCard : ''}`}
@@ -26,6 +61,15 @@ const PropertyCard = memo(({ item, isSelected, onClick, index = null }) => {
                 <div className={styles.cardAddress}>
                     <span>{item.address}</span>
                 </div>
+                {currentHours && (
+                    <div className={styles.cardHours}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <span>Hôm nay: {currentHours}</span>
+                    </div>
+                )}
                 <div className={styles.cardFooter}>
                     <span className={styles.price}>
                         {item.price?.toLocaleString('vi-VN')}₫
