@@ -604,9 +604,10 @@ export const getFeaturedPlaces = async (limit = 10) => {
  * @param {number} limit - Result limit
  * @param {string} category - Optional category filter
  * @param {number} minPrice - Optional minimum price filter
+ * @param {object} mustQuery - Optional hard filter (for food keyword matching)
  * @returns {array} Places array
  */
-export const searchPlaces = async (searchText, limit = 20, category = null, minPrice = null) => {
+export const searchPlaces = async (searchText, limit = 20, category = null, minPrice = null, mustQuery = null) => {
   const query = { $text: { $search: searchText } };
   
   // Add category filter if provided
@@ -617,6 +618,11 @@ export const searchPlaces = async (searchText, limit = 20, category = null, minP
   // Add price filter if provided (for luxury mode)
   if (minPrice) {
     query['priceRange.min'] = { $gte: minPrice };
+  }
+  
+  // 🍜 Add food keyword hard filter if provided
+  if (mustQuery) {
+    Object.assign(query, mustQuery);
   }
   
   const places = await Place.find(
@@ -636,8 +642,9 @@ export const searchPlaces = async (searchText, limit = 20, category = null, minP
  * @param {number} limit
  * @param {string} category - Optional category filter
  * @param {number} minPrice - Optional minimum price filter
+ * @param {object} mustQuery - Optional hard filter (for food keyword matching)
  */
-export const searchPlacesByRegex = async (regex, limit = 5, category = null, minPrice = null) => {
+export const searchPlacesByRegex = async (regex, limit = 5, category = null, minPrice = null, mustQuery = null) => {
   const query = { address: regex };
   
   // Add category filter if provided
@@ -650,7 +657,135 @@ export const searchPlacesByRegex = async (regex, limit = 5, category = null, min
     query['priceRange.min'] = { $gte: minPrice };
   }
   
+  // 🍜 Add food keyword hard filter if provided
+  if (mustQuery) {
+    Object.assign(query, mustQuery);
+  }
+  
   return await Place.find(query).limit(limit).lean();
+};
+
+/**
+ * Search places by vibe/tags (for PLACE_VIBE intent)
+ * @param {string[]} tags - Array of mood/vibe tags
+ * @param {number} limit
+ * @param {string} category - Optional category filter
+ * @param {number} minPrice - Optional minimum price filter
+ * @returns {array} Places array
+ */
+export const searchPlacesByVibe = async (tags, limit = 10, category = null, minPrice = null) => {
+  if (!tags || tags.length === 0) return [];
+
+  // Build regex for each tag
+  const tagRegexes = tags.map(tag => {
+    const safe = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(safe, 'i');
+  });
+
+  const query = {
+    $or: [
+      { 'aiTags.mood': { $in: tags } },
+      { 'aiTags.space': { $in: tags } },
+      { 'aiTags.suitability': { $in: tags } },
+      { description: { $in: tagRegexes } }
+    ]
+  };
+
+  // Add category filter if provided
+  if (category) {
+    query.category = category;
+  }
+
+  // Add price filter if provided
+  if (minPrice) {
+    query['priceRange.min'] = { $gte: minPrice };
+  }
+
+  const places = await Place.find(query).limit(limit).lean();
+  return places;
+};
+
+/**
+ * Search nearby places using MongoDB $geoNear
+ * @param {number} latitude - User latitude
+ * @param {number} longitude - User longitude
+ * @param {number} maxDistanceKm - Maximum distance in kilometers (default 5km)
+ * @param {number} limit - Number of results
+ * @param {object} filters - Optional filters (category, priceRange)
+ * @returns {array} Nearby places with distance
+ */
+export const searchNearbyPlaces = async (
+  latitude,
+  longitude,
+  maxDistanceKm = 5,
+  limit = 20,
+  filters = {}
+) => {
+  if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+    throw new Error('Valid latitude and longitude are required');
+  }
+
+  const { category, minPrice, maxPrice } = filters;
+
+  // Build match query for additional filters
+  const matchQuery = {
+    status: 'Published',
+    isActive: true,
+  };
+
+  if (category) {
+    matchQuery.category = category;
+  }
+
+  if (minPrice) {
+    matchQuery['priceRange.min'] = { $gte: minPrice };
+  }
+
+  if (maxPrice) {
+    matchQuery['priceRange.max'] = { $lte: maxPrice };
+  }
+
+  // MongoDB $geoNear aggregation
+  const places = await Place.aggregate([
+    {
+      $geoNear: {
+        near: {
+          type: 'Point',
+          coordinates: [longitude, latitude], // [lng, lat] - GeoJSON format
+        },
+        distanceField: 'distanceKm',
+        maxDistance: maxDistanceKm * 1000, // Convert km to meters
+        spherical: true,
+        query: matchQuery,
+        distanceMultiplier: 0.001, // Convert meters to kilometers
+      },
+    },
+    {
+      $limit: limit,
+    },
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        address: 1,
+        district: 1,
+        category: 1,
+        description: 1,
+        priceRange: 1,
+        priceDisplay: 1,
+        images: 1,
+        averageRating: 1,
+        totalReviews: 1,
+        aiTags: 1,
+        openingHours: 1,
+        contact: 1,
+        location: 1,
+        distanceKm: 1,
+      },
+    },
+  ]);
+
+  return places;
 };
 
 // ========== HELPER FUNCTIONS ==========

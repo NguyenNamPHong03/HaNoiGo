@@ -104,21 +104,31 @@ const AISearchSection = memo(({
                     <button
                         className={`${styles.searchActionBtn} ${styles.locationBtn}`}
                         onClick={() => {
-                            if (navigator.geolocation) {
-                                navigator.geolocation.getCurrentPosition(
-                                    (position) => {
-                                        const { latitude, longitude } = position.coords;
-                                        // Pass specific prompt for "Near Me"
-                                        onSearch("Gợi ý địa điểm gần tôi nhất", { latitude, longitude });
-                                    },
-                                    (error) => {
-                                        console.error("Geolocation error:", error);
-                                        alert("Không thể lấy vị trí. Vui lòng cấp quyền truy cập vị trí.");
-                                    }
-                                );
-                            } else {
+                            if (!navigator.geolocation) {
                                 alert("Trình duyệt không hỗ trợ định vị.");
+                                return;
                             }
+
+                            navigator.geolocation.getCurrentPosition(
+                                (position) => {
+                                    const { latitude, longitude } = position.coords;
+                                    
+                                    // Giữ query hiện tại, fallback "quán ăn" nếu rỗng
+                                    const searchQuery = (query || "").trim();
+                                    const finalQuery = searchQuery.length ? searchQuery : "quán ăn";
+                                    
+                                    // Pass nearMe flag để backend biết cần sort by distance
+                                    onSearch(finalQuery, { 
+                                        latitude, 
+                                        longitude,
+                                        nearMe: true 
+                                    });
+                                },
+                                (error) => {
+                                    console.error("Geolocation error:", error);
+                                    alert("Không thể lấy vị trí. Vui lòng cấp quyền truy cập vị trí.");
+                                }
+                            );
                         }}
                         title="Tìm quanh đây"
                         disabled={isLoading}

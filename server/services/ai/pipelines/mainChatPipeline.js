@@ -5,7 +5,7 @@
  */
 
 import { RunnableSequence } from '@langchain/core/runnables';
-import { searchPlaces, searchPlacesByRegex } from '../../placeService.js';
+import { searchPlaces, searchPlacesByRegex, searchPlacesByVibe, searchNearbyPlaces } from '../../placeService.js';
 import weatherService from '../../weather/weatherService.js';
 import { RAG_STAGES } from '../config/constants.js';
 import config from '../config/index.js';
@@ -15,8 +15,10 @@ import telemetry from '../core/telemetry.js';
 import inputGuard from '../guardrails/inputGuard.js';
 import outputGuard from '../guardrails/outputGuard.js';
 import promptLoader from '../prompts/promptLoader.js';
+import intentClassifier from '../retrieval/extractors/intentClassifier.js';
 import reranker from '../retrieval/reranker.js';
 import basicRetriever from '../retrieval/strategies/basicRetriever.js';
+import { isGenericFoodQuery } from '../utils/distanceUtils.js';
 import logger from '../utils/logger.js';
 
 class MainChatPipeline {
@@ -120,6 +122,33 @@ class MainChatPipeline {
                 });
             };
 
+            // Stage 2.6: � Intent Classification (CRITICAL: Food vs Vibe vs Activity)
+            const classifyQueryIntent = async (input) => {
+                if (input.cached) return input;
+
+                return await telemetry.measureTime('QUERY_INTENT_CLASSIFY', async () => {
+                    const intentData = intentClassifier.classify(input.question);
+                    
+                    logger.info(`🎯 Query Intent: ${intentData.intent}`);
+                    
+                    if (intentData.intent === 'FOOD_ENTITY') {
+                        logger.info(`🍜 FOOD MODE: "${intentData.keyword}" → HARD FILTER`);
+                    } else if (intentData.intent === 'PLACE_VIBE') {
+                        logger.info(`💕 VIBE MODE: "${intentData.keyword}" → TAG FILTER [${intentData.tags.join(', ')}]`);
+                    } else if (intentData.intent === 'ACTIVITY') {
+                        logger.info(`🎵 ACTIVITY MODE: "${intentData.keyword}"`);
+                    }
+
+                    return {
+                        ...input,
+                        queryIntent: intentData.intent,
+                        queryKeyword: intentData.keyword,
+                        queryTags: intentData.tags,
+                        queryMustQuery: intentData.mustQuery
+                    };
+                });
+            };
+
             // Stage 3: Retrieval
             const retrieve = async (input) => {
                 if (input.cached) return input;
@@ -210,11 +239,83 @@ class MainChatPipeline {
                         
                         // 💎 Apply price filter for luxury mode
                         const priceFilter = input.minPrice || null;
+                        
+                        // � Apply filter based on Query Intent Type
+                        const queryIntent = input.queryIntent || 'GENERAL';
+                                                // 📍 NEAR ME OPTIMIZATION: For generic queries + location
+                        const hasLocation = input.context?.location?.lat && input.context?.location?.lng;
+                        const nearMeMode = input.context?.nearMe || false;
+                        
+                        if (nearMeMode && hasLocation && isGenericFoodQuery(query)) {
+                            // Use MongoDB $geoNear for fast nearby search
+                            const { lat, lng } = input.context.location;
+                            logger.info(`📍 NEAR ME MODE: Generic query "${query}" → $geoNear search`);
+                            
+                            try {
+                                const nearbyPlaces = await searchNearbyPlaces(
+                                    lat, 
+                                    lng, 
+                                    5, // 5km radius
+                                    textLimit, 
+                                    { category: categoryFilter, minPrice: priceFilter }
+                                );
+                                
+                                // Convert to document format
+                                const mongoDocs = nearbyPlaces.map(p => ({
+                                    pageContent: `${p.name} - ${p.address}\n${p.description}\nCategory: ${p.category}`,
+                                    metadata: {
+                                        id: p._id.toString(),
+                                        name: p.name,
+                                        address: p.address,
+                                        image: p.images?.[0] || '',
+                                        category: p.category,
+                                        price: p.priceRange?.min || 0,
+                                        rating: p.averageRating || 0,
+                                        reviewCount: p.totalReviews || 0,
+                                        source: 'mongo-nearby',
+                                        coordinates: p.location?.coordinates || null,
+                                        distanceKm: p.distanceKm
+                                    }
+                                }));
+                                
+                                logger.info(`✅ Found ${mongoDocs.length} nearby places`);
+                                
+                                return {
+                                    ...input,
+                                    retrievedDocs: mongoDocs
+                                };
+                            } catch (err) {
+                                logger.warn('⚠️ $geoNear failed, fallback to normal search:', err);
+                                // Fallback to normal search
+                            }
+                        }
+                        
+                        // Standard search paths
+                        if (queryIntent === 'FOOD_ENTITY') {
+                            // HARD keyword filter for food
+                            const foodMustQuery = input.queryMustQuery;
+                            logger.info(`🔒 HARD FILTER: Only places matching "${input.queryKeyword}"`);
+                            promises.push(searchPlaces(query, textLimit, categoryFilter, priceFilter, foodMustQuery));
+                            
+                        } else if (queryIntent === 'PLACE_VIBE') {
+                            // TAG/MOOD filter for vibe (hẹn hò, lãng mạn, chill...)
+                            const vibeTags = input.queryTags || [];
+                            logger.info(`💕 VIBE FILTER: Tags [${vibeTags.join(', ')}]`);
+                            promises.push(searchPlacesByVibe(vibeTags, textLimit, categoryFilter, priceFilter));
+                            
+                        } else if (queryIntent === 'ACTIVITY') {
+                            // Activity-based search
+                            const activityTags = input.queryTags || [];
+                            logger.info(`🎵 ACTIVITY FILTER: Tags [${activityTags.join(', ')}]`);
+                            promises.push(searchPlacesByVibe(activityTags, textLimit, categoryFilter, priceFilter));
+                            
+                        } else {
+                            // GENERAL: Normal text search
+                            logger.info(`🔍 GENERAL SEARCH: "${query}"`);
+                            promises.push(searchPlaces(query, textLimit, categoryFilter, priceFilter));
+                        }
 
-                        // 1. Text Search (General) with filters
-                        promises.push(searchPlaces(query, textLimit, categoryFilter, priceFilter));
-
-                        // 2. Smart Address Regex Search
+                        // 2. Smart Address Regex Search (for all intents)
                         // Detect patterns: "ngõ tự do" -> search for /(ngõ|ng\.?)\s*tự\s*do/i
                         // Common prefixes
                         const addressMarkers = [
@@ -271,7 +372,10 @@ class MainChatPipeline {
                             const regex = new RegExp(`${prefixRegex}\\s+${flexibleSuffix}`, 'i');
 
                             logger.info(`🎯 Address Regex detected: ${regex}`);
-                            promises.push(searchPlacesByRegex(regex, 5, categoryFilter, priceFilter));
+                            
+                            // Only apply foodMustQuery for FOOD_ENTITY intent
+                            const addressMustQuery = (queryIntent === 'FOOD_ENTITY') ? input.queryMustQuery : null;
+                            promises.push(searchPlacesByRegex(regex, 5, categoryFilter, priceFilter, addressMustQuery));
                         }
 
                         const results = await Promise.all(promises);
@@ -650,9 +754,10 @@ class MainChatPipeline {
                 guardedInput,
                 cachedResponse,
                 rewriteQuery,
-                classifyIntent, // New Step
+                classifyIntent, // Intent classification (ITINERARY vs CHAT)
+                classifyQueryIntent, // 🎯 Query intent (FOOD vs VIBE vs ACTIVITY)
                 retrieve,
-                keywordAugment, // Hybrid Search
+                keywordAugment, // Hybrid Search with intent-aware filtering
                 rerank,
                 localReorder,
                 formatContext,

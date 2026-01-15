@@ -6,6 +6,7 @@ import express from 'express';
 import Place from '../models/Place.js';
 import { healthCheck, processMessage } from '../services/ai/index.js';
 import { sortPlacesByAnswerOrder } from '../services/ai/utils/reorderUtils.js';
+import { sortPlacesByDistance, isGenericFoodQuery } from '../services/ai/utils/distanceUtils.js';
 
 const router = express.Router();
 
@@ -15,11 +16,12 @@ const router = express.Router();
  */
 router.post('/chat', async (req, res) => {
   try {
-    const { question, userId = 'anonymous', latitude, longitude, localTime } = req.body;
+    const { question, userId = 'anonymous', latitude, longitude, localTime, nearMe } = req.body;
 
     const context = {
       location: (latitude && longitude) ? { lat: latitude, lng: longitude } : null,
-      localTime
+      localTime,
+      nearMe: nearMe || false
     };
 
     if (!question || typeof question !== 'string') {
@@ -85,6 +87,18 @@ router.post('/chat', async (req, res) => {
       places = sortPlacesByAnswerOrder(places, aiResult.answer);
     }
 
+    // 📍 DISTANCE SORTING: If user provided location, sort by distance (nearest first)
+    if (latitude && longitude && typeof latitude === 'number' && typeof longitude === 'number') {
+      console.log(`📍 Sorting ${places.length} places by distance from (${latitude}, ${longitude})`);
+      places = sortPlacesByDistance(places, latitude, longitude);
+      
+      // Optional: Limit to top 30 nearest for performance
+      if (places.length > 30) {
+        console.log(`✂️ Trimming to 30 nearest places (was ${places.length})`);
+        places = places.slice(0, 30);
+      }
+    }
+
     // Build sources with actual names
     const enrichedSources = (aiResult.sources || []).map((src, idx) => ({
       name: src.metadata?.name || src.name || `Source ${idx + 1}`,
@@ -118,7 +132,8 @@ router.post('/chat', async (req, res) => {
           operatingHours: p.operatingHours,
           contact: p.contact,
           additionalInfo: p.additionalInfo,
-          googleData: p.googleData
+          googleData: p.googleData,
+          distanceKm: p.distanceKm // Include distance if available
         }))
       }
     });
