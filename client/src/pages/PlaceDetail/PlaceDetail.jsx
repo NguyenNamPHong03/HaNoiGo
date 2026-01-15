@@ -48,7 +48,8 @@ const PlaceDetail = () => {
     const operatingHours = place.operatingHours || {};
     const contact = place.contact || {};
     const menu = place.menu || [];
-    const reviews = place.additionalInfo?.reviews || place.googleData?.reviews || [];
+    // ✅ Ưu tiên googleReviews (từ Apify), sau đó mới dùng additionalInfo/googleData (legacy)
+    const reviews = place.googleReviews || place.additionalInfo?.reviews || place.googleData?.reviews || [];
     
     // Convert GeoJSON to {lat, lng} format for PlaceMap
     const location = place.location?.coordinates 
