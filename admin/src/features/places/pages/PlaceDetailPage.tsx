@@ -45,8 +45,34 @@ const PlaceDetailPage: React.FC<PlaceDetailPageProps> = ({ placeId, onBack, onEd
   const loadReviews = async () => {
     setReviewsLoading(true);
     try {
-      const response = await reviewsApi.getByPlace(placeId);
-      setReviews(response.data.data.reviews || []);
+      // ✅ Debug: Log place data structure
+      console.log('📊 Place data:', {
+        hasAdditionalInfo: !!place?.additionalInfo,
+        additionalInfoKeys: place?.additionalInfo ? Object.keys(place.additionalInfo) : [],
+        reviewsInAdditionalInfo: place?.additionalInfo?.reviews,
+        reviewsCount: place?.additionalInfo?.reviews?.length || 0,
+        hasGoogleReviews: !!place?.googleReviews,
+        googleReviewsCount: place?.googleReviews?.length || 0
+      });
+      
+      // ✅ Ưu tiên reviews từ Apify/Google (stored in additionalInfo.reviews hoặc googleReviews)
+      const apifyReviews = place?.additionalInfo?.reviews;
+      const googleReviews = place?.googleReviews;
+      
+      if (apifyReviews && Array.isArray(apifyReviews) && apifyReviews.length > 0) {
+        // Apify reviews (primary source)
+        console.log(`📝 Loading ${apifyReviews.length} Apify reviews`, apifyReviews[0]);
+        setReviews(apifyReviews);
+      } else if (googleReviews && Array.isArray(googleReviews) && googleReviews.length > 0) {
+        // Google reviews (fallback 1)
+        console.log(`📝 Loading ${googleReviews.length} Google reviews`, googleReviews[0]);
+        setReviews(googleReviews);
+      } else {
+        // User-generated reviews from Review collection (fallback 2)
+        console.log('📝 Loading user-generated reviews from database');
+        const response = await reviewsApi.getByPlace(placeId);
+        setReviews(response.data.data.reviews || []);
+      }
     } catch (error) {
       console.error('Error loading reviews:', error);
       setReviews([]);
@@ -255,7 +281,7 @@ const PlaceDetailPage: React.FC<PlaceDetailPageProps> = ({ placeId, onBack, onEd
                     </div>
                   </div>
 
-                  {place.contact.phone && (
+                  {place.contact?.phone && (
                     <div className="flex items-start gap-3">
                       <Phone className="w-5 h-5 text-gray-400 mt-0.5" />
                       <div>
@@ -265,7 +291,7 @@ const PlaceDetailPage: React.FC<PlaceDetailPageProps> = ({ placeId, onBack, onEd
                     </div>
                   )}
 
-                  {place.contact.website && (
+                  {place.contact?.website && (
                     <div className="flex items-start gap-3">
                       <Globe className="w-5 h-5 text-gray-400 mt-0.5" />
                       <div>

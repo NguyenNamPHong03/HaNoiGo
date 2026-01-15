@@ -1,22 +1,22 @@
 import placeImportService from '../services/imports/placeImportService.js';
-import goongProvider from '../services/providers/goongProvider.js';
-import { mapGoongPredictionToPreview } from '../utils/placeMapper.js';
+import apifyProvider from '../services/providers/goongProvider.js'; // Still using same file (now ApifyProvider)
+import { mapApifyItemToPreview } from '../utils/placeMapper.js';
 
 /**
  * @fileoverview Admin Import Controller
- * @description Handle admin requests for importing places from Goong API
+ * @description Handle admin requests for importing places from Apify API
  * Endpoints: autocomplete preview & batch import
  */
 
 /**
  * @route   GET /api/admin/import/goong/autocomplete
- * @desc    Get place suggestions from Goong (preview before import)
+ * @desc    Get place suggestions from Apify (preview before import)
  * @access  Admin only
  */
 export const getGoongAutocomplete = async (req, res) => {
   try {
-    const { input, location, radius } = req.query;
-    console.log('[GOONG AUTOCOMPLETE REQUEST]', { input, location, radius });
+    const { input, location, maxResults } = req.query;
+    console.log('[APIFY AUTOCOMPLETE REQUEST]', { input, location, maxResults });
 
     // Validation
     if (!input || input.trim().length === 0) {
@@ -26,20 +26,25 @@ export const getGoongAutocomplete = async (req, res) => {
       });
     }
 
-    // Call Goong API
-    const predictions = await goongProvider.autocomplete({
+    // Apify Actor cần location text (VD: "Hanoi, Vietnam"), không dùng lat/lng
+    // Luôn dùng APIFY_DEFAULT_LOCATION, ignore location từ frontend
+    const locationQuery = process.env.APIFY_DEFAULT_LOCATION || 'Hanoi, Vietnam';
+
+    // Call Apify API (runs actor and gets dataset items)
+    const items = await apifyProvider.autocomplete({
       input: input.trim(),
-      location: location || process.env.GOONG_DEFAULT_LOCATION,
-      radius: radius ? parseInt(radius) : parseInt(process.env.GOONG_DEFAULT_RADIUS)
+      location: locationQuery,
+      maxResults: maxResults ? parseInt(maxResults) : parseInt(process.env.APIFY_MAX_RESULTS || '20')
     });
 
-    // Map to preview format
-    const items = predictions.map(mapGoongPredictionToPreview);
+    // Map to preview format (compatible with frontend)
+    const previewItems = items.map(mapApifyItemToPreview);
 
     res.status(200).json({
       success: true,
-      count: items.length,
-      items
+      count: previewItems.length,
+      items: previewItems,
+      rawItems: items // ✅ Trả về full raw items để frontend cache và import
     });
 
   } catch (error) {
@@ -52,7 +57,7 @@ export const getGoongAutocomplete = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: error.message || 'Không thể lấy gợi ý từ Goong',
+      message: error.message || 'Không thể lấy gợi ý từ Apify',
       detail: error.response?.data || error.message,
       error: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
@@ -67,7 +72,7 @@ export const getGoongAutocomplete = async (req, res) => {
  */
 export const importFromGoong = async (req, res) => {
   try {
-    const { placeIds } = req.body;
+    const { placeIds, items } = req.body; // items = full objects từ autocomplete
     const adminId = req.user?._id; // From auth middleware
 
     // Validation
@@ -85,8 +90,11 @@ export const importFromGoong = async (req, res) => {
       });
     }
 
-    // Import từ Goong
-    const result = await placeImportService.importFromGoong(placeIds, {
+    // ✅ Ưu tiên import từ full items (nếu frontend gửi)
+    const importData = items || placeIds;
+
+    // Import từ Apify
+    const result = await placeImportService.importFromGoong(importData, {
       createdBy: adminId,
       batchSize: 5
     });
@@ -236,17 +244,17 @@ export const markPlaceAsEnriched = async (req, res) => {
 
 /**
  * @route   GET /api/admin/import/goong/validate-api-key
- * @desc    Validate Goong API key
+ * @desc    Validate Apify API token
  * @access  Admin only
  */
 export const validateGoongApiKey = async (req, res) => {
   try {
-    const isValid = await goongProvider.validateApiKey();
+    const isValid = await apifyProvider.validateApiKey();
 
     res.status(200).json({
       success: true,
       valid: isValid,
-      message: isValid ? 'Goong API key hợp lệ' : 'Goong API key không hợp lệ'
+      message: isValid ? 'Apify API token hợp lệ' : 'Apify API token không hợp lệ'
     });
 
   } catch (error) {
@@ -255,7 +263,7 @@ export const validateGoongApiKey = async (req, res) => {
     res.status(500).json({
       success: false,
       valid: false,
-      message: 'Không thể kiểm tra API key'
+      message: 'Không thể kiểm tra API token'
     });
   }
 };

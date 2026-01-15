@@ -1,6 +1,7 @@
 import Place from '../models/Place.js';
 import { generateAiTagsFromGoogle, mergeAiTags, parseGoogleOpeningHours } from '../services/autoTaggerService.js';
 import * as placeService from '../services/placeService.js';
+import { extractOpeningHours, generateAITags } from '../utils/placeMapper.js';
 
 // Get all places for admin with search, filter, sort, pagination
 export const getAllPlaces = async (req, res) => {
@@ -47,6 +48,54 @@ export const getPlaceById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi khi lấy thông tin địa điểm'
+    });
+  }
+};
+
+// Get Google/Apify raw data for place (for Admin review)
+export const getPlaceGoogleData = async (req, res) => {
+  try {
+    const place = await Place.findById(req.params.id)
+      .select('apify googleReviews googleData openingHours reviewsDistribution aiTags averageRating');
+    
+    if (!place) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy địa điểm'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        // Raw Apify data (full response)
+        apifyRaw: place.apify?.raw || null,
+        
+        // Parsed reviews
+        googleReviews: place.googleReviews || [],
+        
+        // Opening hours
+        openingHours: place.openingHours || [],
+        
+        // Reviews distribution
+        reviewsDistribution: place.reviewsDistribution || {},
+        
+        // AI Tags suggestions
+        aiTags: place.aiTags || {},
+        
+        // Google metadata
+        googleData: place.googleData || {},
+        
+        // Ratings
+        averageRating: place.averageRating || 0,
+        totalReviews: place.apify?.reviewsCount || 0
+      }
+    });
+  } catch (error) {
+    console.error('Get Google data error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lấy dữ liệu Google'
     });
   }
 };
@@ -407,36 +456,90 @@ export const refreshGoogleData = async (req, res) => {
       });
     }
 
-    // Kiểm tra xem place có phải từ Google không
-    if (place.source !== 'google') {
+    // Kiểm tra xem place có phải từ Google/Apify không
+    if (!['google', 'apify'].includes(place.source)) {
       return res.status(400).json({
         success: false,
-        message: 'Chỉ có thể refresh AI tags cho địa điểm từ Google/Goong'
+        message: 'Chỉ có thể refresh AI tags cho địa điểm từ Google/Apify import'
       });
     }
 
-    console.log(`🔄 Refreshing AI tags for place: ${place.name}`);
+    console.log(`🔄 Refreshing AI tags for place: ${place.name} (source: ${place.source})`);
 
-    // Tạo Google data object từ place hiện tại
-    const googleData = {
-      additionalInfo: place.additionalInfo,
-      reviews: place.additionalInfo?.reviews || [],
-      category: place.category
-    };
+    let aiTagsNew, operatingHoursParsed;
 
-    // Auto-generate AI tags mới
-    const aiTagsNew = generateAiTagsFromGoogle(googleData);
+    // 🔁 Xử lý theo source
+    if (place.source === 'apify') {
+      // Lấy raw data từ Apify (có fallback cho places import từ version cũ)
+      let apifyRawData = place.apify?.raw;
+      
+      // 🔄 Fallback: Nếu không có apify.raw, reconstruct từ additionalInfo (giống Google)
+      if (!apifyRawData && place.additionalInfo) {
+        console.log(`⚠️ No apify.raw found, reconstructing from additionalInfo for: ${place.name}`);
+        apifyRawData = {
+          title: place.name,
+          address: place.address,
+          totalScore: place.averageRating,
+          reviewsCount: place.totalReviews,
+          categoryName: place.category,
+          price: place.priceDisplay,
+          openingHours: place.openingHours || [],
+          additionalInfo: place.additionalInfo,
+          reviews: place.additionalInfo?.reviews || [],
+          location: {
+            lat: place.location?.coordinates[1],
+            lng: place.location?.coordinates[0]
+          }
+        };
+      }
+      
+      if (!apifyRawData) {
+        return res.status(400).json({
+          success: false,
+          message: 'Không tìm thấy dữ liệu để refresh. Vui lòng re-import place này từ Apify.',
+        });
+      }
+
+      // Import generateAITags và extractOpeningHours từ placeMapper
+      const { generateAITags, extractOpeningHours } = await import('../utils/placeMapper.js');
+      
+      // Re-generate AI tags từ Apify raw data
+      aiTagsNew = generateAITags(apifyRawData, place.category);
+      
+      // Re-parse opening hours
+      const openingHoursUpdated = extractOpeningHours(apifyRawData);
+      if (openingHoursUpdated && openingHoursUpdated.length > 0) {
+        place.openingHours = openingHoursUpdated;
+        console.log(`🕒 Updated opening hours from Apify data`);
+      }
+      
+      // Parse sang 24h format nếu có
+      if (place.openingHours && Array.isArray(place.openingHours)) {
+        operatingHoursParsed = parseGoogleOpeningHours(place.openingHours);
+        place.operatingHours = operatingHoursParsed;
+      }
+      
+    } else {
+      // Source = 'google' - logic cũ
+      const googleData = {
+        additionalInfo: place.additionalInfo,
+        reviews: place.additionalInfo?.reviews || [],
+        category: place.category
+      };
+
+      // Auto-generate AI tags mới
+      aiTagsNew = generateAiTagsFromGoogle(googleData);
+
+      // 🕒 Auto-parse operating hours từ Google (24h format)
+      if (place.openingHours && Array.isArray(place.openingHours)) {
+        console.log('🕒 Parsing Google openingHours to 24h format...');
+        operatingHoursParsed = parseGoogleOpeningHours(place.openingHours);
+        place.operatingHours = operatingHoursParsed;
+      }
+    }
 
     // Merge với AI tags hiện tại
     const aiTagsFinal = mergeAiTags(place.aiTags, aiTagsNew);
-
-    // 🕒 Auto-parse operating hours từ Google (24h format)
-    let operatingHoursParsed = null;
-    if (place.openingHours && Array.isArray(place.openingHours)) {
-      console.log('🕒 Parsing Google openingHours to 24h format...');
-      operatingHoursParsed = parseGoogleOpeningHours(place.openingHours);
-      place.operatingHours = operatingHoursParsed;
-    }
 
     // Update place
     place.aiTags = aiTagsFinal;
@@ -452,7 +555,7 @@ export const refreshGoogleData = async (req, res) => {
         aiTagsFinal: aiTagsFinal,
         operatingHours: operatingHoursParsed // ✅ Trả về operating hours đã parse
       },
-      message: 'Đã cập nhật AI tags và giờ mở cửa tự động từ Google data'
+      message: `Đã cập nhật AI tags và giờ mở cửa tự động từ ${place.source === 'apify' ? 'Apify' : 'Google'} data`
     });
   } catch (error) {
     console.error('Refresh Google data error:', error);
@@ -496,27 +599,76 @@ export const bulkRefreshGoogleData = async (req, res) => {
           continue;
         }
 
-        // Skip nếu không phải từ Google
-        if (place.source !== 'google') {
-          results.skipped.push({ placeId, name: place.name, reason: 'Không phải từ Google' });
+        // Skip nếu không phải từ Google hoặc Apify
+        if (place.source !== 'google' && place.source !== 'apify') {
+          results.skipped.push({ placeId, name: place.name, reason: 'Không phải từ Google/Apify' });
           continue;
         }
 
-        // Auto-generate AI tags
-        const googleData = {
-          additionalInfo: place.additionalInfo,
-          reviews: place.additionalInfo?.reviews || [],
-          category: place.category
-        };
+        let aiTagsNew = {};
+        
+        // 🔄 Refresh từ Apify raw data (có fallback)
+        if (place.source === 'apify') {
+          let apifyRawData = place.apify?.raw;
+          
+          // 🔄 Fallback: Reconstruct từ additionalInfo (cho places import version cũ)
+          if (!apifyRawData && place.additionalInfo) {
+            console.log(`⚠️ No apify.raw, reconstructing for: ${place.name}`);
+            apifyRawData = {
+              title: place.name,
+              address: place.address,
+              totalScore: place.averageRating,
+              reviewsCount: place.totalReviews,
+              categoryName: place.category,
+              price: place.priceDisplay,
+              openingHours: place.openingHours || [],
+              additionalInfo: place.additionalInfo,
+              reviews: place.additionalInfo?.reviews || [],
+              location: {
+                lat: place.location?.coordinates[1],
+                lng: place.location?.coordinates[0]
+              }
+            };
+          }
+          
+          if (!apifyRawData) {
+            results.skipped.push({ placeId, name: place.name, reason: 'Không có dữ liệu để refresh' });
+            continue;
+          }
+          
+          console.log(`🤖 Refreshing from Apify data: ${place.name}`);
+          aiTagsNew = generateAITags(apifyRawData, place.category);
+          
+          // Extract opening hours từ Apify
+          const openingHoursNew = extractOpeningHours(apifyRawData);
+          if (openingHoursNew && openingHoursNew.length > 0) {
+            place.openingHours = openingHoursNew;
+            
+            // Parse sang 24h format
+            if (Array.isArray(openingHoursNew)) {
+              place.operatingHours = parseGoogleOpeningHours(openingHoursNew);
+            }
+          }
+        } 
+        // 🔄 Refresh từ Google data
+        else if (place.source === 'google') {
+          console.log(`🌐 Refreshing from Google data: ${place.name}`);
+          const googleData = {
+            additionalInfo: place.additionalInfo,
+            reviews: place.additionalInfo?.reviews || [],
+            category: place.category
+          };
 
-        const aiTagsNew = generateAiTagsFromGoogle(googleData);
-        const aiTagsFinal = mergeAiTags(place.aiTags, aiTagsNew);
+          aiTagsNew = generateAiTagsFromGoogle(googleData);
 
-        // Parse operating hours
-        if (place.openingHours && Array.isArray(place.openingHours)) {
-          const operatingHoursParsed = parseGoogleOpeningHours(place.openingHours);
-          place.operatingHours = operatingHoursParsed;
+          // Parse operating hours từ Google
+          if (place.openingHours && Array.isArray(place.openingHours)) {
+            const operatingHoursParsed = parseGoogleOpeningHours(place.openingHours);
+            place.operatingHours = operatingHoursParsed;
+          }
         }
+
+        const aiTagsFinal = mergeAiTags(place.aiTags, aiTagsNew);
 
         place.aiTags = aiTagsFinal;
         await place.save();

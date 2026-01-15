@@ -10,7 +10,10 @@ interface GoogleInfoTabProps {
 
 export const GoogleInfoTab: React.FC<GoogleInfoTabProps> = ({ formData, onRefreshAiTags, onRefreshOperatingHours, placeId }) => {
   const [refreshing, setRefreshing] = useState(false);
-  const isGoogleSource = formData.source === 'google';
+  
+  // ✅ Apify cũng có Google data (từ Google Maps Scraper)
+  const isGoogleSource = formData.source === 'google' || formData.source === 'apify';
+  const sourceLabel = formData.source === 'apify' ? 'Apify (Google Maps Scraper)' : 'Google Places API';
 
   const handleRefreshAiTags = async () => {
     if (!placeId || !onRefreshAiTags) return;
@@ -53,9 +56,12 @@ export const GoogleInfoTab: React.FC<GoogleInfoTabProps> = ({ formData, onRefres
     return (
       <div className="text-center py-12">
         <Info className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-        <p className="text-gray-500">Địa điểm này không phải từ Google Places</p>
+        <p className="text-gray-500">Địa điểm này không có dữ liệu từ Google</p>
         <p className="text-sm text-gray-400 mt-2">
           Source: {formData.source || 'manual'}
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          Chỉ hiển thị cho source: google hoặc apify
         </p>
       </div>
     );
@@ -69,9 +75,9 @@ export const GoogleInfoTab: React.FC<GoogleInfoTabProps> = ({ formData, onRefres
           <div className="flex items-center gap-3">
             <MapPin className="w-6 h-6 text-blue-600" />
             <div>
-              <h3 className="font-semibold text-blue-900">Google Places Data</h3>
+              <h3 className="font-semibold text-blue-900">Google Maps Data</h3>
               <p className="text-sm text-blue-700">
-                Dữ liệu tự động import từ Google Maps (Read-only)
+                Dữ liệu tự động từ {sourceLabel} (Read-only)
               </p>
             </div>
           </div>
@@ -91,15 +97,15 @@ export const GoogleInfoTab: React.FC<GoogleInfoTabProps> = ({ formData, onRefres
         </div>
       </div>
 
-      {/* Google Place ID */}
-      {formData.googlePlaceId && (
+      {/* Google/Apify Place ID */}
+      {(formData.googlePlaceId || formData.apifyPlaceId) && (
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Google Place ID
+            {formData.source === 'apify' ? 'Google Place ID (từ Apify)' : 'Google Place ID'}
           </label>
           <input
             type="text"
-            value={formData.googlePlaceId}
+            value={formData.googlePlaceId || formData.apifyPlaceId}
             readOnly
             className="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 font-mono text-sm"
           />
@@ -201,7 +207,9 @@ export const GoogleInfoTab: React.FC<GoogleInfoTabProps> = ({ formData, onRefres
             <h4 className="font-semibold text-gray-900">Thông tin bổ sung</h4>
           </div>
           <div className="space-y-4">
-            {Object.entries(formData.additionalInfo).map(([category, items]: [string, any]) => (
+            {Object.entries(formData.additionalInfo)
+              .filter(([key]) => key !== 'reviews') // Skip reviews, hiển thị riêng ở dưới
+              .map(([category, items]: [string, any]) => (
               <div key={category}>
                 <h5 className="text-sm font-semibold text-gray-700 mb-2">{category}</h5>
                 <div className="grid grid-cols-2 gap-2">
@@ -214,6 +222,69 @@ export const GoogleInfoTab: React.FC<GoogleInfoTabProps> = ({ formData, onRefres
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ✨ Google Reviews Section */}
+      {formData.additionalInfo?.reviews && formData.additionalInfo.reviews.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-lg p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <MessageSquare className="w-5 h-5 text-blue-600" />
+            <h4 className="font-semibold text-gray-900">
+              Đánh giá từ Google ({formData.additionalInfo.reviews.length})
+            </h4>
+          </div>
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {formData.additionalInfo.reviews.slice(0, 10).map((review: any, index: number) => (
+              <div key={index} className="border-b border-gray-100 pb-4 last:border-0">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-blue-600 font-semibold text-sm">
+                      {review.name?.charAt(0).toUpperCase() || '?'}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <h6 className="font-semibold text-gray-900">{review.name}</h6>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-4 h-4 ${
+                              i < review.stars
+                                ? 'text-yellow-400 fill-yellow-400'
+                                : 'text-gray-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-2">
+                      {review.publishedAtDate || review.publishedAt || 'N/A'}
+                    </p>
+                    <p className="text-gray-700 text-sm leading-relaxed">
+                      {review.text}
+                    </p>
+                    {review.likesCount > 0 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        👍 {review.likesCount} người thấy hữu ích
+                      </p>
+                    )}
+                    {review.responseFromOwnerText && (
+                      <div className="mt-3 bg-gray-50 p-3 rounded-lg">
+                        <p className="text-xs font-semibold text-gray-700 mb-1">
+                          Phản hồi từ chủ sở hữu:
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {review.responseFromOwnerText}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -269,14 +340,14 @@ export const GoogleInfoTab: React.FC<GoogleInfoTabProps> = ({ formData, onRefres
         </div>
       </div>
 
-      {/* Raw Google Data (Collapsible) */}
-      {formData.googleData && (
+      {/* Raw Google/Apify Data (Collapsible) */}
+      {(formData.googleData || formData.apify) && (
         <details className="bg-gray-50 border border-gray-300 rounded-lg p-4">
           <summary className="cursor-pointer font-semibold text-gray-800 hover:text-gray-900">
-            📦 Raw Google Data (Developer)
+            📦 Raw {formData.source === 'apify' ? 'Apify' : 'Google'} Data (Developer)
           </summary>
           <pre className="mt-4 p-4 bg-white border border-gray-200 rounded text-xs overflow-x-auto">
-            {JSON.stringify(formData.googleData, null, 2)}
+            {JSON.stringify(formData.googleData || formData.apify, null, 2)}
           </pre>
         </details>
       )}

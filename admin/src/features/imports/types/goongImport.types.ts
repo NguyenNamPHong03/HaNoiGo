@@ -19,10 +19,12 @@ export type AutocompleteResponse = {
   success: boolean;
   count: number;
   items: GoongPredictionItem[];
+  rawItems?: any[]; // ✅ Full Apify items (để import không cần cache)
 };
 
 export type ImportRequest = {
   placeIds: string[];
+  items?: any[]; // ✅ Full items từ autocomplete (ưu tiên)
 };
 
 export type ImportErrorItem = {

@@ -137,12 +137,17 @@ const placeSchema = new mongoose.Schema({
   // Data source tracking
   source: {
     type: String,
-    enum: ['goong', 'google', 'manual'],
+    enum: ['goong', 'google', 'manual', 'apify'],
     default: 'manual'
   },
   goongPlaceId: {
     type: String,
     sparse: true, // Only index non-null values
+    index: true
+  },
+  apifyPlaceId: {
+    type: String,
+    sparse: true,
     index: true
   },
   goong: {
@@ -156,6 +161,23 @@ const placeSchema = new mongoose.Schema({
     },
     raw: {
       type: mongoose.Schema.Types.Mixed // Store raw Goong response for debugging
+    }
+  },
+  apify: {
+    lastSyncedAt: {
+      type: Date
+    },
+    rating: {
+      type: Number,
+      min: 0,
+      max: 5
+    },
+    reviewsCount: {
+      type: Number,
+      default: 0
+    },
+    raw: {
+      type: mongoose.Schema.Types.Mixed // Store raw Apify response (full Google Maps data)
     }
   },
   // AI enrichment flag

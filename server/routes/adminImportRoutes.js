@@ -13,7 +13,7 @@ const router = express.Router();
 
 /**
  * @fileoverview Admin Import Routes
- * @description Routes for importing places from Goong API
+ * @description Routes for importing places from Apify API (Google Maps Scraper)
  * All routes require admin authentication
  */
 
@@ -22,21 +22,21 @@ const router = express.Router();
 // router.use(authenticateAdmin);
 
 // ========================================
-// Goong Import Routes
+// Apify Import Routes (via Goong-compatible endpoints)
 // ========================================
 
 /**
  * @route   GET /api/admin/import/goong/autocomplete
- * @desc    Get place suggestions from Goong (preview)
- * @query   input (required), location (optional), radius (optional)
+ * @desc    Get place suggestions from Apify (preview)
+ * @query   input (required), location (optional), maxResults (optional)
  * @access  Admin only
  */
 router.get('/goong/autocomplete', getGoongAutocomplete);
 
 /**
  * @route   POST /api/admin/import/goong
- * @desc    Import selected places from Goong to MongoDB
- * @body    { placeIds: ["goong_abc123", ...] }
+ * @desc    Import selected places from Apify to MongoDB
+ * @body    { placeIds: ["ChIJ...", ...] } (Google Place IDs)
  * @access  Admin only
  */
 router.post('/goong', importFromGoong);
@@ -74,7 +74,7 @@ router.post('/goong/:placeId/mark-enriched', markPlaceAsEnriched);
 
 /**
  * @route   GET /api/admin/import/goong/validate-api-key
- * @desc    Validate Goong API key configuration
+ * @desc    Validate Apify API token
  * @access  Admin only
  */
 router.get('/goong/validate-api-key', validateGoongApiKey);

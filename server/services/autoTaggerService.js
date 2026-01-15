@@ -272,9 +272,19 @@ export const parseGoogleOpeningHours = (googleOpeningHours) => {
     if (!dayKey) return;
 
     const hoursString = dayInfo.hours;
+    
+    // 🚫 Ngày đóng cửa
     if (!hoursString || hoursString.toLowerCase().includes('closed') || hoursString.toLowerCase().includes('đóng cửa')) {
-      // Ngày đóng cửa - để trống
       operatingHours[dayKey] = { open: '', close: '' };
+      return;
+    }
+    
+    // ✅ Mở cửa cả ngày (24/7)
+    if (hoursString.toLowerCase().includes('open 24 hours') || 
+        hoursString.toLowerCase().includes('mở cửa cả ngày') ||
+        hoursString.toLowerCase().includes('24 giờ') ||
+        hoursString.toLowerCase().includes('24h')) {
+      operatingHours[dayKey] = { open: '00:00', close: '23:59' };
       return;
     }
 

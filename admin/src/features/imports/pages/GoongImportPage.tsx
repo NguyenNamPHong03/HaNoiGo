@@ -17,6 +17,7 @@ import type { GoongPredictionItem } from '../types/goongImport.types';
 
 export default function GoongImportPage() {
   const [items, setItems] = React.useState<GoongPredictionItem[]>([]);
+  const [rawItems, setRawItems] = React.useState<any[]>([]); // ✅ Cache raw Apify items
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [lastResult, setLastResult] = React.useState<any>(null);
 
@@ -36,9 +37,11 @@ export default function GoongImportPage() {
     try {
       const data = await autocomplete.mutateAsync(payload);
       setItems(data.items || []);
+      setRawItems(data.rawItems || []); // ✅ Cache raw items
     } catch (error: any) {
       console.error('Autocomplete error:', error?.response?.data || error);
       setItems([]);
+      setRawItems([]);
     }
   };
 
@@ -66,8 +69,17 @@ export default function GoongImportPage() {
     const placeIds = Array.from(selectedIds);
     if (placeIds.length === 0) return;
 
+    // ✅ Lọc rawItems tương ứng với selected IDs
+    const selectedRawItems = rawItems.filter((item) => {
+      const itemId = item.placeId || item.url || item.cid;
+      return placeIds.includes(itemId);
+    });
+
     try {
-      const result = await importSelected.mutateAsync({ placeIds });
+      const result = await importSelected.mutateAsync({
+        placeIds,
+        items: selectedRawItems, // ✅ Gửi full items (không cần cache server)
+      });
       setLastResult(result);
       // Clear selections after successful import
       setSelectedIds(new Set());

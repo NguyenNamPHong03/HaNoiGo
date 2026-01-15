@@ -27,8 +27,19 @@ export interface Place {
   // Google Places fields
   source?: string;
   googlePlaceId?: string;
+  apifyPlaceId?: string;
   priceDisplay?: string;
   openingHours?: Array<{ day: string; hours: string }>;
+  googleReviews?: Array<{
+    name: string;
+    text: string;
+    stars: number;
+    publishedAtDate: string;
+    likesCount?: number;
+    reviewUrl?: string;
+    reviewImageUrls?: string[];
+    responseFromOwnerText?: string;
+  }>;
   reviewsDistribution?: {
     oneStar: number;
     twoStar: number;
@@ -38,6 +49,9 @@ export interface Place {
   };
   additionalInfo?: Record<string, any>;
   googleData?: Record<string, any>;
+  apify?: {
+    raw?: any;
+  };
 }
 
 export interface MenuItem {

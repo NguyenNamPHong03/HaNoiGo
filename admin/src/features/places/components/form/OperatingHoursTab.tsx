@@ -164,6 +164,20 @@ export const OperatingHoursTab: React.FC<OperatingHoursTabProps> = ({
                   placeholder="22:00"
                   step="3600"
                 />
+                {/* ✨ Hiển thị badge "Mở cửa cả ngày" nếu 00:00-23:59 */}
+                {operatingHours[key as keyof OperatingHours]?.open === '00:00' && 
+                 operatingHours[key as keyof OperatingHours]?.close === '23:59' && (
+                  <span className="inline-block mt-1 text-xs text-green-600 font-medium">
+                    ✓ Mở cửa cả ngày
+                  </span>
+                )}
+                {/* Hiển thị "Đóng cửa" nếu trống */}
+                {!operatingHours[key as keyof OperatingHours]?.open && 
+                 !operatingHours[key as keyof OperatingHours]?.close && (
+                  <span className="inline-block mt-1 text-xs text-gray-400">
+                    Đóng cửa
+                  </span>
+                )}
               </div>
             </div>
           </div>
