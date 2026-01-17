@@ -7,6 +7,7 @@ import Place from '../models/Place.js';
 import { healthCheck, processMessage } from '../services/ai/index.js';
 import { sortPlacesByDistance } from '../services/ai/utils/distanceUtils.js';
 import { sortPlacesByAnswerOrder } from '../services/ai/utils/reorderUtils.js';
+import { optionalAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -14,14 +15,19 @@ const router = express.Router();
  * POST /api/ai/chat
  * Process a natural language query and return AI response with places
  */
-router.post('/chat', async (req, res) => {
+router.post('/chat', optionalAuth, async (req, res) => {
   try {
     const { question, userId = 'anonymous', latitude, longitude, localTime, nearMe } = req.body;
+
+    // Get user preferences if logged in
+    const userPreferences = req.user?.preferences || null;
+    const actualUserId = req.user?._id?.toString() || userId;
 
     const context = {
       location: (latitude && longitude) ? { lat: latitude, lng: longitude } : null,
       localTime,
-      nearMe: nearMe || false
+      nearMe: nearMe || false,
+      userPreferences // Pass user preferences to AI pipeline
     };
 
     if (!question || typeof question !== 'string') {
@@ -32,7 +38,7 @@ router.post('/chat', async (req, res) => {
     }
 
     // Process the question through AI pipeline
-    const aiResult = await processMessage(question, userId, context);
+    const aiResult = await processMessage(question, actualUserId, context);
 
     // Extract place identifiers from sources
     // Try id first, fallback to name
@@ -91,7 +97,7 @@ router.post('/chat', async (req, res) => {
     if (latitude && longitude && typeof latitude === 'number' && typeof longitude === 'number') {
       console.log(`📍 Sorting ${places.length} places by distance from (${latitude}, ${longitude})`);
       places = sortPlacesByDistance(places, latitude, longitude);
-      
+
       // Optional: Limit to top 30 nearest for performance
       if (places.length > 30) {
         console.log(`✂️ Trimming to 30 nearest places (was ${places.length})`);
@@ -150,9 +156,17 @@ router.post('/chat', async (req, res) => {
  * POST /api/ai/chat/stream
  * Streaming version using Server-Sent Events for faster perceived response
  */
-router.post('/chat/stream', async (req, res) => {
+router.post('/chat/stream', optionalAuth, async (req, res) => {
   try {
     const { question, userId = 'anonymous' } = req.body;
+
+    // Get user preferences if logged in
+    const userPreferences = req.user?.preferences || null;
+    const actualUserId = req.user?._id?.toString() || userId;
+
+    const context = {
+      userPreferences // Pass user preferences to AI pipeline
+    };
 
     if (!question || typeof question !== 'string') {
       return res.status(400).json({
@@ -175,7 +189,7 @@ router.post('/chat/stream', async (req, res) => {
     // Send "thinking" event immediately
     res.write(`data: ${JSON.stringify({ type: 'status', message: 'Đang tìm kiếm...' })}\n\n`);
 
-    const aiResult = await processMessage(question, userId);
+    const aiResult = await processMessage(question, actualUserId, context);
 
     // Send places data first for fast UI update
     const placeIds = (aiResult.sources || [])

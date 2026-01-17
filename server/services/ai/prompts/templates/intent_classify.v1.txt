@@ -6,7 +6,7 @@ Classify the user intent into one of two categories:
    - "phở bát đàn ở đâu"
    - "chỗ nào bán bún chả ngon"
    - "thời tiết thế nào"
-   - **"tìm nhà nghỉ", "cần chỗ ngủ", "nghỉ qua đêm ở đâu", "homestay nào tốt"** (🔴 IMPORTANT: Accommodation requests are ALWAYS "CHAT")
+   - "tìm nhà nghỉ", "cần chỗ ngủ", "nghỉ qua đêm ở đâu", "homestay nào tốt" (IMPORTANT: Accommodation requests are ALWAYS "CHAT")
 
 2. "ITINERARY": The user is asking for a COMPLETE PLAN with MULTIPLE activities/places in a sequence over time (morning, afternoon, evening).
    Examples:
@@ -15,12 +15,12 @@ Classify the user intent into one of two categories:
    - "cuối tuần đi đâu" (multiple activities)
    - "ăn gì chơi gì ở hồ tây" (eat + play combo)
    
-   ⚠️ NOT ITINERARY if user ONLY asks for ONE TYPE of place:
-   - "nghỉ qua đêm ở đâu" → CHAT (just accommodation)
-   - "ăn gì ngon" → CHAT (just food)
-   - "chơi gì vui" → CHAT (just entertainment)
+   NOT ITINERARY if user ONLY asks for ONE TYPE of place:
+   - "nghỉ qua đêm ở đâu" -> CHAT (just accommodation)
+   - "ăn gì ngon" -> CHAT (just food)
+   - "chơi gì vui" -> CHAT (just entertainment)
 
-🎯 RULE: If query is ONLY about finding accommodation/hotel/homestay → Return "CHAT", NOT "ITINERARY"
+RULE: If query is ONLY about finding accommodation/hotel/homestay -> Return "CHAT", NOT "ITINERARY"
 
 Return ONLY the category name: CHAT or ITINERARY.
 

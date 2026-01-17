@@ -43,7 +43,7 @@ class PromptLoader {
             );
             this.templates.ragQuery = new PromptTemplate({
                 template: ragQueryPrompt,
-                inputVariables: ['context', 'question', 'weather', 'datetime'],
+                inputVariables: ['context', 'question', 'weather', 'datetime', 'userPreferences'],
             });
 
             // Load query rewrite prompt
@@ -73,7 +73,7 @@ class PromptLoader {
             );
             this.templates.itineraryGen = new PromptTemplate({
                 template: itineraryGenPrompt,
-                inputVariables: ['question', 'context', 'weather', 'datetime'],
+                inputVariables: ['question', 'context', 'weather', 'datetime', 'userPreferences'],
             });
 
             this.initialized = true;
@@ -96,15 +96,21 @@ class PromptLoader {
 
     /**
      * Format RAG query prompt
+     * @param {string} context - Retrieved context from search
+     * @param {string} question - User question
+     * @param {string} weather - Current weather description
+     * @param {string} datetime - Current date/time
+     * @param {string} userPreferences - Formatted user preferences (optional)
      */
-    async formatRAGQuery(context, question, weather = 'Không xác định', datetime = '') {
+    async formatRAGQuery(context, question, weather = 'Không xác định', datetime = '', userPreferences = '') {
         if (!this.initialized) await this.initialize();
 
         return this.templates.ragQuery.format({
             context,
             question,
             weather,
-            datetime
+            datetime,
+            userPreferences: userPreferences || 'Chưa có thông tin sở thích'
         });
     }
 
@@ -132,15 +138,21 @@ class PromptLoader {
 
     /**
      * Format itinerary generation prompt
+     * @param {string} context - Retrieved context from search
+     * @param {string} question - User question
+     * @param {string} weather - Current weather description
+     * @param {string} datetime - Current date/time
+     * @param {string} userPreferences - Formatted user preferences (optional)
      */
-    async formatItineraryGen(context, question, weather = 'Không xác định', datetime = '') {
+    async formatItineraryGen(context, question, weather = 'Không xác định', datetime = '', userPreferences = '') {
         if (!this.initialized) await this.initialize();
 
         return this.templates.itineraryGen.format({
             context,
             question,
             weather,
-            datetime
+            datetime,
+            userPreferences: userPreferences || 'Chưa có thông tin sở thích'
         });
     }
 

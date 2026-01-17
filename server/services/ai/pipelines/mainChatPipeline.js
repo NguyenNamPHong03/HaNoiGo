@@ -20,6 +20,7 @@ import reranker from '../retrieval/reranker.js';
 import basicRetriever from '../retrieval/strategies/basicRetriever.js';
 import { isGenericFoodQuery } from '../utils/distanceUtils.js';
 import logger from '../utils/logger.js';
+import { formatPreferencesForPrompt } from '../utils/preferencesMapper.js';
 
 class MainChatPipeline {
     constructor() {
@@ -43,26 +44,29 @@ class MainChatPipeline {
             // Stage 1: Input Guard
             const guardedInput = async (input) => {
                 return await telemetry.measureTime(RAG_STAGES.INPUT_GUARD, async () => {
-                    return await inputGuard.validate(input.question);
+                    const sanitizedQuestion = await inputGuard.validate(input.question);
+                    // Preserve all metadata (userPreferences, context, etc.)
+                    return {
+                        ...input,
+                        question: sanitizedQuestion
+                    };
                 });
             };
 
             // Stage 2: Check Semantic Cache
             const cachedResponse = async (input) => {
-                // Input is now the sanitized question string from Stage 1
-                // We need to wrap it back into an object to carry context
-                const question = input;
-
+                // Input now preserves all metadata from initial invoke
                 return await telemetry.measureTime(RAG_STAGES.SEMANTIC_CACHE, async () => {
-                    const cached = await cacheClient.getCache(question);
+                    const cached = await cacheClient.getCache(input.question);
                     if (cached) {
                         logger.info('🎯 Cache HIT!');
                         return {
-                            ...cached, // Spread full cached object (answer, retrievedDocs, etc.)
+                            ...input, // Preserve metadata
+                            ...cached, // Spread cached response (answer, retrievedDocs, etc.)
                             cached: true,
                         };
                     }
-                    return { question, cached: false };
+                    return { ...input, cached: false };
                 });
             };
 
@@ -128,9 +132,9 @@ class MainChatPipeline {
 
                 return await telemetry.measureTime('QUERY_INTENT_CLASSIFY', async () => {
                     const intentData = intentClassifier.classify(input.question);
-                    
+
                     logger.info(`🎯 Query Intent: ${intentData.intent}`);
-                    
+
                     if (intentData.intent === 'FOOD_ENTITY') {
                         logger.info(`🍜 FOOD MODE: "${intentData.keyword}" → HARD FILTER`);
                     } else if (intentData.intent === 'PLACE_VIBE') {
@@ -155,7 +159,37 @@ class MainChatPipeline {
 
                 return await telemetry.measureTime(RAG_STAGES.RETRIEVAL, async () => {
                     // Use refined query if available, otherwise original
-                    const queryToUse = input.refinedQuery || input.question;
+                    let queryToUse = input.refinedQuery || input.question;
+                    const queryLower = queryToUse.toLowerCase();
+
+                    // DIETARY PREFERENCE DETECTION (Retrieval Stage)
+                    const userDietary = input.userPreferences?.dietary || [];
+                    const isVegetarian = userDietary.some(d =>
+                        ['chay', 'thuần chay', 'thuan chay', 'vegetarian', 'vegan'].includes(d.toLowerCase())
+                    );
+
+                    const specificFoodKeywords = [
+                        'phở', 'pho', 'bún chả', 'bun cha', 'thịt', 'thit', 'lẩu', 'lau',
+                        'bò', 'bo', 'gà', 'ga', 'heo', 'cá', 'ca', 'hải sản', 'hai san',
+                        'nhậu', 'nhau', 'bia', 'bar', 'pub', 'bbq', 'nướng', 'nuong',
+                        'bún bò', 'bun bo', 'cơm tấm', 'com tam', 'bánh mì thịt', 'banh mi thit'
+                    ];
+                    const isSpecificFoodQuery = specificFoodKeywords.some(kw => queryLower.includes(kw));
+
+                    const genericFoodKeywords = [
+                        'quán ăn', 'quan an', 'ăn gì', 'an gi', 'tìm quán', 'tim quan',
+                        'gợi ý quán', 'goi y quan', 'ăn ở đâu', 'an o dau', 'đi ăn', 'di an',
+                        'tìm chỗ ăn', 'tim cho an', 'muốn ăn', 'muon an'
+                    ];
+                    const isGenericFoodQueryForDietary = genericFoodKeywords.some(kw => queryLower.includes(kw));
+
+                    // If user is vegetarian + query is generic (not specific) -> FORCE query rewrite
+                    if (isVegetarian && isGenericFoodQueryForDietary && !isSpecificFoodQuery) {
+                        logger.info('DIETARY FILTER (RETRIEVAL): User is vegetarian + generic food query -> Forcing search for "quán chay"');
+                        queryToUse = "top các quán chay ngon review tốt";
+                        input.refinedQuery = queryToUse; // Persist for next stages
+                        input.dietaryAugment = 'chay';
+                    }
 
                     // If ITINERARY, we might want to fetch more results or different strategy
                     // For now, keep it simple but maybe increase limit later if needed
@@ -177,7 +211,8 @@ class MainChatPipeline {
                     // --- Context Awareness: Time ---
                     const now = new Date();
                     const hour = now.getHours();
-                    const isLateNight = hour >= 22 || hour < 4;
+                    // DISABLED Real-time context as per user request
+                    const isLateNight = false; // hour >= 22 || hour < 4;
 
                     // 🏨 ACCOMMODATION DETECTION (Nhận diện yêu cầu lưu trú)
                     const accommodationKeywords = [
@@ -187,31 +222,63 @@ class MainChatPipeline {
                         'nhà nghỉ', 'homestay', 'khách sạn', 'resort', 'chỗ ngủ',
                         'chỗ ở', 'thuê phòng', 'đặt phòng', 'book phòng'
                     ];
-                    
+
                     // 💎 LUXURY TIER DETECTION (Nhận diện nhu cầu cao cấp)
                     const luxuryKeywords = [
                         'cao cấp', 'xịn', 'sang trọng', 'luxury', 'đẳng cấp',
                         'high-end', 'premium', '5 sao', 'sang', 'vip',
                         'đắt', 'chất lượng cao', 'resort', 'khách sạn tốt'
                     ];
-                    
+
                     const needsAccommodation = accommodationKeywords.some(kw => query.includes(kw));
                     const needsLuxury = luxuryKeywords.some(kw => query.includes(kw));
-                    
+
                     if (needsAccommodation) {
-                        logger.info('🏨 Accommodation request detected! Filtering category="Lưu trú"');
+                        logger.info('Accommodation request detected! Filtering category="Luu tru"');
                         input.accommodationMode = true;
-                        
+
                         // Determine price tier
                         if (needsLuxury) {
-                            logger.info('💎 LUXURY MODE: Filtering high-end accommodations (≥500k)');
+                            logger.info('LUXURY MODE: Filtering high-end accommodations (>=500k)');
                             input.luxuryMode = true;
                             input.minPrice = 500000; // 500k+ for luxury
                         } else {
-                            logger.info('🏠 STANDARD MODE: Mix of budget & mid-range accommodations');
+                            logger.info('STANDARD MODE: Mix of budget & mid-range accommodations');
                             input.luxuryMode = false;
                             input.minPrice = null; // No filter, random mix
                         }
+                    }
+
+                    // DIETARY PREFERENCE DETECTION (CRITICAL for vegetarian users)
+                    // Check if user has vegetarian preference AND query is GENERIC food query
+                    const userDietary = input.userPreferences?.dietary || [];
+                    const isVegetarian = userDietary.some(d =>
+                        ['chay', 'thuần chay', 'thuan chay', 'vegetarian', 'vegan'].includes(d.toLowerCase())
+                    );
+
+                    // Specific food keywords - if user mentions these, they know what they want (maybe asking for someone else)
+                    const specificFoodKeywords = [
+                        'phở', 'pho', 'bún chả', 'bun cha', 'thịt', 'thit', 'lẩu', 'lau',
+                        'bò', 'bo', 'gà', 'ga', 'heo', 'cá', 'ca', 'hải sản', 'hai san',
+                        'nhậu', 'nhau', 'bia', 'bar', 'pub', 'bbq', 'nướng', 'nuong',
+                        'bún bò', 'bun bo', 'cơm tấm', 'com tam', 'bánh mì thịt', 'banh mi thit'
+                    ];
+                    const isSpecificFoodQuery = specificFoodKeywords.some(kw => query.includes(kw));
+
+                    // Generic food keywords - these are where we should apply dietary preference
+                    const genericFoodKeywords = [
+                        'quán ăn', 'quan an', 'ăn gì', 'an gi', 'tìm quán', 'tim quan',
+                        'gợi ý quán', 'goi y quan', 'ăn ở đâu', 'an o dau', 'đi ăn', 'di an',
+                        'tìm chỗ ăn', 'tim cho an', 'muốn ăn', 'muon an'
+                    ];
+                    const isGenericFoodQueryForDietary = genericFoodKeywords.some(kw => query.includes(kw));
+
+                    // If user is vegetarian + query is generic (not specific) -> FORCE query to be "quán chay"
+                    if (isVegetarian && isGenericFoodQueryForDietary && !isSpecificFoodQuery) {
+                        logger.info('DIETARY FILTER: User is vegetarian + generic food query -> Forcing search for "quán chay"');
+                        input.dietaryAugment = 'chay';
+                        // REPLACE query completely to ensure focus
+                        input.refinedQuery = "top các quán chay ngon review tốt";
                     }
 
                     if (isLateNight) {
@@ -233,33 +300,39 @@ class MainChatPipeline {
 
                         // Increase limit for itinerary to get diversity
                         const textLimit = input.intent === 'ITINERARY' ? 20 : 10;
-                        
+
                         // 🏨 Apply category filter for accommodation mode
                         const categoryFilter = input.accommodationMode ? 'Lưu trú' : null;
-                        
+
                         // 💎 Apply price filter for luxury mode
                         const priceFilter = input.minPrice || null;
-                        
+
                         // � Apply filter based on Query Intent Type
                         const queryIntent = input.queryIntent || 'GENERAL';
-                                                // 📍 NEAR ME OPTIMIZATION: For generic queries + location
+                        // 📍 NEAR ME OPTIMIZATION: For generic queries + location
                         const hasLocation = input.context?.location?.lat && input.context?.location?.lng;
-                        const nearMeMode = input.context?.nearMe || false;
-                        
-                        if (nearMeMode && hasLocation && isGenericFoodQuery(query)) {
+                        // DISABLED Location-based search as per user request
+                        const nearMeMode = false; // input.context?.nearMe || false;
+
+                        // CRITICAL FIX: Disable "Near Me" if user is vegetarian + generic query
+                        // Reason: Vegetarian places are sparse, strict 5km radius often returns nothing.
+                        // User explicitly asked to "search everywhere" if needed.
+                        const shouldDisableNearMe = isVegetarian && isGenericFoodQueryForDietary && !isSpecificFoodQuery;
+
+                        if (nearMeMode && hasLocation && isGenericFoodQuery(query) && !shouldDisableNearMe) {
                             // Use MongoDB $geoNear for fast nearby search
                             const { lat, lng } = input.context.location;
-                            logger.info(`📍 NEAR ME MODE: Generic query "${query}" → $geoNear search`);
-                            
+                            logger.info(`NEAR ME MODE: Generic query "${query}" -> $geoNear search`);
+
                             try {
                                 const nearbyPlaces = await searchNearbyPlaces(
-                                    lat, 
-                                    lng, 
+                                    lat,
+                                    lng,
                                     5, // 5km radius
-                                    textLimit, 
+                                    textLimit,
                                     { category: categoryFilter, minPrice: priceFilter }
                                 );
-                                
+
                                 // Convert to document format
                                 const mongoDocs = nearbyPlaces.map(p => ({
                                     pageContent: `${p.name} - ${p.address}\n${p.description}\nCategory: ${p.category}`,
@@ -277,9 +350,9 @@ class MainChatPipeline {
                                         distanceKm: p.distanceKm
                                     }
                                 }));
-                                
+
                                 logger.info(`✅ Found ${mongoDocs.length} nearby places`);
-                                
+
                                 return {
                                     ...input,
                                     retrievedDocs: mongoDocs
@@ -289,26 +362,26 @@ class MainChatPipeline {
                                 // Fallback to normal search
                             }
                         }
-                        
+
                         // Standard search paths
                         if (queryIntent === 'FOOD_ENTITY') {
                             // HARD keyword filter for food
                             const foodMustQuery = input.queryMustQuery;
                             logger.info(`🔒 HARD FILTER: Only places matching "${input.queryKeyword}"`);
                             promises.push(searchPlaces(query, textLimit, categoryFilter, priceFilter, foodMustQuery));
-                            
+
                         } else if (queryIntent === 'PLACE_VIBE') {
                             // TAG/MOOD filter for vibe (hẹn hò, lãng mạn, chill...)
                             const vibeTags = input.queryTags || [];
                             logger.info(`💕 VIBE FILTER: Tags [${vibeTags.join(', ')}]`);
                             promises.push(searchPlacesByVibe(vibeTags, textLimit, categoryFilter, priceFilter));
-                            
+
                         } else if (queryIntent === 'ACTIVITY') {
                             // Activity-based search
                             const activityTags = input.queryTags || [];
                             logger.info(`🎵 ACTIVITY FILTER: Tags [${activityTags.join(', ')}]`);
                             promises.push(searchPlacesByVibe(activityTags, textLimit, categoryFilter, priceFilter));
-                            
+
                         } else {
                             // GENERAL: Normal text search
                             logger.info(`🔍 GENERAL SEARCH: "${query}"`);
@@ -372,7 +445,7 @@ class MainChatPipeline {
                             const regex = new RegExp(`${prefixRegex}\\s+${flexibleSuffix}`, 'i');
 
                             logger.info(`🎯 Address Regex detected: ${regex}`);
-                            
+
                             // Only apply foodMustQuery for FOOD_ENTITY intent
                             const addressMustQuery = (queryIntent === 'FOOD_ENTITY') ? input.queryMustQuery : null;
                             promises.push(searchPlacesByRegex(regex, 5, categoryFilter, priceFilter, addressMustQuery));
@@ -433,7 +506,8 @@ class MainChatPipeline {
                     let docs = input.retrievedDocs;
 
                     // --- Context Awareness: Location ---
-                    if (input.context?.location) {
+                    // DISABLED as per user request
+                    if (false && input.context?.location) {
                         const { lat: userLat, lng: userLng } = input.context.location;
                         const queryLower = input.question.toLowerCase();
 
@@ -487,7 +561,8 @@ class MainChatPipeline {
 
                     // Post-Rerank Adjustment for Proximity
                     // If proximity query, we prioritize strictly by distance among the top semantic candidates
-                    if (input.context?.location) {
+                    // DISABLED as per user request
+                    if (false && input.context?.location) {
                         const { lat: userLat, lng: userLng } = input.context.location;
                         const queryLower = input.question.toLowerCase();
                         if (queryLower.includes('gần') || queryLower.includes('quanh') || queryLower.includes('near') || queryLower.includes('tôi')) {
@@ -632,7 +707,8 @@ class MainChatPipeline {
                     // --- Context Awareness: Time ---
                     const currentHour = now.getHours();
                     let timeContext = "";
-                    if (currentHour >= 22 || currentHour < 5) {
+                    // DISABLED as per user request
+                    if (false && (currentHour >= 22 || currentHour < 5)) {
                         timeContext = "It is Late Night. Ensure suggested places are OPEN LATE or 24/7. " +
                             "Prioritize nightlife, 24h cafes, or late-night food spots (Xôi Yến, Phở gánh, etc).";
                     }
@@ -642,20 +718,32 @@ class MainChatPipeline {
                     // since the prompt templates use {currentWeather}
                     const enhancedWeatherDesc = `${weatherData.fullDescription}\n${weatherWarning}\n${timeContext}`;
 
+                    // --- User Preferences Context ---
+                    const userPreferences = input.userPreferences || null;
+                    const preferencesContext = userPreferences
+                        ? formatPreferencesForPrompt(userPreferences)
+                        : '';
+
+                    if (preferencesContext) {
+                        logger.info(`🎯 User preferences detected: ${preferencesContext}`);
+                    }
+
                     let formatted;
                     if (input.intent === 'ITINERARY') {
                         formatted = await promptLoader.formatItineraryGen(
                             input.context,
                             input.question,
                             enhancedWeatherDesc, // Pass enhanced description
-                            datetime
+                            datetime,
+                            preferencesContext // Pass user preferences
                         );
                     } else {
                         formatted = await promptLoader.formatRAGQuery(
                             input.context,
                             input.question,
                             enhancedWeatherDesc, // Pass enhanced description
-                            datetime
+                            datetime,
+                            preferencesContext // Pass user preferences
                         );
                     }
 
@@ -788,17 +876,16 @@ class MainChatPipeline {
 
             logger.info(`❓ Processing: ${question}`);
 
-            // Pass input as object initially? 
-            // The chain starts with `guardedInput` which allows a string directly if configured,
-            // but here we constructed it to take { question } or strictly defined flow.
-            // My implementation above of `guardedInput` takes `input` which in `RunnableSequence` 
-            // is the first arg.
-            // However `guardedInput` implementation: `return await inputGuard.validate(input.question);`
-            // implies it expects an object `{ question: ... }`.
+            // Extract user preferences from metadata for personalization
+            const userPreferences = metadata.userPreferences || null;
+            if (userPreferences) {
+                logger.info('👤 User is logged in with preferences - enabling personalization');
+            }
 
             const result = await this.chain.invoke({
                 question,
                 ...metadata,
+                userPreferences, // Explicitly pass for prompt creation stage
             });
 
             logger.info(`✅ Response generated using model: ${config.openai.model}`);

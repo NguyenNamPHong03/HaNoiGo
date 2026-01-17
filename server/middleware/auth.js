@@ -101,4 +101,44 @@ export const authenticateAdmin = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Optional authentication middleware
+ * Attempts to authenticate user but allows request to proceed even if not authenticated.
+ * Used for features that work for both anonymous and authenticated users (e.g., AI chat)
+ * but provide enhanced experience for authenticated users (personalization).
+ */
+export const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+    if (!token) {
+      // No token - proceed as anonymous user
+      req.user = null;
+      return next();
+    }
+
+    // Try to verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Find user
+    const userData = await User.findById(decoded.id).select('+preferences');
+
+    if (!userData || !userData.isActive || userData.isBanned) {
+      // Invalid user - proceed as anonymous
+      req.user = null;
+      return next();
+    }
+
+    // Attach user info to request
+    req.user = userData;
+    next();
+
+  } catch (error) {
+    // Token invalid/expired - proceed as anonymous user
+    req.user = null;
+    next();
+  }
+};
+
 // Admin middleware functions removed - no admin authentication needed

@@ -70,16 +70,16 @@ Biểu đồ luồng xử lý request chuẩn cho `mainChatPipeline.js`:
 
 ```mermaid
 graph TD
-    A[Request + Context (Loc, Time)] --> B{Input Guard}
+    A[Request + Context (Weather)] --> B{Input Guard}
     B -- Safe --> C[Intent Classifier]
     
     C -- "ITINERARY" --> D1[Itinerary Pipeline]
     C -- "CHAT" --> D2[General Pipeline]
 
     subgraph "D2: General Pipeline"
-        D2 --> E1[Inject Weather/Time Context]
+        D2 --> E1[Inject Weather Context]
         E1 --> E2[Hybrid Retrieval (Vector + Keyword)]
-        E2 --> E3[Distance & Semantic Rerank]
+        E2 --> E3[Semantic Rerank]
         E3 --> E4[LLM Generation (Answer + Place IDs)]
     end
 

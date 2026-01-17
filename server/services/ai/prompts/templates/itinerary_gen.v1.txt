@@ -4,6 +4,14 @@ Based on the provided context (places), create a suggested itinerary for the use
 User Request: "{question}"
 Time/Weather Context: {datetime} | {weather}
 
+User Preferences: {userPreferences}
+
+DIETARY RULE (CRITICAL):
+- If user has "Chay" or "Thuan chay" in preferences AND request is GENERIC (e.g., "len lich di choi", "goi y lo trinh"):
+  -> ONLY include vegetarian/vegan restaurants in the schedule
+  -> DO NOT include meat-based restaurants (pho bo, lau hai san, nhau, thit nuong)
+- If user specifies exact foods (e.g., "lich trinh an pho + bar"), include those regardless of preferences.
+
 Available Places (Context):
 {context}
 
@@ -20,7 +28,7 @@ JSON Structure:
     {{
       "time": "HH:mm",
       "activity": "Short description of activity (e.g. Dinner, Coffee, Walking)",
-      "placeName": "Exact name of the place from Context (or 'Tự do' if general activity)",
+      "placeName": "Exact name of the place from Context (or 'Tu do' if general activity)",
       "reason": "Why this place matches the vibe?"
     }}
   ]

@@ -5,20 +5,20 @@ ORIGINAL QUERY:
 
 INSTRUCTIONS:
 1. IDENTIFY THE INTENT:
-   - **Case A (Specific Query):** User asks about a specific place ("Phở Thìn ở đâu"), price, or factual info. -> **ACTION:** Keep the query focused. Fix typos or add district name for clarity only. DO NOT add "cafe", "check-in", etc.
-   - **Case B (Broad/Itinerary Query):** User asks "Đi chơi Cầu Giấy", "Ăn gì ở Ba Đình", "Lên kèo 500k". -> **ACTION:** Broaden the search as per step 2 below.
+   - Case A (Specific Query): User asks about a specific place ("Pho Thin o dau"), price, or factual info. -> ACTION: Keep the query focused. Fix typos or add district name for clarity only. DO NOT add "cafe", "check-in", etc.
+   - Case B (Broad/Itinerary Query): User asks "Di choi Cau Giay", "An gi o Ba Dinh", "Len keo 500k". -> ACTION: Broaden the search as per step 2 below.
 
 2. FOR BROAD QUERIES ONLY:
-   - Expand to include: "Quán ăn ngon", "Quán cafe đẹp/chill", "Địa điểm vui chơi", "Check-in", "Workshop".
-   - If budget is mentioned, add keywords like "giá rẻ", "sinh viên".
+   - Expand to include: "Quan an ngon", "Quan cafe dep/chill", "Dia diem vui choi", "Check-in", "Workshop".
+   - If budget is mentioned, add keywords like "gia re", "sinh vien".
 
-3. IF USER MENTIONS A SPECIFIC STREET/LANE (e.g. "ngõ Tự Do"):
+3. IF USER MENTIONS A SPECIFIC STREET/LANE (e.g. "ngo Tu Do"):
    - Prioritize keywords for that specific micro-location.
 
 4. Output ONLY the rewritten query in Vietnamese.
 
 REWRITTEN QUERY EXAMPLE:
-Original: "Đi chơi Cầu Giấy 300k"
-Rewritten: "Tổng hợp quán ăn ngon, quán cafe đẹp view chill, địa điểm vui chơi giải trí, workshop, công viên, khu check-in chụp ảnh tại quận Cầu Giấy Hà Nội chi phí dưới 300k cho sinh viên"
+Original: "Di choi Cau Giay 300k"
+Rewritten: "Tong hop quan an ngon, quan cafe dep view chill, dia diem vui choi giai tri, workshop, cong vien, khu check-in chup anh tai quan Cau Giay Ha Noi chi phi duoi 300k cho sinh vien"
 
 REWRITTEN QUERY:

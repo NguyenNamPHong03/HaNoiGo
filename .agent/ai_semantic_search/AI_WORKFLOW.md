@@ -45,15 +45,15 @@ Tài liệu này mô tả chi tiết luồng dữ liệu (Data Flow) của tính
     2.  **Intent Classification**: LLM phân loại ý định User: `CHAT` hay `ITINERARY`.
     3.  **Context Injection**:
         *   Gọi Weather Service (Open-Meteo) lấy thời tiết hiện tại.
-        *   Xác định khung giờ (Sáng/Trưa/Tối/Đêm).
+        *   **(Disabled)** Xác định khung giờ (Sáng/Trưa/Tối/Đêm).
 
 ### Bước 5: Branch 1 - General Chat (RAG)
 Nếu Intent là `CHAT`:
 1.  **Semantic Search**: Query Pinecone + MongoDB.
 2.  **Re-ranking**:
     *   Cohere Rerank (Semantic).
-    *   **Distance Sorting**: Nếu User cung cấp Location, ưu tiên địa điểm gần (Haversine Distance).
-3.  **LLM Generation**: Prompt chứa thông tin thời tiết (ví dụ: "Cảnh báo mưa, ưu tiên quán trong nhà").
+    *   **(Disabled)** Distance Sorting.
+3.  **LLM Generation**: Prompt chứa thông tin thời tiết.
 
 ### Bước 6: Branch 2 - Itinerary Planning
 Nếu Intent là `ITINERARY`:
