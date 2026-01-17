@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
-import styles from './AISearchSection.module.css';
 import Fong from '../Fong/Fong';
+import styles from './AISearchSection.module.css';
 
 import ItineraryTimeline from './ItineraryTimeline';
 

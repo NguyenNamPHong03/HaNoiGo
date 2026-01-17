@@ -5,8 +5,8 @@
 import express from 'express';
 import Place from '../models/Place.js';
 import { healthCheck, processMessage } from '../services/ai/index.js';
+import { sortPlacesByDistance } from '../services/ai/utils/distanceUtils.js';
 import { sortPlacesByAnswerOrder } from '../services/ai/utils/reorderUtils.js';
-import { sortPlacesByDistance, isGenericFoodQuery } from '../services/ai/utils/distanceUtils.js';
 
 const router = express.Router();
 

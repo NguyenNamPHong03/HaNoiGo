@@ -8,9 +8,9 @@
  * 4. Pipeline optimization path
  */
 
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { haversineKm, sortPlacesByDistance, isGenericFoodQuery } from '../services/ai/utils/distanceUtils.js';
+import mongoose from 'mongoose';
+import { haversineKm, isGenericFoodQuery } from '../services/ai/utils/distanceUtils.js';
 import { searchNearbyPlaces } from '../services/placeService.js';
 
 dotenv.config();

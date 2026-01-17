@@ -5,7 +5,7 @@
  */
 
 import { RunnableSequence } from '@langchain/core/runnables';
-import { searchPlaces, searchPlacesByRegex, searchPlacesByVibe, searchNearbyPlaces } from '../../placeService.js';
+import { searchNearbyPlaces, searchPlaces, searchPlacesByRegex, searchPlacesByVibe } from '../../placeService.js';
 import weatherService from '../../weather/weatherService.js';
 import { RAG_STAGES } from '../config/constants.js';
 import config from '../config/index.js';
