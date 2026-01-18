@@ -20,11 +20,12 @@ router.post('/chat', optionalAuth, async (req, res) => {
     const {
       question, userId = 'anonymous',
       latitude, longitude, localTime, nearMe,
-      useRealtime, useLocation, usePersonalization // Extract new flags
+      useRealtime, useLocation, usePersonalization, // Extract new flags
+      userPreferences: bodyPreferences // User preferences from request body
     } = req.body;
 
-    // Get user preferences if logged in
-    const userPreferences = req.user?.preferences || null;
+    // Get user preferences: prioritize body preferences, fallback to logged-in user preferences
+    const userPreferences = bodyPreferences || req.user?.preferences || null;
     const actualUserId = req.user?._id?.toString() || userId;
 
     // Handle location from flatness or nested object

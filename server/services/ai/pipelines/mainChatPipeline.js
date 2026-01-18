@@ -428,42 +428,23 @@ class MainChatPipeline {
 
         logger.info('🥗 Applying vegetarian filter to retrieved docs...');
 
-        // Keywords that indicate non-vegetarian food
-        const nonVegetarianKeywords = [
-            'thịt', 'thit', 'bò', 'bo', 'heo', 'gà', 'ga', 'cá', 'ca',
-            'hải sản', 'hai san', 'ốc', 'oc', 'tôm', 'tom', 'cua',
-            'lẩu', 'lau', 'nướng', 'nuong', 'bbq', 'nhậu', 'nhau',
-            'bia', 'bar', 'pub', 'steak', 'bún bò', 'bun bo',
-            'phở bò', 'pho bo', 'bún chả', 'bun cha'
-        ];
-
-        // Keywords that indicate vegetarian food
-        const vegetarianKeywords = [
-            'chay', 'vegan', 'vegetarian', 'thuần chay', 'thuan chay',
-            'đậu', 'dau', 'rau', 'salad', 'healthy'
-        ];
+        // Simple approach: Only keep places with "chay" in name
+        // This ensures we find actual vegetarian restaurants, not just filtered results
+        const vegetarianNameKeywords = ['chay', 'chày', 'thuần chay', 'thuan chay', 'vegan'];
 
         const filtered = input.retrievedDocs.filter(doc => {
             const name = (doc.name || doc.metadata?.name || '').toLowerCase();
-            const category = (doc.metadata?.category || '').toLowerCase();
-            const content = (doc.pageContent || doc.content || '').toLowerCase();
-            const combined = `${name} ${category} ${content}`;
-
-            // If place explicitly contains vegetarian keywords, keep it
-            if (vegetarianKeywords.some(kw => combined.includes(kw))) {
+            
+            // Only keep places with "chay" or similar in the NAME
+            const isVegetarianPlace = vegetarianNameKeywords.some(kw => name.includes(kw));
+            
+            if (isVegetarianPlace) {
+                logger.info(`✅ Keeping vegetarian place: ${name}`);
                 return true;
             }
-
-            // If place contains non-vegetarian keywords, remove it
-            if (nonVegetarianKeywords.some(kw => combined.includes(kw))) {
-                logger.info(`🚫 Filtered out non-vegetarian: ${name}`);
-                return false;
-            }
-
-            // Default: keep (might be cafe, dessert, etc.)
-            return true;
+            
+            return false;
         });
-
 
         logger.info(`🥗 Dietary filter: ${input.retrievedDocs.length} -> ${filtered.length} places`);
 

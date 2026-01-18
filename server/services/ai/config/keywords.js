@@ -18,7 +18,9 @@ export const LUXURY_KEYWORDS = [
 ];
 
 export const VEGETARIAN_KEYWORDS = [
-    'chay', 'thuần chay', 'thuan chay', 'vegetarian', 'vegan'
+    'chay', 'thuần chay', 'thuan chay', 'vegetarian', 'vegan',
+    // Match enum values from User model
+    'vegetarian', 'vegan'
 ];
 
 export const SPECIFIC_FOOD_KEYWORDS = [

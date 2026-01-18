@@ -1,4 +1,5 @@
 import { memo, useMemo, useState } from 'react';
+import { useUser } from '../../../contexts/UserContext';
 import Fong from '../Fong/Fong';
 import styles from './AISearchSection.module.css';
 
@@ -48,6 +49,9 @@ const AISearchSection = memo(({
     aiResponse = null,
     isLoading = false
 }) => {
+    // Get user info from context (for personalization)
+    const { user } = useUser();
+    
     // Context States - Default OFF per user request
     const [usePersonalization, setUsePersonalization] = useState(false);
 
@@ -58,7 +62,11 @@ const AISearchSection = memo(({
     const handleSearch = () => {
         if (onSearch && query.trim()) {
             const context = {
-                usePersonalization
+                usePersonalization,
+                // Send user preferences when personalization is enabled
+                ...(usePersonalization && user?.preferences && {
+                    userPreferences: user.preferences
+                })
             };
             onSearch(query, context);
         }
