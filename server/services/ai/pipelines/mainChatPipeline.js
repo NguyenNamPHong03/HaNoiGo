@@ -8,6 +8,15 @@ import { RunnableSequence } from '@langchain/core/runnables';
 import { searchNearbyPlaces, searchPlaces, searchPlacesByRegex, searchPlacesByVibe } from '../../placeService.js';
 import weatherService from '../../weather/weatherService.js';
 import { RAG_STAGES } from '../config/constants.js';
+import {
+    ACCOMMODATION_KEYWORDS,
+    LUXURY_KEYWORDS,
+    VEGETARIAN_KEYWORDS,
+    SPECIFIC_FOOD_KEYWORDS,
+    GENERIC_FOOD_KEYWORDS,
+    ADDRESS_MARKERS,
+    STOP_WORDS
+} from '../config/keywords.js';
 import config from '../config/index.js';
 import cacheClient from '../core/cacheClient.js';
 import llmFactory from '../core/llmFactory.js';
@@ -22,10 +31,14 @@ import { isGenericFoodQuery } from '../utils/distanceUtils.js';
 import logger from '../utils/logger.js';
 import { formatPreferencesForPrompt } from '../utils/preferencesMapper.js';
 
+// Optimizaion constants
+const SEARCH_TIMEOUT_MS = 1000; // 1s timeout for auxiliary searches
+
 class MainChatPipeline {
     constructor() {
         this.chain = null;
         this.initialized = false;
+        this.llm = null;
     }
 
     /**
@@ -37,822 +50,26 @@ class MainChatPipeline {
         try {
             logger.info('🏗️  Building RAG pipeline...');
 
-            const llm = await llmFactory.getLLM();
+            this.llm = await llmFactory.getLLM();
             await promptLoader.initialize();
-            await reranker.initialize(); // Initialize reranker
-
-            // Stage 1: Input Guard
-            const guardedInput = async (input) => {
-                return await telemetry.measureTime(RAG_STAGES.INPUT_GUARD, async () => {
-                    const sanitizedQuestion = await inputGuard.validate(input.question);
-                    // Preserve all metadata (userPreferences, context, etc.)
-                    return {
-                        ...input,
-                        question: sanitizedQuestion
-                    };
-                });
-            };
-
-            // Stage 2: Check Semantic Cache
-            const cachedResponse = async (input) => {
-                // Input now preserves all metadata from initial invoke
-                return await telemetry.measureTime(RAG_STAGES.SEMANTIC_CACHE, async () => {
-                    const cached = await cacheClient.getCache(input.question);
-                    if (cached) {
-                        logger.info('🎯 Cache HIT!');
-                        return {
-                            ...input, // Preserve metadata
-                            ...cached, // Spread cached response (answer, retrievedDocs, etc.)
-                            cached: true,
-                        };
-                    }
-                    return { ...input, cached: false };
-                });
-            };
-
-            // Stage 1.5: Query Rewriting
-            const rewriteQuery = async (input) => {
-                if (input.cached || !config.features.useQueryRewriting) return input;
-
-                return await telemetry.measureTime(RAG_STAGES.QUERY_REWRITE, async () => {
-                    // Skip rewriting for very short queries
-                    if (input.question.length < 10) return input;
-
-                    try {
-                        const prompt = await promptLoader.formatQueryRewrite(input.question);
-                        const response = await llm.invoke(prompt);
-                        const refinedQuery = typeof response === 'string' ? response : response.content;
-
-                        logger.info(`🔄 Rewrote query: "${input.question}" -> "${refinedQuery}"`);
-
-                        return {
-                            ...input,
-                            refinedQuery: refinedQuery.trim(),
-                        };
-                    } catch (error) {
-                        logger.warn('⚠️ Query rewriting failed, using original:', error);
-                        return input;
-                    }
-                });
-            };
-
-            // Stage 2.5: Intent Classification
-            const classifyIntent = async (input) => {
-                if (input.cached) return input;
-
-                return await telemetry.measureTime('INTENT_CLASSIFY', async () => {
-                    try {
-                        const prompt = await promptLoader.formatIntentClassify(input.question);
-                        const response = await llm.invoke(prompt);
-                        let intent = typeof response === 'string' ? response : response.content;
-                        intent = intent.trim().toUpperCase();
-
-                        // Defaut to CHAT if unclear
-                        if (intent.includes('ITINERARY')) {
-                            intent = 'ITINERARY';
-                        } else {
-                            intent = 'CHAT';
-                        }
-
-                        logger.info(`🧠 Intent detected: ${intent}`);
-                        return {
-                            ...input,
-                            intent
-                        };
-                    } catch (error) {
-                        logger.error('Intent classification failed', error);
-                        return { ...input, intent: 'CHAT' };
-                    }
-                });
-            };
-
-            // Stage 2.6: � Intent Classification (CRITICAL: Food vs Vibe vs Activity)
-            const classifyQueryIntent = async (input) => {
-                if (input.cached) return input;
-
-                return await telemetry.measureTime('QUERY_INTENT_CLASSIFY', async () => {
-                    const intentData = intentClassifier.classify(input.question);
-
-                    logger.info(`🎯 Query Intent: ${intentData.intent}`);
-
-                    if (intentData.intent === 'FOOD_ENTITY') {
-                        logger.info(`🍜 FOOD MODE: "${intentData.keyword}" → HARD FILTER`);
-                    } else if (intentData.intent === 'PLACE_VIBE') {
-                        logger.info(`💕 VIBE MODE: "${intentData.keyword}" → TAG FILTER [${intentData.tags.join(', ')}]`);
-                    } else if (intentData.intent === 'ACTIVITY') {
-                        logger.info(`🎵 ACTIVITY MODE: "${intentData.keyword}"`);
-                    }
-
-                    return {
-                        ...input,
-                        queryIntent: intentData.intent,
-                        queryKeyword: intentData.keyword,
-                        queryTags: intentData.tags,
-                        queryMustQuery: intentData.mustQuery
-                    };
-                });
-            };
-
-            // Stage 3: Retrieval
-            const retrieve = async (input) => {
-                if (input.cached) return input;
-
-                return await telemetry.measureTime(RAG_STAGES.RETRIEVAL, async () => {
-                    // Use refined query if available, otherwise original
-                    let queryToUse = input.refinedQuery || input.question;
-                    const queryLower = queryToUse.toLowerCase();
-
-                    // DIETARY PREFERENCE DETECTION (Retrieval Stage)
-                    const userDietary = input.userPreferences?.dietary || [];
-                    const isVegetarian = userDietary.some(d =>
-                        ['chay', 'thuần chay', 'thuan chay', 'vegetarian', 'vegan'].includes(d.toLowerCase())
-                    );
-
-                    const specificFoodKeywords = [
-                        'phở', 'pho', 'bún chả', 'bun cha', 'thịt', 'thit', 'lẩu', 'lau',
-                        'bò', 'bo', 'gà', 'ga', 'heo', 'cá', 'ca', 'hải sản', 'hai san',
-                        'nhậu', 'nhau', 'bia', 'bar', 'pub', 'bbq', 'nướng', 'nuong',
-                        'bún bò', 'bun bo', 'cơm tấm', 'com tam', 'bánh mì thịt', 'banh mi thit'
-                    ];
-                    const isSpecificFoodQuery = specificFoodKeywords.some(kw => queryLower.includes(kw));
-
-                    const genericFoodKeywords = [
-                        'quán ăn', 'quan an', 'ăn gì', 'an gi', 'tìm quán', 'tim quan',
-                        'gợi ý quán', 'goi y quan', 'ăn ở đâu', 'an o dau', 'đi ăn', 'di an',
-                        'tìm chỗ ăn', 'tim cho an', 'muốn ăn', 'muon an'
-                    ];
-                    const isGenericFoodQueryForDietary = genericFoodKeywords.some(kw => queryLower.includes(kw));
-
-                    // If user is vegetarian + query is generic (not specific) -> FORCE query rewrite
-                    if (isVegetarian && isGenericFoodQueryForDietary && !isSpecificFoodQuery) {
-                        logger.info('DIETARY FILTER (RETRIEVAL): User is vegetarian + generic food query -> Forcing search for "quán chay"');
-                        queryToUse = "top các quán chay ngon review tốt";
-                        input.refinedQuery = queryToUse; // Persist for next stages
-                        input.dietaryAugment = 'chay';
-                    }
-
-                    // If ITINERARY, we might want to fetch more results or different strategy
-                    // For now, keep it simple but maybe increase limit later if needed
-                    const results = await basicRetriever.retrieve(queryToUse);
-                    return {
-                        ...input,
-                        retrievedDocs: results,
-                    };
-                });
-            };
-
-            // Stage 3.5: Hybrid/Keyword Augmentation
-            const keywordAugment = async (input) => {
-                if (input.cached) return input;
-
-                return await telemetry.measureTime('KEYWORD_AUGMENT', async () => {
-                    let query = (input.refinedQuery || input.question).toLowerCase().trim();
-
-                    // --- Context Awareness: Time ---
-                    const now = new Date();
-                    const hour = now.getHours();
-                    // DISABLED Real-time context as per user request
-                    const isLateNight = false; // hour >= 22 || hour < 4;
-
-                    // 🏨 ACCOMMODATION DETECTION (Nhận diện yêu cầu lưu trú)
-                    const accommodationKeywords = [
-                        'về muộn', 'về khuya', 'hẹn hò về muộn', 'hẹn hò tối muộn',
-                        'cần chỗ nghỉ', 'ở lại qua đêm', 'chỗ nghỉ qua đêm',
-                        'nghỉ qua đêm', 'ngủ qua đêm', 'nghỉ đêm', 'qua đêm',
-                        'nhà nghỉ', 'homestay', 'khách sạn', 'resort', 'chỗ ngủ',
-                        'chỗ ở', 'thuê phòng', 'đặt phòng', 'book phòng'
-                    ];
-
-                    // 💎 LUXURY TIER DETECTION (Nhận diện nhu cầu cao cấp)
-                    const luxuryKeywords = [
-                        'cao cấp', 'xịn', 'sang trọng', 'luxury', 'đẳng cấp',
-                        'high-end', 'premium', '5 sao', 'sang', 'vip',
-                        'đắt', 'chất lượng cao', 'resort', 'khách sạn tốt'
-                    ];
-
-                    const needsAccommodation = accommodationKeywords.some(kw => query.includes(kw));
-                    const needsLuxury = luxuryKeywords.some(kw => query.includes(kw));
-
-                    if (needsAccommodation) {
-                        logger.info('Accommodation request detected! Filtering category="Luu tru"');
-                        input.accommodationMode = true;
-
-                        // Determine price tier
-                        if (needsLuxury) {
-                            logger.info('LUXURY MODE: Filtering high-end accommodations (>=500k)');
-                            input.luxuryMode = true;
-                            input.minPrice = 500000; // 500k+ for luxury
-                        } else {
-                            logger.info('STANDARD MODE: Mix of budget & mid-range accommodations');
-                            input.luxuryMode = false;
-                            input.minPrice = null; // No filter, random mix
-                        }
-                    }
-
-                    // DIETARY PREFERENCE DETECTION (CRITICAL for vegetarian users)
-                    // Check if user has vegetarian preference AND query is GENERIC food query
-                    const userDietary = input.userPreferences?.dietary || [];
-                    const isVegetarian = userDietary.some(d =>
-                        ['chay', 'thuần chay', 'thuan chay', 'vegetarian', 'vegan'].includes(d.toLowerCase())
-                    );
-
-                    // Specific food keywords - if user mentions these, they know what they want (maybe asking for someone else)
-                    const specificFoodKeywords = [
-                        'phở', 'pho', 'bún chả', 'bun cha', 'thịt', 'thit', 'lẩu', 'lau',
-                        'bò', 'bo', 'gà', 'ga', 'heo', 'cá', 'ca', 'hải sản', 'hai san',
-                        'nhậu', 'nhau', 'bia', 'bar', 'pub', 'bbq', 'nướng', 'nuong',
-                        'bún bò', 'bun bo', 'cơm tấm', 'com tam', 'bánh mì thịt', 'banh mi thit'
-                    ];
-                    const isSpecificFoodQuery = specificFoodKeywords.some(kw => query.includes(kw));
-
-                    // Generic food keywords - these are where we should apply dietary preference
-                    const genericFoodKeywords = [
-                        'quán ăn', 'quan an', 'ăn gì', 'an gi', 'tìm quán', 'tim quan',
-                        'gợi ý quán', 'goi y quan', 'ăn ở đâu', 'an o dau', 'đi ăn', 'di an',
-                        'tìm chỗ ăn', 'tim cho an', 'muốn ăn', 'muon an'
-                    ];
-                    const isGenericFoodQueryForDietary = genericFoodKeywords.some(kw => query.includes(kw));
-
-                    // If user is vegetarian + query is generic (not specific) -> FORCE query to be "quán chay"
-                    if (isVegetarian && isGenericFoodQueryForDietary && !isSpecificFoodQuery) {
-                        logger.info('DIETARY FILTER: User is vegetarian + generic food query -> Forcing search for "quán chay"');
-                        input.dietaryAugment = 'chay';
-                        // REPLACE query completely to ensure focus
-                        input.refinedQuery = "top các quán chay ngon review tốt";
-                    }
-
-                    if (isLateNight) {
-                        // Automatically append "late night" context to search
-                        // This helps find places that are actually open or tagged for nightlife
-                        logger.info('🌙 Late night detected, augmenting search query...');
-                        // We don't change the visible query, but the search query
-                        // Actually searchPlaces does fuzzy search, so appending might dilute if not careful
-                        // But specialized tags like "xuyên đêm" are useful.
-                        // Let's rely on filter/scoring later? 
-                        // For now, let's append only if the user didn't ask about time.
-                        if (!query.includes('đêm') && !query.includes('muộn')) {
-                            // query += " mở xuyên đêm"; // Risky if exact match
-                        }
-                    }
-
-                    try {
-                        const promises = [];
-
-                        // Increase limit for itinerary to get diversity
-                        const textLimit = input.intent === 'ITINERARY' ? 20 : 10;
-
-                        // 🏨 Apply category filter for accommodation mode
-                        const categoryFilter = input.accommodationMode ? 'Lưu trú' : null;
-
-                        // 💎 Apply price filter for luxury mode
-                        const priceFilter = input.minPrice || null;
-
-                        // � Apply filter based on Query Intent Type
-                        const queryIntent = input.queryIntent || 'GENERAL';
-                        // 📍 NEAR ME OPTIMIZATION: For generic queries + location
-                        const hasLocation = input.context?.location?.lat && input.context?.location?.lng;
-                        // DISABLED Location-based search as per user request
-                        const nearMeMode = false; // input.context?.nearMe || false;
-
-                        // CRITICAL FIX: Disable "Near Me" if user is vegetarian + generic query
-                        // Reason: Vegetarian places are sparse, strict 5km radius often returns nothing.
-                        // User explicitly asked to "search everywhere" if needed.
-                        const shouldDisableNearMe = isVegetarian && isGenericFoodQueryForDietary && !isSpecificFoodQuery;
-
-                        if (nearMeMode && hasLocation && isGenericFoodQuery(query) && !shouldDisableNearMe) {
-                            // Use MongoDB $geoNear for fast nearby search
-                            const { lat, lng } = input.context.location;
-                            logger.info(`NEAR ME MODE: Generic query "${query}" -> $geoNear search`);
-
-                            try {
-                                const nearbyPlaces = await searchNearbyPlaces(
-                                    lat,
-                                    lng,
-                                    5, // 5km radius
-                                    textLimit,
-                                    { category: categoryFilter, minPrice: priceFilter }
-                                );
-
-                                // Convert to document format
-                                const mongoDocs = nearbyPlaces.map(p => ({
-                                    pageContent: `${p.name} - ${p.address}\n${p.description}\nCategory: ${p.category}`,
-                                    metadata: {
-                                        id: p._id.toString(),
-                                        name: p.name,
-                                        address: p.address,
-                                        image: p.images?.[0] || '',
-                                        category: p.category,
-                                        price: p.priceRange?.min || 0,
-                                        rating: p.averageRating || 0,
-                                        reviewCount: p.totalReviews || 0,
-                                        source: 'mongo-nearby',
-                                        coordinates: p.location?.coordinates || null,
-                                        distanceKm: p.distanceKm
-                                    }
-                                }));
-
-                                logger.info(`✅ Found ${mongoDocs.length} nearby places`);
-
-                                return {
-                                    ...input,
-                                    retrievedDocs: mongoDocs
-                                };
-                            } catch (err) {
-                                logger.warn('⚠️ $geoNear failed, fallback to normal search:', err);
-                                // Fallback to normal search
-                            }
-                        }
-
-                        // Standard search paths
-                        if (queryIntent === 'FOOD_ENTITY') {
-                            // HARD keyword filter for food
-                            const foodMustQuery = input.queryMustQuery;
-                            logger.info(`🔒 HARD FILTER: Only places matching "${input.queryKeyword}"`);
-                            promises.push(searchPlaces(query, textLimit, categoryFilter, priceFilter, foodMustQuery));
-
-                        } else if (queryIntent === 'PLACE_VIBE') {
-                            // TAG/MOOD filter for vibe (hẹn hò, lãng mạn, chill...)
-                            const vibeTags = input.queryTags || [];
-                            logger.info(`💕 VIBE FILTER: Tags [${vibeTags.join(', ')}]`);
-                            promises.push(searchPlacesByVibe(vibeTags, textLimit, categoryFilter, priceFilter));
-
-                        } else if (queryIntent === 'ACTIVITY') {
-                            // Activity-based search
-                            const activityTags = input.queryTags || [];
-                            logger.info(`🎵 ACTIVITY FILTER: Tags [${activityTags.join(', ')}]`);
-                            promises.push(searchPlacesByVibe(activityTags, textLimit, categoryFilter, priceFilter));
-
-                        } else {
-                            // GENERAL: Normal text search
-                            logger.info(`🔍 GENERAL SEARCH: "${query}"`);
-                            promises.push(searchPlaces(query, textLimit, categoryFilter, priceFilter));
-                        }
-
-                        // 2. Smart Address Regex Search (for all intents)
-                        // Detect patterns: "ngõ tự do" -> search for /(ngõ|ng\.?)\s*tự\s*do/i
-                        // Common prefixes
-                        const addressMarkers = [
-                            { key: 'ngõ', regex: '(?:ngõ|ng\\.?)' },
-                            { key: 'ngách', regex: '(?:ngách|ngh\\.?)' },
-                            { key: 'phố', regex: '(?:phố|p\\.?)' },
-                            { key: 'đường', regex: '(?:đường|đ\\.?)' },
-                            { key: 'quận', regex: '(?:quận|q\\.?)' },
-                            { key: 'phường', regex: '(?:phường|p\\.?)' }
-                        ];
-
-                        let addressPatternRaw = null;
-                        let prefixRegex = null;
-
-                        for (const marker of addressMarkers) {
-                            // Check if marker exists as a whole word or start
-                            if (query.includes(marker.key)) {
-                                const idx = query.indexOf(marker.key);
-                                let afterMarker = query.substring(idx + marker.key.length).trim();
-
-                                // Remove trailing noise words often used in queries
-                                // "ngõ tự do với 500k" -> remove "với 500k"
-                                // "ngõ tự do không" -> remove " không"
-                                const stopWords = [
-                                    ' với ', ' giá ', ' khoảng ', ' tầm ', ' hết ', ' cho ', ' có ',
-                                    ' không', ' nào', ' nhỉ', ' ạ', ' ở đâu', ' đâu'
-                                ];
-                                for (const word of stopWords) {
-                                    // Case insensitive check
-                                    const lowerAfter = afterMarker.toLowerCase();
-                                    const lowerWord = word.toLowerCase();
-                                    const idx = lowerAfter.indexOf(lowerWord);
-
-                                    if (idx !== -1) {
-                                        afterMarker = afterMarker.substring(0, idx).trim();
-                                        // Continue checking? Usually one cut is enough if list is ordered or we just cut the tail.
-                                        // But if we have "ngõ tự do nào không", cutting " nào" leaves "ngõ tự do". Correct.
-                                    }
-                                }
-
-                                if (afterMarker) {
-                                    addressPatternRaw = afterMarker;
-                                    prefixRegex = marker.regex;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (addressPatternRaw && prefixRegex) {
-                            // Escape special regex chars
-                            const safeSuffix = addressPatternRaw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                            // Allow flexible spacing between words
-                            const flexibleSuffix = safeSuffix.split(/\s+/).join('\\s+');
-                            const regex = new RegExp(`${prefixRegex}\\s+${flexibleSuffix}`, 'i');
-
-                            logger.info(`🎯 Address Regex detected: ${regex}`);
-
-                            // Only apply foodMustQuery for FOOD_ENTITY intent
-                            const addressMustQuery = (queryIntent === 'FOOD_ENTITY') ? input.queryMustQuery : null;
-                            promises.push(searchPlacesByRegex(regex, 5, categoryFilter, priceFilter, addressMustQuery));
-                        }
-
-                        const results = await Promise.all(promises);
-                        const places = results.flat();
-
-                        if (!places || places.length === 0) return input;
-
-                        logger.info(`🔍 Hybrid search found ${places.length} results`);
-
-                        const mongoDocs = places.map(p => ({
-                            pageContent: `${p.name} - ${p.address}\n${p.description}\nCategory: ${p.category}`,
-                            metadata: {
-                                id: p._id.toString(),
-                                name: p.name,
-                                address: p.address,
-                                image: p.images?.[0] || '',
-                                category: p.category,
-                                price: p.priceRange?.min || 0,
-                                rating: p.averageRating || 0,
-                                reviewCount: p.totalReviews || 0,
-                                source: 'mongo-hybrid',
-                                // Pass coordinates for distance calculation
-                                coordinates: p.location?.coordinates || null
-                            }
-                        }));
-
-                        // Merge results, preferring vector results if duplicates (or just appending)
-                        const combined = [...(input.retrievedDocs || [])];
-                        const existingIds = new Set(combined.map(d => d.metadata?.id));
-
-                        for (const doc of mongoDocs) {
-                            if (!existingIds.has(doc.metadata.id)) {
-                                combined.push(doc);
-                                existingIds.add(doc.metadata.id);
-                            }
-                        }
-
-                        return {
-                            ...input,
-                            retrievedDocs: combined
-                        };
-
-                    } catch (error) {
-                        logger.warn('⚠️ Keyword augmentation failed:', error);
-                        return input;
-                    }
-                });
-            };
-
-            // Stage 4: Reranking (Cohere + Location)
-            const rerank = async (input) => {
-                if (input.cached || !input.retrievedDocs?.length) return input;
-
-                return await telemetry.measureTime(RAG_STAGES.RERANKING, async () => {
-                    let docs = input.retrievedDocs;
-
-                    // --- Context Awareness: Location ---
-                    // DISABLED as per user request
-                    if (false && input.context?.location) {
-                        const { lat: userLat, lng: userLng } = input.context.location;
-                        const queryLower = input.question.toLowerCase();
-
-                        // Check if user explicitly asked for proximity
-                        const isProximityQuery =
-                            queryLower.includes('gần') ||
-                            queryLower.includes('quanh') ||
-                            queryLower.includes('near');
-
-                        if (isProximityQuery) {
-                            logger.info('📍 Proximity query detected. Calculating distances...');
-
-                            // Simple Haversine distance
-                            const calculateDistance = (lat1, lon1, lat2, lon2) => {
-                                const R = 6371; // km
-                                const dLat = (lat2 - lat1) * Math.PI / 180;
-                                const dLon = (lon2 - lon1) * Math.PI / 180;
-                                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                                return R * c;
-                            };
-
-                            // Calculate distances for all docs that have coordinates
-                            docs = docs.map(doc => {
-                                let distance = Infinity;
-                                if (doc.metadata?.coordinates && Array.isArray(doc.metadata.coordinates)) {
-                                    // MongoDB stores [lng, lat]
-                                    const [lng, lat] = doc.metadata.coordinates;
-                                    if (lat && lng) {
-                                        distance = calculateDistance(userLat, userLng, lat, lng);
-                                    }
-                                }
-                                return { ...doc, metadata: { ...doc.metadata, distance } };
-                            });
-
-                            // Re-sort primarily by distance if it's a proximity query
-                            docs = docs.sort((a, b) => (a.metadata.distance || Infinity) - (b.metadata.distance || Infinity));
-                            logger.info('📍 Sorted results by distance.');
-                        }
-                    }
-
-                    // We stick to the plan: Rerank top results with Cohere first for Semantic Relevance
-                    // Then if proximity is key, we perform a final re-sort or boost.
-
-                    let reranked = await reranker.rerank(
-                        input.question,
-                        docs
-                    );
-
-                    // Post-Rerank Adjustment for Proximity
-                    // If proximity query, we prioritize strictly by distance among the top semantic candidates
-                    // DISABLED as per user request
-                    if (false && input.context?.location) {
-                        const { lat: userLat, lng: userLng } = input.context.location;
-                        const queryLower = input.question.toLowerCase();
-                        if (queryLower.includes('gần') || queryLower.includes('quanh') || queryLower.includes('near') || queryLower.includes('tôi')) {
-                            const calculateDistance = (lat1, lon1, lat2, lon2) => {
-                                const R = 6371;
-                                const dLat = (lat2 - lat1) * Math.PI / 180;
-                                const dLon = (lon2 - lon1) * Math.PI / 180;
-                                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                                return R * c;
-                            };
-
-                            reranked = reranked.map(doc => {
-                                let distance = Infinity;
-                                if (doc.metadata?.coordinates) {
-                                    const [lng, lat] = doc.metadata.coordinates;
-                                    if (lat && lng) distance = calculateDistance(userLat, userLng, lat, lng);
-                                }
-                                return { ...doc, metadata: { ...doc.metadata, distance } };
-                            }).sort((a, b) => (a.metadata.distance || Infinity) - (b.metadata.distance || Infinity));
-                        }
-                    }
-
-                    return {
-                        ...input,
-                        retrievedDocs: reranked,
-                    };
-                });
-            };
-
-            // Stage 4.5: Local Reordering (Keyword Boost)
-            const localReorder = (input) => {
-                if (input.cached || !input.retrievedDocs?.length) return input;
-
-                const queryLower = input.question.toLowerCase().normalize('NFC');
-
-                // Simple scoring function
-                const scoreDoc = (doc) => {
-                    const name = (doc.name || doc.metadata?.name || '').toLowerCase();
-                    const address = (doc.metadata?.address || '').toLowerCase();
-                    const query = queryLower;
-                    let score = 0;
-
-                    // Boost exact name match
-                    if (name.includes(query)) score += 10;
-
-                    // Boost if name parts match
-                    const queryParts = query.split(' ').filter(p => p.length > 1); // Filter single chars
-                    const nameMatches = queryParts.filter(p => name.includes(p)).length;
-                    score += nameMatches * 0.5;
-
-                    // Boost address match (CRITICAL for "Ngõ Tự Do" queries)
-                    // Handle "ngõ" vs "ng." normalization
-                    const normalizedAddress = address.replace(/ng\./g, 'ngõ').replace(/p\./g, 'phường').replace(/q\./g, 'quận');
-                    const normalizedQuery = query.replace(/ng\./g, 'ngõ').replace(/p\./g, 'phường').replace(/q\./g, 'quận');
-
-                    if (normalizedAddress.includes(normalizedQuery)) {
-                        score += 8; // High boost for exact address match
-                    } else {
-                        // Check partial address match (e.g. "ngõ tự do" in "ng. tự do, ...")
-                        const addressMatches = queryParts.filter(p => normalizedAddress.includes(p)).length;
-                        if (addressMatches >= 2) { // At least 2 words match (e.g. "tự" and "do")
-                            score += addressMatches * 1.5;
-                        }
-                    }
-
-                    return score;
-                };
-
-                const reordered = [...input.retrievedDocs].sort((a, b) => {
-                    const scoreA = scoreDoc(a);
-                    const scoreB = scoreDoc(b);
-
-                    if (Math.abs(scoreA - scoreB) > 0.1) {
-                        return scoreB - scoreA; // Sort by boost score
-                    }
-                    return 0; // Maintain previous order (Cohere/Vector)
-                });
-
-                return {
-                    ...input,
-                    retrievedDocs: reordered,
-                };
-            };
-
-            // Stage 5: Format Context
-            const formatContext = (input) => {
-                if (input.cached) return input;
-
-                const context = input.retrievedDocs
-                    .map((doc, i) => {
-                        const placeName = doc.name || doc.metadata?.name || `Địa điểm ${i + 1}`;
-                        const address = doc.metadata?.address ? `Địa chỉ: ${doc.metadata.address}` : '';
-                        const price = doc.metadata?.price ? `Giá: ${doc.metadata.price} VND` : 'Giá: Liên hệ';
-                        const category = doc.metadata?.category ? `(${doc.metadata.category})` : '';
-
-                        // Add Rank, Price, Category explicitly to guide LLM for itinerary planning
-                        return `RANK #${i + 1} [${placeName}] ${category}\n${address} | ${price}\n${doc.content}`;
-                    })
-                    .join('\n\n---\n\n');
-
-                return {
-                    ...input,
-                    context,
-                };
-            };
-
-            // Stage 6: Create Prompt
-            const createPrompt = async (input) => {
-                if (input.cached) return input;
-
-                return await telemetry.measureTime(RAG_STAGES.PROMPT_CONSTRUCTION, async () => {
-                    // Fetch dynamic context
-                    const weatherData = await weatherService.getCurrentWeather();
-                    const now = new Date();
-                    // Format: 14:30 - Thứ 3, 16/01/2024
-                    const datetime = now.toLocaleString('vi-VN', {
-                        hour: '2-digit', minute: '2-digit',
-                        weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
-                        timeZone: 'Asia/Bangkok'
-                    });
-
-                    // --- Context Awareness: Weather ---
-                    // --- Context Awareness: Weather ---
-                    let weatherWarning = "";
-                    const desc = weatherData?.description || "";
-                    const sky = weatherData?.skyConditions || "";
-
-                    const isRaining = desc.toLowerCase().includes('mưa') ||
-                        desc.toLowerCase().includes('rain') ||
-                        (sky && sky.includes('Rain'));
-
-                    if (isRaining) {
-                        weatherWarning = "⚠️ WARNING: It is currently RAINING in Hanoi. You MUST prioritize Indoor places. " +
-                            "Do NOT suggest open-air rooftops, street food (vỉa hè) without cover, or parks unless explicitly asked. " +
-                            "Highlight 'cozy', 'warm', 'shelter' qualities.";
-                        logger.info('☔️ Rain detected, injecting strict prompt warning.');
-                    }
-
-                    // --- Context Awareness: Time ---
-                    const currentHour = now.getHours();
-                    let timeContext = "";
-                    // DISABLED as per user request
-                    if (false && (currentHour >= 22 || currentHour < 5)) {
-                        timeContext = "It is Late Night. Ensure suggested places are OPEN LATE or 24/7. " +
-                            "Prioritize nightlife, 24h cafes, or late-night food spots (Xôi Yến, Phở gánh, etc).";
-                    }
-
-                    // Append to system instructions effectively
-                    // We'll append this to the weather description field for now 
-                    // since the prompt templates use {currentWeather}
-                    const enhancedWeatherDesc = `${weatherData.fullDescription}\n${weatherWarning}\n${timeContext}`;
-
-                    // --- User Preferences Context ---
-                    const userPreferences = input.userPreferences || null;
-                    const preferencesContext = userPreferences
-                        ? formatPreferencesForPrompt(userPreferences)
-                        : '';
-
-                    if (preferencesContext) {
-                        logger.info(`🎯 User preferences detected: ${preferencesContext}`);
-                    }
-
-                    let formatted;
-                    if (input.intent === 'ITINERARY') {
-                        formatted = await promptLoader.formatItineraryGen(
-                            input.context,
-                            input.question,
-                            enhancedWeatherDesc, // Pass enhanced description
-                            datetime,
-                            preferencesContext // Pass user preferences
-                        );
-                    } else {
-                        formatted = await promptLoader.formatRAGQuery(
-                            input.context,
-                            input.question,
-                            enhancedWeatherDesc, // Pass enhanced description
-                            datetime,
-                            preferencesContext // Pass user preferences
-                        );
-                    }
-
-                    return {
-                        ...input,
-                        prompt: formatted,
-                    };
-                });
-            };
-
-            // Stage 7: LLM Inference
-            const llmInference = async (input) => {
-                if (input.cached) return input;
-
-                return await telemetry.measureTime(RAG_STAGES.LLM_INFERENCE, async () => {
-
-                    // We rely on the robust parsing logic below instead of strict json_mode
-                    // to avoid potential compatibility issues with llm.bind()
-
-                    const response = await llm.invoke(input.prompt);
-
-                    let answer = '';
-                    if (typeof response === 'string') {
-                        answer = response;
-                    } else if (response?.content) {
-                        answer = response.content;
-                    } else if (response?.kwargs?.content) {
-                        answer = response.kwargs.content;
-                    } else if (response?.text) {
-                        answer = response.text;
-                    }
-
-                    // If itinerary, try to parse JSON
-                    let structuredData = null;
-                    if (input.intent === 'ITINERARY') {
-                        try {
-                            // Locate JSON boundaries
-                            const firstOpen = answer.indexOf('{');
-                            const lastClose = answer.lastIndexOf('}');
-
-                            let jsonString = answer;
-                            if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
-                                jsonString = answer.substring(firstOpen, lastClose + 1);
-                            }
-
-                            // Basic Cleanup
-                            jsonString = jsonString
-                                .replace(/[\u0000-\u0019]+/g, "") // Remove control chars
-                                .trim();
-
-                            structuredData = JSON.parse(jsonString);
-                            logger.info('✅ Successfully parsed Itinerary JSON');
-                        } catch (e) {
-                            logger.warn('⚠️ Failed to parse itinerary JSON', e);
-                            logger.debug('Raw answer:', answer);
-                            // Fallback attempts could go here (e.g. fix keys)
-                        }
-                    }
-
-                    return {
-                        ...input,
-                        answer,
-                        structuredData
-                    };
-                });
-            };
-
-            // Stage 8: Output Guard
-            const guard = async (input) => {
-                return await telemetry.measureTime(RAG_STAGES.OUTPUT_GUARD, async () => {
-                    const validated = await outputGuard.validate(input.answer);
-                    return {
-                        ...input,
-                        answer: validated,
-                    };
-                });
-            };
-
-            // Stage 9: Cache Response
-            const cacheResponse = async (input) => {
-                if (!input.cached && input.answer && input.retrievedDocs) {
-                    await cacheClient.setCache(input.question, {
-                        question: input.question,
-                        answer: input.answer,
-                        retrievedDocs: input.retrievedDocs,
-                        context: input.context,
-                        intent: input.intent,
-                        structuredData: input.structuredData
-                    });
-                }
-                return input;
-            };
+            await reranker.initialize();
 
             // Compose pipeline
             this.chain = RunnableSequence.from([
-                guardedInput,
-                cachedResponse,
-                rewriteQuery,
-                classifyIntent, // Intent classification (ITINERARY vs CHAT)
-                classifyQueryIntent, // 🎯 Query intent (FOOD vs VIBE vs ACTIVITY)
-                retrieve,
-                keywordAugment, // Hybrid Search with intent-aware filtering
-                rerank,
-                localReorder,
-                formatContext,
-                createPrompt,
-                llmInference,
-                // guard, // Output Guard removed for speed optimization
-                cacheResponse,
+                this.stageInputGuard.bind(this),
+                // this.stageSemanticCache.bind(this), // Cache disabled by user request
+                // Parallelize analysis stages
+                this.stageParallelAnalysis.bind(this),
+                this.stageRetrieval.bind(this),
+                this.stageKeywordAugment.bind(this),
+                this.stageReranking.bind(this),
+                this.stageDietaryFilter.bind(this), // Vegetarian/Vegan filter
+                this.stageLocationSort.bind(this),  // Sort by distance when "Gần tôi" enabled
+                this.stageLocalReorder.bind(this),
+                this.stageFormatContext.bind(this),
+                this.stageCreatePrompt.bind(this),
+                this.stageLLMInference.bind(this),
+                // this.stageCacheResponse.bind(this), // Cache disabled
             ]);
 
             this.initialized = true;
@@ -863,6 +80,638 @@ class MainChatPipeline {
             logger.error('❌ Pipeline initialization failed:', error);
             throw error;
         }
+    }
+
+    // STAGE 1: Input Guard
+    async stageInputGuard(input) {
+        return await telemetry.measureTime(RAG_STAGES.INPUT_GUARD, async () => {
+            const sanitizedQuestion = await inputGuard.validate(input.question);
+            return {
+                ...input,
+                question: sanitizedQuestion
+            };
+        });
+    }
+
+    // Helper: Generate context-aware cache key
+    _generateCacheKey(input) {
+        let key = input.question;
+        const ctx = input.context;
+        // If context exists, append switch states to key
+        if (ctx) {
+            const rt = ctx.useRealtime !== false ? '1' : '0'; // Default true logic matches pipeline
+            const loc = ctx.useLocation ? '1' : '0';
+            const pz = ctx.usePersonalization ? '1' : '0'; // Default depends provided match, but frontend provides explicit
+            key += `|ctx:${rt}${loc}${pz}`;
+        }
+        return key;
+    }
+
+    // STAGE 2: Semantic Cache
+    async stageSemanticCache(input) {
+        return await telemetry.measureTime(RAG_STAGES.SEMANTIC_CACHE, async () => {
+            const cacheKey = this._generateCacheKey(input);
+            const cached = await cacheClient.getCache(cacheKey);
+
+            if (cached) {
+                logger.info(`🎯 Cache HIT! Key: "${cacheKey}"`);
+                return {
+                    ...input,
+                    ...cached,
+                    cached: true,
+                    cacheKey // Pass key along
+                };
+            }
+            return { ...input, cached: false, cacheKey };
+        });
+    }
+
+    // STAGE 3: Parallel Analysis (Rewrite + Intent + Query Analysis)
+    async stageParallelAnalysis(input) {
+        if (input.cached) return input;
+
+        return await telemetry.measureTime('PARALLEL_ANALYSIS', async () => {
+            // Helper wrapper to ensure we just return the diffs, not the whole input object to avoid conflicts
+            // Actually, for simplicity, we let them return ...input and we just pick the new props.
+
+            const [rewriteRes, intentRes, analysisRes] = await Promise.all([
+                this.runRewriteQuery(input),
+                this.runClassifyIntent(input),
+                this.runClassifyQueryIntent(input)
+            ]);
+
+            return {
+                ...input,
+                ...rewriteRes,
+                ...intentRes,
+                ...analysisRes,
+                // Ensure cached is still handled if any returned it (unlikely here as we checked input.cached top)
+            };
+        });
+    }
+
+    // --- Sub-functions for Parallel Analysis ---
+
+    async runRewriteQuery(input) {
+        if (!config.features.useQueryRewriting || input.question.length < 10) return {};
+
+        try {
+            const prompt = await promptLoader.formatQueryRewrite(input.question);
+            const response = await this.llm.invoke(prompt);
+            const refinedQuery = typeof response === 'string' ? response : response.content;
+            logger.info(`🔄 Rewrote query: "${input.question}" -> "${refinedQuery}"`);
+            return { refinedQuery: refinedQuery.trim() };
+        } catch (error) {
+            logger.warn('⚠️ Query rewriting failed:', error);
+            return {};
+        }
+    }
+
+    async runClassifyIntent(input) {
+        try {
+            const prompt = await promptLoader.formatIntentClassify(input.question);
+            const response = await this.llm.invoke(prompt);
+            let intent = typeof response === 'string' ? response : response.content;
+            intent = intent.trim().toUpperCase();
+            if (!intent.includes('ITINERARY')) intent = 'CHAT'; // Default to CHAT
+
+            logger.info(`🧠 Intent detected: ${intent}`);
+            return { intent };
+        } catch (error) {
+            logger.error('Intent classification failed', error);
+            return { intent: 'CHAT' };
+        }
+    }
+
+    async runClassifyQueryIntent(input) {
+        const intentData = intentClassifier.classify(input.question);
+        logger.info(`🎯 Query Intent: ${intentData.intent}`);
+
+        // Log details
+        if (intentData.intent === 'FOOD_ENTITY') {
+            logger.info(`🍜 FOOD MODE: "${intentData.keyword}" → HARD FILTER`);
+        } else if (intentData.intent === 'PLACE_VIBE') {
+            logger.info(`💕 VIBE MODE: "${intentData.keyword}" > TAGS: [${intentData.tags.join(', ')}]`);
+        }
+
+        return {
+            queryIntent: intentData.intent,
+            queryKeyword: intentData.keyword,
+            queryTags: intentData.tags,
+            queryMustQuery: intentData.mustQuery
+        };
+    }
+
+    // STAGE 6: Retrieval
+    async stageRetrieval(input) {
+        if (input.cached) return input;
+
+        return await telemetry.measureTime(RAG_STAGES.RETRIEVAL, async () => {
+            let queryToUse = input.refinedQuery || input.question;
+            const queryLower = queryToUse.toLowerCase();
+
+            // Only apply dietary filtering if Personalization is ENABLED
+            const shouldIncludePersonalization = !!input.context?.usePersonalization;
+            const userPreferences = input.context?.userPreferences || input.userPreferences || null;
+            const userDietary = userPreferences?.dietary || [];
+
+            if (shouldIncludePersonalization && userDietary.length > 0) {
+                const isVegetarian = userDietary.some(d => VEGETARIAN_KEYWORDS.includes(d.toLowerCase()));
+                const isSpecificFoodQuery = SPECIFIC_FOOD_KEYWORDS.some(kw => queryLower.includes(kw));
+                const isGenericFoodQueryForDietary = GENERIC_FOOD_KEYWORDS.some(kw => queryLower.includes(kw));
+
+                // Force vegetarian query if user is vegetarian/vegan AND query is generic food
+                if (isVegetarian && isGenericFoodQueryForDietary && !isSpecificFoodQuery) {
+                    logger.info('🥗 DIETARY FILTER: Vegetarian/Vegan user + generic food query -> Forcing "quán chay"');
+                    queryToUse = "top các quán chay ngon review tốt";
+                    input.refinedQuery = queryToUse;
+                    input.dietaryAugment = 'chay';
+                }
+            }
+
+            // Execute retrieval
+            const results = await basicRetriever.retrieve(queryToUse);
+            return {
+                ...input,
+                retrievedDocs: results,
+            };
+        });
+    }
+
+    // STAGE 7: Hybrid/Keyword Augmentation
+    async stageKeywordAugment(input) {
+        if (input.cached) return input;
+
+        return await telemetry.measureTime('KEYWORD_AUGMENT', async () => {
+            let query = (input.refinedQuery || input.question).toLowerCase().trim();
+
+            const needsAccommodation = ACCOMMODATION_KEYWORDS.some(kw => query.includes(kw));
+            const needsLuxury = LUXURY_KEYWORDS.some(kw => query.includes(kw));
+            let categoryFilter = null;
+            let priceFilter = null;
+
+            if (needsAccommodation) {
+                input.accommodationMode = true;
+                categoryFilter = 'Lưu trú';
+                if (needsLuxury) {
+                    input.luxuryMode = true;
+                    input.minPrice = 500000;
+                    priceFilter = 500000;
+                }
+            }
+
+            // Helper to wrap promise with timeout
+            const withTimeout = (promise, fallback = []) => {
+                return Promise.race([
+                    promise,
+                    new Promise(resolve => setTimeout(() => {
+                        // Silent resolve with empty to avoid breaking main flow
+                        resolve(fallback);
+                    }, SEARCH_TIMEOUT_MS))
+                ]);
+            };
+
+            const promises = [];
+            const textLimit = input.intent === 'ITINERARY' ? 20 : 10;
+            const queryIntent = input.queryIntent || 'GENERAL';
+
+            // 1. Keyword/Mongo Search (Parallel)
+            let searchPromise;
+            if (queryIntent === 'FOOD_ENTITY') {
+                searchPromise = searchPlaces(query, textLimit, categoryFilter, priceFilter, input.queryMustQuery);
+            } else if (queryIntent === 'PLACE_VIBE' || queryIntent === 'ACTIVITY') {
+                const tags = input.queryTags || [];
+                searchPromise = searchPlacesByVibe(tags, textLimit, categoryFilter, priceFilter);
+            } else {
+                searchPromise = searchPlaces(query, textLimit, categoryFilter, priceFilter);
+            }
+            // Wrap in timeout
+            promises.push(withTimeout(searchPromise).catch(err => {
+                logger.warn('⚠️ Keyword search failed/timed out', err);
+                return [];
+            }));
+
+            // 1.5 NEAR ME SEARCH (If enabled via context)
+            // When "Gần tôi" switch is ON, ALWAYS trigger nearby search regardless of query keywords
+            if (input.context?.useLocation && input.context?.location) {
+                const { lat, lng } = input.context.location;
+
+                if (lat && lng) {
+                    logger.info(`📍 "Gần tôi" switch enabled - Searching within 5km of (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+
+                    const nearbyPromise = searchNearbyPlaces(
+                        lat,
+                        lng,
+                        5, // 5km radius
+                        textLimit,
+                        { category: categoryFilter, minPrice: priceFilter }
+                    );
+
+                    promises.push(withTimeout(nearbyPromise).catch(err => {
+                        logger.warn('⚠️ Nearby search failed', err);
+                        return [];
+                    }));
+                }
+            }
+
+            // 2. Address Regex Search (Parallel)
+            // Move address parsing logic here or keep utilizing what we had.
+            // For optimization, we only trigger this if we detect potential address markers
+            const hasAddressMarker = ADDRESS_MARKERS.some(m => query.includes(m.key));
+
+            if (hasAddressMarker) {
+                const regexSearchPromise = (async () => {
+                    let addressPatternRaw = null;
+                    let prefixRegex = null;
+
+                    for (const marker of ADDRESS_MARKERS) {
+                        if (query.includes(marker.key)) {
+                            const idx = query.indexOf(marker.key);
+                            let afterMarker = query.substring(idx + marker.key.length).trim();
+                            // Heuristic to cut off stop words
+                            for (const word of STOP_WORDS) {
+                                const wIdx = afterMarker.toLowerCase().indexOf(word.toLowerCase());
+                                if (wIdx !== -1) afterMarker = afterMarker.substring(0, wIdx).trim();
+                            }
+                            if (afterMarker) {
+                                addressPatternRaw = afterMarker;
+                                prefixRegex = marker.regex;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (addressPatternRaw && prefixRegex) {
+                        const safeSuffix = addressPatternRaw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const flexibleSuffix = safeSuffix.split(/\s+/).join('\\s+');
+                        const regex = new RegExp(`${prefixRegex}\\s+${flexibleSuffix}`, 'i');
+                        logger.info(`🎯 Address Regex detected: ${regex}`);
+                        const addressMustQuery = (queryIntent === 'FOOD_ENTITY') ? input.queryMustQuery : null;
+                        return await searchPlacesByRegex(regex, 5, categoryFilter, priceFilter, addressMustQuery);
+                    }
+                    return [];
+                })();
+
+                promises.push(withTimeout(regexSearchPromise).catch(err => {
+                    logger.warn('⚠️ Regex search failed/timed out', err);
+                    return [];
+                }));
+            }
+
+            // Wait for all searches
+            const results = await Promise.all(promises);
+            const places = results.flat();
+
+            if (!places || places.length === 0) return input;
+
+            logger.info(`🔍 Hybrid search found ${places.length} results (merged)`);
+
+            // Convert to retrievedDocs
+            const mongoDocs = places.map(p => ({
+                pageContent: `${p.name} - ${p.address}\n${p.description}\nCategory: ${p.category}`,
+                metadata: {
+                    id: p._id.toString(),
+                    name: p.name,
+                    address: p.address,
+                    image: p.images?.[0] || '',
+                    category: p.category,
+                    price: p.priceRange?.min || 0,
+                    rating: p.averageRating || 0,
+                    reviewCount: p.totalReviews || 0,
+                    source: 'mongo-hybrid',
+                    coordinates: p.location?.coordinates || null,
+                    space: p.aiTags?.space?.join(', ') || '',
+                    specialFeatures: p.aiTags?.specialFeatures?.join(', ') || ''
+                }
+            }));
+
+            // Deduplicate
+            const combined = [...(input.retrievedDocs || [])];
+            const existingIds = new Set(combined.map(d => d.metadata?.id));
+
+            for (const doc of mongoDocs) {
+                if (!existingIds.has(doc.metadata.id)) {
+                    combined.push(doc);
+                    existingIds.add(doc.metadata.id);
+                }
+            }
+
+            return {
+                ...input,
+                retrievedDocs: combined
+            };
+        });
+    }
+
+    // STAGE 8: Reranking
+    async stageReranking(input) {
+        if (input.cached || !input.retrievedDocs?.length) return input;
+
+        return await telemetry.measureTime(RAG_STAGES.RERANKING, async () => {
+            const reranked = await reranker.rerank(
+                input.question,
+                input.retrievedDocs
+            );
+            return {
+                ...input,
+                retrievedDocs: reranked,
+            };
+        });
+    }
+
+    // STAGE 8.25: Dietary Filter (for vegetarian/vegan users)
+    async stageDietaryFilter(input) {
+        if (input.cached || !input.retrievedDocs?.length) return input;
+
+        // Only apply if dietaryAugment was set (meaning user is vegetarian + personalization ON + generic query)
+        if (input.dietaryAugment !== 'chay') return input;
+
+        logger.info('🥗 Applying vegetarian filter to retrieved docs...');
+
+        // Keywords that indicate non-vegetarian food
+        const nonVegetarianKeywords = [
+            'thịt', 'thit', 'bò', 'bo', 'heo', 'gà', 'ga', 'cá', 'ca',
+            'hải sản', 'hai san', 'ốc', 'oc', 'tôm', 'tom', 'cua',
+            'lẩu', 'lau', 'nướng', 'nuong', 'bbq', 'nhậu', 'nhau',
+            'bia', 'bar', 'pub', 'steak', 'bún bò', 'bun bo',
+            'phở bò', 'pho bo', 'bún chả', 'bun cha'
+        ];
+
+        // Keywords that indicate vegetarian food
+        const vegetarianKeywords = [
+            'chay', 'vegan', 'vegetarian', 'thuần chay', 'thuan chay',
+            'đậu', 'dau', 'rau', 'salad', 'healthy'
+        ];
+
+        const filtered = input.retrievedDocs.filter(doc => {
+            const name = (doc.name || doc.metadata?.name || '').toLowerCase();
+            const category = (doc.metadata?.category || '').toLowerCase();
+            const content = (doc.pageContent || doc.content || '').toLowerCase();
+            const combined = `${name} ${category} ${content}`;
+
+            // If place explicitly contains vegetarian keywords, keep it
+            if (vegetarianKeywords.some(kw => combined.includes(kw))) {
+                return true;
+            }
+
+            // If place contains non-vegetarian keywords, remove it
+            if (nonVegetarianKeywords.some(kw => combined.includes(kw))) {
+                logger.info(`🚫 Filtered out non-vegetarian: ${name}`);
+                return false;
+            }
+
+            // Default: keep (might be cafe, dessert, etc.)
+            return true;
+        });
+
+
+        logger.info(`🥗 Dietary filter: ${input.retrievedDocs.length} -> ${filtered.length} places`);
+
+        return {
+            ...input,
+            retrievedDocs: filtered
+        };
+    }
+
+    // STAGE 8.3: Location-based Sorting (when "Gần tôi" is enabled)
+    async stageLocationSort(input) {
+        if (input.cached || !input.retrievedDocs?.length) return input;
+
+        // Only sort by distance if "Gần tôi" switch is ON and we have coordinates
+        if (!input.context?.useLocation || !input.context?.location) return input;
+
+        const { lat, lng } = input.context.location;
+        if (!lat || !lng) return input;
+
+        logger.info(`📍 Sorting results by distance from user location...`);
+
+        // Import haversine function
+        const { haversineKm } = await import('../utils/distanceUtils.js');
+
+        // Calculate distance for each doc and sort
+        const docsWithDistance = input.retrievedDocs.map(doc => {
+            const coords = doc.metadata?.coordinates;
+            let distance = null;
+
+            if (coords && coords.length === 2) {
+                // GeoJSON format: [longitude, latitude]
+                const [placeLng, placeLat] = coords;
+                distance = haversineKm(lat, lng, placeLat, placeLng);
+            }
+
+            return {
+                ...doc,
+                distanceKm: distance !== null ? Math.round(distance * 100) / 100 : null
+            };
+        });
+
+        // Sort by distance (null distances go to end)
+        const sorted = docsWithDistance.sort((a, b) => {
+            if (a.distanceKm == null && b.distanceKm == null) return 0;
+            if (a.distanceKm == null) return 1;
+            if (b.distanceKm == null) return -1;
+            return a.distanceKm - b.distanceKm;
+        });
+
+        const closestPlace = sorted[0];
+        if (closestPlace?.distanceKm !== null) {
+            logger.info(`📍 Closest place: ${closestPlace.metadata?.name || 'Unknown'} (${closestPlace.distanceKm}km)`);
+        }
+
+        return {
+            ...input,
+            retrievedDocs: sorted
+        };
+    }
+
+    // STAGE 8.5: Local Reordering (Keyword Boost)
+    async stageLocalReorder(input) {
+        if (input.cached || !input.retrievedDocs?.length) return input;
+
+        const queryLower = input.question.toLowerCase().normalize('NFC');
+        const scoreDoc = (doc) => {
+            const name = (doc.name || doc.metadata?.name || '').toLowerCase();
+            const address = (doc.metadata?.address || '').toLowerCase();
+            let score = 0;
+
+            if (name.includes(queryLower)) score += 10;
+
+            const queryParts = queryLower.split(' ').filter(p => p.length > 1);
+            const nameMatches = queryParts.filter(p => name.includes(p)).length;
+            score += nameMatches * 0.5;
+
+            const normalizedAddress = address.replace(/ng\./g, 'ngõ').replace(/p\./g, 'phường').replace(/q\./g, 'quận');
+            const normalizedQuery = queryLower.replace(/ng\./g, 'ngõ').replace(/p\./g, 'phường').replace(/q\./g, 'quận');
+
+            if (normalizedAddress.includes(normalizedQuery)) {
+                score += 8;
+            } else {
+                const addressMatches = queryParts.filter(p => normalizedAddress.includes(p)).length;
+                if (addressMatches >= 2) {
+                    score += addressMatches * 1.5;
+                }
+            }
+            return score;
+        };
+
+        const reordered = [...input.retrievedDocs].sort((a, b) => {
+            const scoreA = scoreDoc(a);
+            const scoreB = scoreDoc(b);
+            if (Math.abs(scoreA - scoreB) > 0.1) {
+                return scoreB - scoreA;
+            }
+            return 0; // Maintain existing order
+        });
+
+        return {
+            ...input,
+            retrievedDocs: reordered,
+        };
+    }
+
+    // STAGE 9: Format Context
+    async stageFormatContext(input) {
+        if (input.cached) return input;
+
+        const context = input.retrievedDocs
+            .map((doc, i) => {
+                const placeName = doc.name || doc.metadata?.name || `Địa điểm ${i + 1}`;
+                const address = doc.metadata?.address ? `Địa chỉ: ${doc.metadata.address}` : '';
+                const price = doc.metadata?.price ? `Giá: ${doc.metadata.price} VND` : 'Giá: Liên hệ';
+                const category = doc.metadata?.category ? `(${doc.metadata.category})` : '';
+
+                return `RANK #${i + 1} [${placeName}] ${category}\n${address} | ${price}\n${doc.content}`;
+            })
+            .join('\n\n---\n\n');
+
+        return { ...input, context };
+    }
+
+    // STAGE 10: Create Prompt
+    async stageCreatePrompt(input) {
+        if (input.cached) return input;
+
+        return await telemetry.measureTime(RAG_STAGES.PROMPT_CONSTRUCTION, async () => {
+            // Context Flags
+            // Default to FALSE if not provided, matching the new "Default Off" policy
+            const isContextProvided = !!input.context;
+            const shouldIncludeRealtime = isContextProvided ? !!input.context.useRealtime : false;
+            const shouldIncludePersonalization = isContextProvided ? !!input.context.usePersonalization : false;
+
+            let enhancedWeatherDesc = "Thời tiết: Không có dữ liệu thời gian thực (User disabled).";
+            let datetime = "Thời gian: Không có dữ liệu thời gian thực (User disabled).";
+
+            if (shouldIncludeRealtime) {
+                const weatherData = await weatherService.getCurrentWeather();
+                const now = new Date();
+                datetime = now.toLocaleString('vi-VN', {
+                    hour: '2-digit', minute: '2-digit',
+                    weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+                    timeZone: 'Asia/Bangkok'
+                });
+
+                // Weather Warning
+                let weatherWarning = "";
+                const desc = weatherData?.description || "";
+                const sky = weatherData?.skyConditions || "";
+                const isRaining = desc.toLowerCase().includes('mưa') ||
+                    desc.toLowerCase().includes('rain') ||
+                    (sky && sky.includes('Rain'));
+
+                if (isRaining) {
+                    weatherWarning = "⚠️ WARNING: It is currently RAINING. Prioritize Indoor places. Highlight 'cozy', 'warm', 'shelter'.";
+                    logger.info('☔️ Rain detected, injecting warning.');
+                }
+                enhancedWeatherDesc = `${weatherData.fullDescription}\n${weatherWarning}`;
+            }
+
+            const userPreferences = input.userPreferences || null;
+            let preferencesContext = '';
+
+            if (shouldIncludePersonalization && userPreferences) {
+                preferencesContext = formatPreferencesForPrompt(userPreferences);
+                logger.info('👤 Personalization ENABLED');
+            } else {
+                logger.info('👤 Personalization DISABLED or no preferences');
+            }
+
+            let formatted;
+            const formatter = input.intent === 'ITINERARY'
+                ? promptLoader.formatItineraryGen
+                : promptLoader.formatRAGQuery;
+
+            formatted = await formatter.call(promptLoader,
+                input.context,
+                input.question,
+                enhancedWeatherDesc,
+                datetime,
+                preferencesContext
+            );
+
+            return { ...input, prompt: formatted };
+        });
+    }
+
+    // STAGE 11: LLM Inference
+    async stageLLMInference(input) {
+        if (input.cached) return input;
+
+        return await telemetry.measureTime(RAG_STAGES.LLM_INFERENCE, async () => {
+            const response = await this.llm.invoke(input.prompt);
+
+            let answer = '';
+            // Robust response extraction
+            if (typeof response === 'string') {
+                answer = response;
+            } else if (response?.content) {
+                answer = response.content;
+            } else if (response?.kwargs?.content) {
+                answer = response.kwargs.content;
+            } else if (response?.text) {
+                answer = response.text;
+            }
+
+            let structuredData = null;
+            if (input.intent === 'ITINERARY') {
+                try {
+                    const firstOpen = answer.indexOf('{');
+                    const lastClose = answer.lastIndexOf('}');
+                    let jsonString = answer;
+
+                    if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
+                        jsonString = answer.substring(firstOpen, lastClose + 1);
+                    }
+
+                    jsonString = jsonString.replace(/[\u0000-\u0019]+/g, "").trim();
+                    structuredData = JSON.parse(jsonString);
+                    logger.info('✅ Successfully parsed Itinerary JSON');
+                } catch (e) {
+                    logger.warn('⚠️ Failed to parse itinerary JSON', e);
+                }
+            }
+
+            return {
+                ...input,
+                answer,
+                structuredData
+            };
+        });
+    }
+
+    // STAGE 13: Cache Response
+    async stageCacheResponse(input) {
+        if (!input.cached && input.answer && input.retrievedDocs) {
+            const key = input.cacheKey || input.question;
+            await cacheClient.setCache(key, {
+                question: input.question,
+                answer: input.answer,
+                retrievedDocs: input.retrievedDocs,
+                context: input.context,
+                intent: input.intent,
+                structuredData: input.structuredData
+            });
+        }
+        return input;
     }
 
     /**
@@ -876,37 +725,30 @@ class MainChatPipeline {
 
             logger.info(`❓ Processing: ${question}`);
 
-            // Extract user preferences from metadata for personalization
-            const userPreferences = metadata.userPreferences || null;
-            if (userPreferences) {
-                logger.info('👤 User is logged in with preferences - enabling personalization');
-            }
-
             const result = await this.chain.invoke({
                 question,
+                context: metadata, // Fix: Pass metadata as context object so stages can access input.context
                 ...metadata,
-                userPreferences, // Explicitly pass for prompt creation stage
+                userPreferences: metadata.userPreferences || null,
             });
 
             logger.info(`✅ Response generated using model: ${config.openai.model}`);
 
-            // Deduplicate places from retrieved docs
+            // Deduplicate and process places for UI
             const uniquePlacesMap = new Map();
             if (result.retrievedDocs) {
                 result.retrievedDocs.forEach(doc => {
-                    // Start of Selection: Handle metadata structure differences
                     const placeId = doc.metadata?.originalId || doc.metadata?.id;
                     if (placeId && !uniquePlacesMap.has(placeId)) {
-                        // Construct place object compatible with frontend PropertyCard
                         uniquePlacesMap.set(placeId, {
                             _id: placeId,
                             name: doc.metadata.name,
                             address: doc.metadata.address,
                             category: doc.metadata.category,
-                            priceRange: { max: doc.metadata.price || 0 }, // Approx
+                            priceRange: { max: doc.metadata.price || 0 },
                             averageRating: doc.metadata.rating,
                             totalReviews: doc.metadata.reviewCount,
-                            images: [doc.metadata.image], // Single image from metadata
+                            images: [doc.metadata.image],
                             aiTags: {
                                 space: doc.metadata.space ? doc.metadata.space.split(', ') : [],
                                 specialFeatures: doc.metadata.specialFeatures ? doc.metadata.specialFeatures.split(', ') : []
@@ -921,7 +763,7 @@ class MainChatPipeline {
                 answer: result.answer,
                 context: result.context,
                 cached: result.cached,
-                places: Array.from(uniquePlacesMap.values()), // Return unique places for UI
+                places: Array.from(uniquePlacesMap.values()),
                 sources: result.retrievedDocs?.map((doc) => ({
                     content: doc.content,
                     source: doc.source,
@@ -930,7 +772,6 @@ class MainChatPipeline {
                 })) || [],
                 intent: result.intent,
                 structuredData: result.structuredData,
-                // Add debug info about model used
                 _meta: {
                     model: config.openai.model,
                 }

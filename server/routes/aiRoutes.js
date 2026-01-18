@@ -17,16 +17,31 @@ const router = express.Router();
  */
 router.post('/chat', optionalAuth, async (req, res) => {
   try {
-    const { question, userId = 'anonymous', latitude, longitude, localTime, nearMe } = req.body;
+    const {
+      question, userId = 'anonymous',
+      latitude, longitude, localTime, nearMe,
+      useRealtime, useLocation, usePersonalization // Extract new flags
+    } = req.body;
 
     // Get user preferences if logged in
     const userPreferences = req.user?.preferences || null;
     const actualUserId = req.user?._id?.toString() || userId;
 
+    // Handle location from flatness or nested object
+    let loc = null;
+    if (latitude && longitude) {
+      loc = { lat: latitude, lng: longitude };
+    } else if (req.body.location && req.body.location.lat && req.body.location.lng) {
+      loc = req.body.location;
+    }
+
     const context = {
-      location: (latitude && longitude) ? { lat: latitude, lng: longitude } : null,
+      location: loc,
       localTime,
       nearMe: nearMe || false,
+      useRealtime,         // Pass to pipeline
+      useLocation,         // Pass to pipeline
+      usePersonalization,  // Pass to pipeline
       userPreferences // Pass user preferences to AI pipeline
     };
 

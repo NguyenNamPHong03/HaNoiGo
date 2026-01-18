@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import Fong from '../Fong/Fong';
 import styles from './AISearchSection.module.css';
 
@@ -48,13 +48,19 @@ const AISearchSection = memo(({
     aiResponse = null,
     isLoading = false
 }) => {
+    // Context States - Default OFF per user request
+    const [usePersonalization, setUsePersonalization] = useState(false);
+
     const handleClear = () => {
         onQueryChange?.("");
     };
 
     const handleSearch = () => {
         if (onSearch && query.trim()) {
-            onSearch(query);
+            const context = {
+                usePersonalization
+            };
+            onSearch(query, context);
         }
     };
 
@@ -112,16 +118,16 @@ const AISearchSection = memo(({
                             navigator.geolocation.getCurrentPosition(
                                 (position) => {
                                     const { latitude, longitude } = position.coords;
-                                    
+
                                     // Giữ query hiện tại, fallback "quán ăn" nếu rỗng
                                     const searchQuery = (query || "").trim();
                                     const finalQuery = searchQuery.length ? searchQuery : "quán ăn";
-                                    
+
                                     // Pass nearMe flag để backend biết cần sort by distance
-                                    onSearch(finalQuery, { 
-                                        latitude, 
+                                    onSearch(finalQuery, {
+                                        latitude,
                                         longitude,
-                                        nearMe: true 
+                                        nearMe: true
                                     });
                                 },
                                 (error) => {
@@ -153,6 +159,24 @@ const AISearchSection = memo(({
                             </svg>
                         )}
                     </button>
+                </div>
+            </div>
+
+            {/* Context Filters */}
+            <div className={styles.filterToggles}>
+
+
+
+
+                <div
+                    className={`${styles.filterToggle} ${usePersonalization ? styles.active : ''}`}
+                    onClick={() => setUsePersonalization(!usePersonalization)}
+                    title="Gợi ý dựa trên sở thích cá nhân của bạn"
+                >
+                    <div className={styles.toggleSwitch}>
+                        <div className={styles.toggleKnob}></div>
+                    </div>
+                    <span>Cá nhân hóa</span>
                 </div>
             </div>
 
