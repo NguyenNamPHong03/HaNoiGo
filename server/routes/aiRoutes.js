@@ -3,11 +3,11 @@
  */
 
 import express from 'express';
+import { optionalAuth } from '../middleware/auth.js';
 import Place from '../models/Place.js';
 import { healthCheck, processMessage } from '../services/ai/index.js';
 import { sortPlacesByDistance } from '../services/ai/utils/distanceUtils.js';
 import { sortPlacesByAnswerOrder } from '../services/ai/utils/reorderUtils.js';
-import { optionalAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -27,6 +27,20 @@ router.post('/chat', optionalAuth, async (req, res) => {
     // Get user preferences: prioritize body preferences, fallback to logged-in user preferences
     const userPreferences = bodyPreferences || req.user?.preferences || null;
     const actualUserId = req.user?._id?.toString() || userId;
+
+    // Debug logging
+    console.log('🤖 AI Chat Request:', {
+      question: question.substring(0, 50) + '...',
+      userId: actualUserId,
+      hasBodyPreferences: !!bodyPreferences,
+      hasUserPreferences: !!req.user?.preferences,
+      finalPreferences: userPreferences ? {
+        dietary: userPreferences.dietary || [],
+        favoriteFoods: userPreferences.favoriteFoods?.length || 0,
+        styles: userPreferences.styles?.length || 0
+      } : 'null',
+      usePersonalization
+    });
 
     // Handle location from flatness or nested object
     let loc = null;

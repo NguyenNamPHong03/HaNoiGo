@@ -115,6 +115,11 @@ const userSchema = new mongoose.Schema({
   
   // OAuth
   googleId: String,
+  authProvider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local'
+  },
   
   // Activity tracking
   lastLoginAt: Date,

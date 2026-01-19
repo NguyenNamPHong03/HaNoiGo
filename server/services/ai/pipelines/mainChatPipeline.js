@@ -8,26 +8,24 @@ import { RunnableSequence } from '@langchain/core/runnables';
 import { searchNearbyPlaces, searchPlaces, searchPlacesByRegex, searchPlacesByVibe } from '../../placeService.js';
 import weatherService from '../../weather/weatherService.js';
 import { RAG_STAGES } from '../config/constants.js';
+import config from '../config/index.js';
 import {
     ACCOMMODATION_KEYWORDS,
-    LUXURY_KEYWORDS,
-    VEGETARIAN_KEYWORDS,
-    SPECIFIC_FOOD_KEYWORDS,
-    GENERIC_FOOD_KEYWORDS,
     ADDRESS_MARKERS,
-    STOP_WORDS
+    GENERIC_FOOD_KEYWORDS,
+    LUXURY_KEYWORDS,
+    SPECIFIC_FOOD_KEYWORDS,
+    STOP_WORDS,
+    VEGETARIAN_KEYWORDS
 } from '../config/keywords.js';
-import config from '../config/index.js';
 import cacheClient from '../core/cacheClient.js';
 import llmFactory from '../core/llmFactory.js';
 import telemetry from '../core/telemetry.js';
 import inputGuard from '../guardrails/inputGuard.js';
-import outputGuard from '../guardrails/outputGuard.js';
 import promptLoader from '../prompts/promptLoader.js';
 import intentClassifier from '../retrieval/extractors/intentClassifier.js';
 import reranker from '../retrieval/reranker.js';
 import basicRetriever from '../retrieval/strategies/basicRetriever.js';
-import { isGenericFoodQuery } from '../utils/distanceUtils.js';
 import logger from '../utils/logger.js';
 import { formatPreferencesForPrompt } from '../utils/preferencesMapper.js';
 
@@ -215,14 +213,28 @@ class MainChatPipeline {
             const userPreferences = input.context?.userPreferences || input.userPreferences || null;
             const userDietary = userPreferences?.dietary || [];
 
+            console.log('🍽️ DIETARY FILTER DEBUG:', {
+                shouldIncludePersonalization,
+                hasUserPreferences: !!userPreferences,
+                userDietary,
+                queryLower: queryLower.substring(0, 50)
+            });
+
             if (shouldIncludePersonalization && userDietary.length > 0) {
                 const isVegetarian = userDietary.some(d => VEGETARIAN_KEYWORDS.includes(d.toLowerCase()));
                 const isSpecificFoodQuery = SPECIFIC_FOOD_KEYWORDS.some(kw => queryLower.includes(kw));
                 const isGenericFoodQueryForDietary = GENERIC_FOOD_KEYWORDS.some(kw => queryLower.includes(kw));
 
+                console.log('🥗 Vegetarian check:', {
+                    isVegetarian,
+                    isSpecificFoodQuery,
+                    isGenericFoodQueryForDietary
+                });
+
                 // Force vegetarian query if user is vegetarian/vegan AND query is generic food
                 if (isVegetarian && isGenericFoodQueryForDietary && !isSpecificFoodQuery) {
                     logger.info('🥗 DIETARY FILTER: Vegetarian/Vegan user + generic food query -> Forcing "quán chay"');
+                    console.log('✅ Augmenting query to vegetarian');
                     queryToUse = "top các quán chay ngon review tốt";
                     input.refinedQuery = queryToUse;
                     input.dietaryAugment = 'chay';

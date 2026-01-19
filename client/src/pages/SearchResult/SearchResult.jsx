@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import AISearchSection from "../../components/common/AISearchSection/AISearchSection";
 import DetailPanel from "../../components/common/DetailPanel/DetailPanel";
-import WeatherSidebar from "../../components/common/WeatherSidebar/WeatherSidebar";
 import PropertyCard from "../../components/common/PropertyCard/PropertyCard";
+import WeatherSidebar from "../../components/common/WeatherSidebar/WeatherSidebar";
+import { useUser } from "../../contexts/UserContext";
 import useAIChat from "../../hooks/useAIChat";
 import { usePlaces } from "../../hooks/usePlaces";
 import styles from "./SearchResult.module.css";
@@ -15,13 +16,23 @@ const SearchResult = () => {
     const [selectedId, setSelectedId] = useState(null);
     const [searchQuery, setSearchQuery] = useState(initialQuery);
 
+    // Get user preferences for personalization
+    const { user } = useUser();
+    const userPreferences = user?.preferences || null;
+
     // AI Chat Hook
     const aiChat = useAIChat();
 
     // Auto-trigger AI search if query exists in URL
     useEffect(() => {
         if (initialQuery && !aiChat.data && !aiChat.isPending) {
-            aiChat.mutate({ question: initialQuery });
+            aiChat.mutate({ 
+                question: initialQuery,
+                context: {
+                    userPreferences,
+                    usePersonalization: true
+                }
+            });
         }
     }, [initialQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -48,9 +59,16 @@ const SearchResult = () => {
     // Handle AI Search
     const handleAISearch = useCallback((query, context = {}) => {
         if (query.trim()) {
-            aiChat.mutate({ question: query, context });
+            aiChat.mutate({ 
+                question: query, 
+                context: {
+                    ...context,
+                    userPreferences,
+                    usePersonalization: true
+                }
+            });
         }
-    }, [aiChat]);
+    }, [aiChat, userPreferences]);
 
     const handleFilterChange = useCallback((category, value) => {
         setFilters(prev => {

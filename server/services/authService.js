@@ -264,10 +264,16 @@ export const handleGoogleCallback = async (code) => {
       role: 'user',
       isActive: true,
       authProvider: 'google',
+      googleId: payload.sub, // ✅ FIX: Set googleId để bypass password requirement
     });
     isNewUser = true;
   } else {
     // Update existing user
+    // ✅ FIX: Set googleId nếu chưa có (cho user đăng ký email sau đó login Google)
+    if (!user.googleId) {
+      user.googleId = payload.sub;
+    }
+    
     // ✅ FIX: Chỉ set Google avatar nếu user chưa có avatar custom
     // Kiểm tra nếu avatarUrl hiện tại là Google avatar hoặc chưa có
     const isGoogleAvatar = user.avatarUrl && user.avatarUrl.includes('googleusercontent.com');
@@ -432,6 +438,20 @@ export const updateUserProfile = async (userId, profileData) => {
     throw new Error('Display name is required');
   }
 
+  // Debug logging
+  console.log('🔄 Updating user profile:', {
+    userId,
+    displayName,
+    hasAvatar: !!avatarUrl,
+    preferences: preferences ? {
+      favoriteFoods: preferences.favoriteFoods?.length || 0,
+      styles: preferences.styles?.length || 0,
+      dietary: preferences.dietary?.length || 0,
+      atmosphere: preferences.atmosphere?.length || 0,
+      activities: preferences.activities?.length || 0
+    } : 'null'
+  });
+
   // Update user profile
   const updatedUser = await User.findByIdAndUpdate(
     userId,
@@ -446,6 +466,12 @@ export const updateUserProfile = async (userId, profileData) => {
   if (!updatedUser) {
     throw new Error('User not found');
   }
+
+  console.log('✅ User profile updated successfully:', {
+    userId: updatedUser._id,
+    hasPreferences: !!updatedUser.preferences,
+    dietary: updatedUser.preferences?.dietary || []
+  });
 
   return updatedUser;
 };

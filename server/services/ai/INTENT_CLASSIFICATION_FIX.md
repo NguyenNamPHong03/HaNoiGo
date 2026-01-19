@@ -183,7 +183,6 @@ Expected Intent: ACTIVITY
 Expected Filter: aiTags/category = "karaoke"
 Expected Results: Quán có phòng karaoke
 ```
-
 ### ✅ Test 4: General
 ```bash
 Query: "quán ngon ở Ba Đình"

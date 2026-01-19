@@ -112,19 +112,30 @@ const ProfilePreferences = ({ user, onUpdateSuccess }) => {
     setLoading(true);
 
     try {
-      const response = await authAPI.updateProfile({
+      const profileData = {
         displayName: user.displayName,
         avatarUrl: user.avatarUrl,
         preferences: formData
+      };
+
+      console.log('📤 Saving preferences:', {
+        favoriteFoods: formData.favoriteFoods,
+        dietary: formData.dietary,
+        styles: formData.styles,
+        atmosphere: formData.atmosphere,
+        activities: formData.activities
       });
 
+      const response = await authAPI.updateProfile(profileData);
+
       if (response.success) {
+        console.log('✅ Preferences saved successfully:', response.data);
         updateUser(response.data);
         setIsEditing(false);
         onUpdateSuccess();
       }
     } catch (error) {
-      console.error('Update error:', error);
+      console.error('❌ Update error:', error);
       alert(error.response?.data?.message || 'Cập nhật thất bại. Vui lòng thử lại.');
     } finally {
       setLoading(false);
