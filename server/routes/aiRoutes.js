@@ -55,7 +55,7 @@ router.post('/chat', optionalAuth, async (req, res) => {
       localTime,
       nearMe: nearMe || false,
       useRealtime,         // Pass to pipeline
-      useLocation,         // Pass to pipeline
+      useLocation: nearMe || useLocation || false,  // Enable location sorting when nearMe is true
       usePersonalization,  // Pass to pipeline
       userPreferences // Pass user preferences to AI pipeline
     };
@@ -70,69 +70,99 @@ router.post('/chat', optionalAuth, async (req, res) => {
     // Process the question through AI pipeline
     const aiResult = await processMessage(question, actualUserId, context);
 
-    // Extract place identifiers from sources
-    // Try id first, fallback to name
-    const placeIds = [];
-    const placeNames = [];
-
-    for (const src of aiResult.sources || []) {
-      const id = src.metadata?.id;
-      const name = src.metadata?.name || src.name;
-
-      if (id) placeIds.push(id);
-      if (name) placeNames.push(name);
-    }
-
-    // Fetch actual Place documents for richer data
+    // PRIORITY: Use places from pipeline if available (already processed and ordered)
+    // Only fallback to DB fetch if pipeline didn't return places
     let places = [];
+    
+    if (aiResult.places && aiResult.places.length > 0) {
+      // Use places directly from pipeline (already in correct order)
+      console.log(`✅ Using ${aiResult.places.length} places from AI pipeline (pre-ordered)`);
+      places = aiResult.places;
+      
+      // Fetch full Place documents to get complete data (images, menu, etc.)
+      const placeIds = places.map(p => p._id).filter(Boolean);
+      if (placeIds.length > 0) {
+        const fullPlaces = await Place.find({
+          _id: { $in: placeIds },
+          status: 'Published',
+          isActive: true
+        }).lean();
+        
+        // Merge full data while preserving order
+        const placeMap = new Map(fullPlaces.map(p => [p._id.toString(), p]));
+        places = places.map(p => {
+          const fullPlace = placeMap.get(p._id.toString());
+          return fullPlace ? { ...fullPlace, distanceKm: p.distanceKm } : p;
+        }).filter(Boolean);
+      }
+    } else {
+      // Fallback: Extract from sources (old logic)
+      console.log(`⚠️ Pipeline didn't return places, extracting from sources...`);
+      const placeIds = [];
+      const placeNames = [];
 
-    // Try by ID first
-    if (placeIds.length > 0) {
-      const fetchedPlaces = await Place.find({
-        _id: { $in: placeIds },
-        status: 'Published',
-        isActive: true
-      }).lean();
+      for (const src of aiResult.sources || []) {
+        const id = src.metadata?.id;
+        const name = src.metadata?.name || src.name;
 
-      // IMPORTANT: Reorder to match the original placeIds order (by relevance score)
-      // MongoDB $in does not preserve order
-      const placeMap = new Map(fetchedPlaces.map(p => [p._id.toString(), p]));
-      places = placeIds
-        .map(id => placeMap.get(id.toString()))
-        .filter(Boolean);
-    }
+        if (id) placeIds.push(id);
+        if (name) placeNames.push(name);
+      }
 
-    // If no places found by ID, try by name
-    if (places.length === 0 && placeNames.length > 0) {
-      const fetchedPlaces = await Place.find({
-        name: { $in: placeNames },
-        status: 'Published',
-        isActive: true
-      }).lean();
+      // Try by ID first
+      if (placeIds.length > 0) {
+        const fetchedPlaces = await Place.find({
+          _id: { $in: placeIds },
+          status: 'Published',
+          isActive: true
+        }).lean();
 
-      // Reorder by name order
-      const nameMap = new Map(fetchedPlaces.map(p => [p.name, p]));
-      places = placeNames
-        .map(name => nameMap.get(name))
-        .filter(Boolean);
+        // IMPORTANT: Reorder to match the original placeIds order (by relevance score)
+        // MongoDB $in does not preserve order
+        const placeMap = new Map(fetchedPlaces.map(p => [p._id.toString(), p]));
+        places = placeIds
+          .map(id => placeMap.get(id.toString()))
+          .filter(Boolean);
+      }
+
+      // If no places found by ID, try by name
+      if (places.length === 0 && placeNames.length > 0) {
+        const fetchedPlaces = await Place.find({
+          name: { $in: placeNames },
+          status: 'Published',
+          isActive: true
+        }).lean();
+
+        // Reorder by name order
+        const nameMap = new Map(fetchedPlaces.map(p => [p.name, p]));
+        places = placeNames
+          .map(name => nameMap.get(name))
+          .filter(Boolean);
+      }
     }
 
     // REORDERING FIX 2.1: Use shared utility
-    // Sort places by appearance in AI answer
-    if (aiResult.answer && places.length > 0) {
+    // Sort places by appearance in AI answer ONLY if NOT in nearMe mode
+    // In nearMe mode, preserve the distance-sorted order from pipeline
+    if (nearMe && latitude && longitude) {
+      console.log(`📍 [nearMe=true] Preserving distance-sorted order from pipeline`);
+      // Sort by distance to ensure consistency
+      places = sortPlacesByDistance(places, latitude, longitude);
+    } else if (aiResult.answer && places.length > 0) {
+      // Normal mode: sort by AI answer order
       places = sortPlacesByAnswerOrder(places, aiResult.answer);
     }
 
-    // 📍 DISTANCE SORTING: If user provided location, sort by distance (nearest first)
-    if (latitude && longitude && typeof latitude === 'number' && typeof longitude === 'number') {
-      console.log(`📍 Sorting ${places.length} places by distance from (${latitude}, ${longitude})`);
-      places = sortPlacesByDistance(places, latitude, longitude);
-
-      // Optional: Limit to top 30 nearest for performance
-      if (places.length > 30) {
-        console.log(`✂️ Trimming to 30 nearest places (was ${places.length})`);
-        places = places.slice(0, 30);
-      }
+    // Add distance info even in non-nearMe mode (for display purposes)
+    if (!nearMe && latitude && longitude && typeof latitude === 'number' && typeof longitude === 'number') {
+      console.log(`📍 [nearMe=false] Adding distance info without re-sorting`);
+      const placesWithDistance = sortPlacesByDistance(places, latitude, longitude);
+      // Restore original order but keep distanceKm field
+      const distanceMap = new Map(placesWithDistance.map(p => [p._id.toString(), p.distanceKm]));
+      places = places.map(p => ({
+        ...p,
+        distanceKm: distanceMap.get(p._id.toString())
+      }));
     }
 
     // Build sources with actual names

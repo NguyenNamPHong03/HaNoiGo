@@ -52,8 +52,13 @@ class PlaceImportService {
             stats.skipped++;
           }
         } else {
+          // ✅ Extract readable ID (handle both string and object)
+          const placeIdStr = typeof placeId === 'string' 
+            ? placeId 
+            : placeId?.placeId || placeId?.url || placeId?.title || 'Unknown Place';
+          
           stats.errors.push({
-            placeId,
+            placeId: placeIdStr,
             message: result.reason?.message || 'Unknown error'
           });
         }

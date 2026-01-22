@@ -111,6 +111,26 @@
     gap: 5px;
 }
 
+.cardDistance {
+    font-size: 13px;
+    color: #fff;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 6px 12px;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    width: fit-content;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.cardDistance svg {
+    flex-shrink: 0;
+}
+
 .cardHours {
     font-size: 13px;
     color: rgba(255, 255, 255, 0.9);

@@ -725,7 +725,7 @@ export const searchNearbyPlaces = async (
     throw new Error('Valid latitude and longitude are required');
   }
 
-  const { category, minPrice, maxPrice } = filters;
+  const { category, minPrice, maxPrice, query } = filters;
 
   // Build match query for additional filters
   const matchQuery = {
@@ -743,6 +743,16 @@ export const searchNearbyPlaces = async (
 
   if (maxPrice) {
     matchQuery['priceRange.max'] = { $lte: maxPrice };
+  }
+
+  // 🔍 KEYWORD FILTER: Filter by query in name/description
+  if (query && query.trim()) {
+    const searchRegex = { $regex: query.trim(), $options: 'i' };
+    matchQuery.$or = [
+      { name: searchRegex },
+      { description: searchRegex },
+      { 'menu.name': searchRegex } // Also search in menu items
+    ];
   }
 
   // MongoDB $geoNear aggregation

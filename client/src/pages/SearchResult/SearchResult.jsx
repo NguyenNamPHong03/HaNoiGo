@@ -6,7 +6,6 @@ import PropertyCard from "../../components/common/PropertyCard/PropertyCard";
 import WeatherSidebar from "../../components/common/WeatherSidebar/WeatherSidebar";
 import { useUser } from "../../contexts/UserContext";
 import useAIChat from "../../hooks/useAIChat";
-import { usePlaces } from "../../hooks/usePlaces";
 import styles from "./SearchResult.module.css";
 
 const SearchResult = () => {
@@ -15,6 +14,7 @@ const SearchResult = () => {
 
     const [selectedId, setSelectedId] = useState(null);
     const [searchQuery, setSearchQuery] = useState(initialQuery);
+    const [isNearMeActive, setIsNearMeActive] = useState(false); // Track if searching by location
 
     // Get user preferences for personalization
     const { user } = useUser();
@@ -49,16 +49,19 @@ const SearchResult = () => {
         types: []
     });
 
-    // Fetch all places with filters
-    const { data: placesData, isLoading: isLoadingPlaces, isError, error } = usePlaces({
-        ...filters,
-        status: 'Published',
-        isActive: true
-    });
+    // DISABLED: Không fetch all places nữa, chỉ dùng AI results
+    // const { data: placesData, isLoading: isLoadingPlaces, isError, error } = usePlaces({
+    //     ...filters,
+    //     status: 'Published',
+    //     isActive: true
+    // });
 
     // Handle AI Search
     const handleAISearch = useCallback((query, context = {}) => {
         if (query.trim()) {
+            // Track if this is a nearMe search
+            setIsNearMeActive(context.nearMe === true);
+            
             aiChat.mutate({ 
                 question: query, 
                 context: {
@@ -106,11 +109,10 @@ const SearchResult = () => {
     }, []);
 
     // Determine which places to show:
-    // - If AI has responded, use AI-suggested places
-    // - Otherwise, use standard filtered places
+    // - If AI has responded, ONLY show AI-suggested places (not all places)
+    // - If NO AI response, show empty or prompt user to search
     const aiPlaces = aiChat.data?.data?.places || [];
-    const standardPlaces = placesData?.places || [];
-    const places = aiPlaces.length > 0 ? aiPlaces : standardPlaces;
+    const places = aiPlaces; // Chỉ hiển thị places mà AI gợi ý
 
     // Transform places to PropertyCard format
     const transformedPlaces = useMemo(() => {
@@ -135,6 +137,7 @@ const SearchResult = () => {
                 kitchens: 1,
                 garage: 1
             },
+            distanceKm: place.distanceKm, // Pass distance from backend
             _originalPlace: place
         }));
     }, [places]);
@@ -145,7 +148,7 @@ const SearchResult = () => {
         return transformedPlaces.find(p => p.id === selectedId);
     }, [selectedId, transformedPlaces]);
 
-    const isLoadingResults = isLoadingPlaces || aiChat.isPending;
+    const isLoadingResults = aiChat.isPending;
 
     return (
         <div className={styles.pageWrapper}>
@@ -166,22 +169,17 @@ const SearchResult = () => {
                 {isLoadingResults ? (
                     <div className={styles.loadingContainer}>
                         <div className={styles.spinner}></div>
-                        <p>{aiChat.isPending ? 'AI đang tìm kiếm...' : 'Đang tải danh sách địa điểm...'}</p>
+                        <p>AI đang tìm kiếm...</p>
                     </div>
-                ) : isError ? (
+                ) : aiChat.isError ? (
                     <div className={styles.errorMessage}>
-                        <h3>Lỗi tải dữ liệu</h3>
-                        <p>{error?.message || 'Không thể tải danh sách địa điểm'}</p>
+                        <h3>Lỗi tìm kiếm</h3>
+                        <p>{aiChat.error?.message || 'Không thể tìm kiếm, vui lòng thử lại'}</p>
                     </div>
                 ) : (
                     <div className={styles.grid}>
                         {transformedPlaces.length > 0 ? (
                             <>
-                                {aiPlaces.length > 0 && (
-                                    <div className={styles.aiResultsBadge}>
-                                        <span>🤖 AI gợi ý: {aiPlaces.length} địa điểm phù hợp</span>
-                                    </div>
-                                )}
                                 {transformedPlaces.map((item, index) => (
                                     <PropertyCard
                                         key={item.id}
@@ -194,8 +192,8 @@ const SearchResult = () => {
                             </>
                         ) : (
                             <div className={styles.noResults}>
-                                <h3>Không tìm thấy địa điểm</h3>
-                                <p>Hãy thử điều chỉnh bộ lọc hoặc tìm kiếm bằng AI.</p>
+                                <h3>Chưa có kết quả tìm kiếm</h3>
+                                <p>Hãy nhập câu hỏi ở ô tìm kiếm phía trên để AI gợi ý địa điểm phù hợp với bạn.</p>
                             </div>
                         )}
                     </div>

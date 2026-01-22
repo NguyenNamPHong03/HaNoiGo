@@ -204,6 +204,18 @@ class MainChatPipeline {
     async stageRetrieval(input) {
         if (input.cached) return input;
 
+        // 🔥 SKIP semantic retrieval if nearMe mode is active
+        // Stage 7 (KeywordAugment) will handle nearby search exclusively
+        const isNearMeMode = input.context?.useLocation && input.context?.location?.lat && input.context?.location?.lng;
+        
+        if (isNearMeMode) {
+            logger.info('📍 NEAR ME MODE: Skipping semantic retrieval (will use nearby search only)');
+            return {
+                ...input,
+                retrievedDocs: [], // Empty - will be populated by Stage 7
+            };
+        }
+
         return await telemetry.measureTime(RAG_STAGES.RETRIEVAL, async () => {
             let queryToUse = input.refinedQuery || input.question;
             const queryLower = queryToUse.toLowerCase();
@@ -284,46 +296,69 @@ class MainChatPipeline {
             };
 
             const promises = [];
-            const textLimit = input.intent === 'ITINERARY' ? 20 : 10;
+            const textLimit = input.intent === 'ITINERARY' ? 20 : 5; // GIẢM XUỐNG 5 QUÁN
             const queryIntent = input.queryIntent || 'GENERAL';
 
-            // 1. Keyword/Mongo Search (Parallel)
-            let searchPromise;
-            if (queryIntent === 'FOOD_ENTITY') {
-                searchPromise = searchPlaces(query, textLimit, categoryFilter, priceFilter, input.queryMustQuery);
-            } else if (queryIntent === 'PLACE_VIBE' || queryIntent === 'ACTIVITY') {
-                const tags = input.queryTags || [];
-                searchPromise = searchPlacesByVibe(tags, textLimit, categoryFilter, priceFilter);
-            } else {
-                searchPromise = searchPlaces(query, textLimit, categoryFilter, priceFilter);
-            }
-            // Wrap in timeout
-            promises.push(withTimeout(searchPromise).catch(err => {
-                logger.warn('⚠️ Keyword search failed/timed out', err);
-                return [];
-            }));
+            // 🔥 PRIORITY CHECK: If nearMe mode is active, ONLY use nearby search
+            // Skip semantic/keyword search to ensure AI only recommends nearby places
+            const isNearMeMode = input.context?.useLocation && input.context?.location?.lat && input.context?.location?.lng;
 
-            // 1.5 NEAR ME SEARCH (If enabled via context)
-            // When "Gần tôi" switch is ON, ALWAYS trigger nearby search regardless of query keywords
-            if (input.context?.useLocation && input.context?.location) {
+            if (isNearMeMode) {
                 const { lat, lng } = input.context.location;
-
-                if (lat && lng) {
-                    logger.info(`📍 "Gần tôi" switch enabled - Searching within 5km of (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
-
-                    const nearbyPromise = searchNearbyPlaces(
-                        lat,
-                        lng,
-                        5, // 5km radius
-                        textLimit,
-                        { category: categoryFilter, minPrice: priceFilter }
-                    );
-
-                    promises.push(withTimeout(nearbyPromise).catch(err => {
-                        logger.warn('⚠️ Nearby search failed', err);
-                        return [];
-                    }));
+                logger.info(`📍 NEAR ME MODE ACTIVE - Searching within 30km (toàn Hà Nội)`);
+                logger.info(`🚫 Skipping semantic/keyword search to ensure AI only recommends nearby places`);
+                
+                // Extract food keyword from query for flexible search
+                // "quán phở" -> search for "phở"
+                // "tìm quán bún chả" -> search for "bún chả"
+                const foodKeywords = ['phở', 'bún', 'bánh mì', 'cơm', 'chả cá', 'nem', 'lẩu', 'nướng', 'cafe', 'coffee', 'bún chả', 'bún bò', 'bún riêu'];
+                let searchKeyword = query;
+                
+                // Extract food keyword if present (check longer keywords first)
+                const sortedKeywords = foodKeywords.sort((a, b) => b.length - a.length);
+                for (const keyword of sortedKeywords) {
+                    if (query.toLowerCase().includes(keyword)) {
+                        searchKeyword = keyword;
+                        logger.info(`🍜 Extracted food keyword: "${keyword}" from query "${query}"`);
+                        break;
+                    }
                 }
+                
+                logger.info(`🔍 Searching nearby places with keyword: "${searchKeyword}"`);
+
+                const nearbyPromise = searchNearbyPlaces(
+                    lat,
+                    lng,
+                    30, // 30km radius - cover toàn Hà Nội
+                    100, // Get 100 candidates, will pick top 5 closest after filtering
+                    { 
+                        category: categoryFilter, 
+                        minPrice: priceFilter,
+                        query: searchKeyword // Use extracted keyword for flexible matching
+                    }
+                );
+
+                promises.push(withTimeout(nearbyPromise).catch(err => {
+                    logger.warn('⚠️ Nearby search failed', err);
+                    return [];
+                }));
+            } else {
+                // NORMAL MODE: Use semantic + keyword search as before
+                // 1. Keyword/Mongo Search (Parallel)
+                let searchPromise;
+                if (queryIntent === 'FOOD_ENTITY') {
+                    searchPromise = searchPlaces(query, textLimit, categoryFilter, priceFilter, input.queryMustQuery);
+                } else if (queryIntent === 'PLACE_VIBE' || queryIntent === 'ACTIVITY') {
+                    const tags = input.queryTags || [];
+                    searchPromise = searchPlacesByVibe(tags, textLimit, categoryFilter, priceFilter);
+                } else {
+                    searchPromise = searchPlaces(query, textLimit, categoryFilter, priceFilter);
+                }
+                // Wrap in timeout
+                promises.push(withTimeout(searchPromise).catch(err => {
+                    logger.warn('⚠️ Keyword search failed/timed out', err);
+                    return [];
+                }));
             }
 
             // 2. Address Regex Search (Parallel)
@@ -398,6 +433,8 @@ class MainChatPipeline {
             }));
 
             // Deduplicate
+            // In nearMe mode, input.retrievedDocs will be empty (semantic search was skipped)
+            // So we only use mongoDocs from nearby search
             const combined = [...(input.retrievedDocs || [])];
             const existingIds = new Set(combined.map(d => d.metadata?.id));
 
@@ -407,6 +444,8 @@ class MainChatPipeline {
                     existingIds.add(doc.metadata.id);
                 }
             }
+
+            logger.info(`✅ Final retrievedDocs count: ${combined.length} (semantic: ${input.retrievedDocs?.length || 0}, nearby: ${mongoDocs.length})`);
 
             return {
                 ...input,
@@ -506,14 +545,18 @@ class MainChatPipeline {
             return a.distanceKm - b.distanceKm;
         });
 
-        const closestPlace = sorted[0];
+        // Limit to top 5 nearest places
+        const top5Nearest = sorted.slice(0, 5);
+
+        const closestPlace = top5Nearest[0];
         if (closestPlace?.distanceKm !== null) {
             logger.info(`📍 Closest place: ${closestPlace.metadata?.name || 'Unknown'} (${closestPlace.distanceKm}km)`);
+            logger.info(`📍 Showing top ${top5Nearest.length} nearest places`);
         }
 
         return {
             ...input,
-            retrievedDocs: sorted
+            retrievedDocs: top5Nearest
         };
     }
 
@@ -566,16 +609,43 @@ class MainChatPipeline {
     async stageFormatContext(input) {
         if (input.cached) return input;
 
-        const context = input.retrievedDocs
+        // Build context with STRICT header
+        const contextHeader = `
+==============================================
+🚨 DANH SÁCH DUY NHẤT BẠN ĐƯỢC GỢI Ý 🚨
+==============================================
+BẠN CHỈ ĐƯỢC GỢI Ý CÁC ĐỊA ĐIỂM DƯỚI ĐÂY:
+- KHÔNG ĐƯỢC thêm địa điểm nào khác
+- KHÔNG ĐƯỢC dùng ký ức về địa điểm khác
+- MỖI địa điểm bạn gợi ý PHẢI có RANK # trong danh sách
+
+DANH SÁCH ${input.retrievedDocs.length} ĐỊA ĐIỂM:
+==============================================
+`;
+
+        const placesContext = input.retrievedDocs
             .map((doc, i) => {
                 const placeName = doc.name || doc.metadata?.name || `Địa điểm ${i + 1}`;
                 const address = doc.metadata?.address ? `Địa chỉ: ${doc.metadata.address}` : '';
                 const price = doc.metadata?.price ? `Giá: ${doc.metadata.price} VND` : 'Giá: Liên hệ';
                 const category = doc.metadata?.category ? `(${doc.metadata.category})` : '';
+                const distance = doc.distanceKm !== undefined && doc.distanceKm !== null 
+                    ? `📍 Cách bạn ${doc.distanceKm}km` 
+                    : '';
 
-                return `RANK #${i + 1} [${placeName}] ${category}\n${address} | ${price}\n${doc.content}`;
+                return `RANK #${i + 1} [${placeName}] ${category}\n${address} ${distance}| ${price}\n${doc.content}`;
             })
             .join('\n\n---\n\n');
+
+        const context = contextHeader + placesContext;
+
+        // Debug log: Show which places are in context
+        const placeNames = input.retrievedDocs.map(d => d.name || d.metadata?.name).slice(0, 5);
+        logger.info(`📝 Context formatted with ${input.retrievedDocs.length} places:`);
+        placeNames.forEach((name, i) => {
+            logger.info(`   RANK #${i + 1}: ${name}`);
+        });
+        logger.info(`⚠️ AI MUST ONLY recommend places from the list above! No hallucination allowed!`);
 
         return { ...input, context };
     }
@@ -727,10 +797,12 @@ class MainChatPipeline {
 
             logger.info(`✅ Response generated using model: ${config.openai.model}`);
 
-            // Deduplicate and process places for UI
+            // Deduplicate and process places for UI - LIMIT TO TOP 5
             const uniquePlacesMap = new Map();
             if (result.retrievedDocs) {
-                result.retrievedDocs.forEach(doc => {
+                // GIỚI HẠN CHỈ LẤY TOP 5 QUÁN
+                const limitedDocs = result.retrievedDocs.slice(0, 5);
+                limitedDocs.forEach(doc => {
                     const placeId = doc.metadata?.originalId || doc.metadata?.id;
                     if (placeId && !uniquePlacesMap.has(placeId)) {
                         uniquePlacesMap.set(placeId, {
@@ -745,7 +817,8 @@ class MainChatPipeline {
                             aiTags: {
                                 space: doc.metadata.space ? doc.metadata.space.split(', ') : [],
                                 specialFeatures: doc.metadata.specialFeatures ? doc.metadata.specialFeatures.split(', ') : []
-                            }
+                            },
+                            distanceKm: doc.distanceKm // Preserve distance from stageLocationSort
                         });
                     }
                 });
@@ -756,7 +829,7 @@ class MainChatPipeline {
                 answer: result.answer,
                 context: result.context,
                 cached: result.cached,
-                places: Array.from(uniquePlacesMap.values()),
+                places: Array.from(uniquePlacesMap.values()).slice(0, 5), // GIỚI HẠN 5 QUÁN
                 sources: result.retrievedDocs?.map((doc) => ({
                     content: doc.content,
                     source: doc.source,

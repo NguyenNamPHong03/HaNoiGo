@@ -72,14 +72,24 @@ export const ImportSummary: React.FC<{ result: ImportResponse }> = ({ result }) 
             ⚠️ Danh sách lỗi ({data.errors.length})
           </div>
           <ul className="text-xs text-red-700 space-y-1 max-h-32 overflow-y-auto">
-            {data.errors.slice(0, 10).map((error, idx) => (
-              <li key={`${error.placeId}-${idx}`} className="flex items-start gap-2">
-                <span className="text-red-500">•</span>
-                <span className="flex-1">
-                  <code className="bg-red-100 px-1 rounded">{error.placeId}</code>: {error.message}
-                </span>
-              </li>
-            ))}
+            {data.errors.slice(0, 10).map((error, idx) => {
+              // ✅ Extract placeId string (handle both string and object)
+              const placeIdStr = typeof error.placeId === 'string' 
+                ? error.placeId 
+                : error.placeId?.placeId || error.placeId?.url || error.placeId?.title || JSON.stringify(error.placeId).substring(0, 50);
+              
+              return (
+                <li key={`error-${idx}`} className="flex items-start gap-2">
+                  <span className="text-red-500">•</span>
+                  <span className="flex-1">
+                    <code className="bg-red-100 px-1 rounded text-xs">
+                      {placeIdStr.length > 50 ? placeIdStr.substring(0, 50) + '...' : placeIdStr}
+                    </code>
+                    : {error.message}
+                  </span>
+                </li>
+              );
+            })}
             {data.errors.length > 10 && (
               <li className="text-red-600 italic">...và {data.errors.length - 10} lỗi khác</li>
             )}
