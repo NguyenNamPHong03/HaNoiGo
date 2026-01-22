@@ -172,20 +172,6 @@ const AISearchSection = memo(({
 
             {/* Context Filters */}
             <div className={styles.filterToggles}>
-
-
-
-
-                <div
-                    className={`${styles.filterToggle} ${usePersonalization ? styles.active : ''}`}
-                    onClick={() => setUsePersonalization(!usePersonalization)}
-                    title="Gợi ý dựa trên sở thích cá nhân của bạn"
-                >
-                    <div className={styles.toggleSwitch}>
-                        <div className={styles.toggleKnob}></div>
-                    </div>
-                    <span>Cá nhân hóa</span>
-                </div>
             </div>
 
             <div className={styles.aiSummary}>
