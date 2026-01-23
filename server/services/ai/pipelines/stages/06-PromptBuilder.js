@@ -70,7 +70,7 @@ TUYỆT ĐỐI KHÔNG sắp xếp lại theo tiêu chí khác!
         const context = contextHeader + placesContext + contextFooter;
 
         // Debug log: Show which places are in context
-        const placeNames = input.retrievedDocs.map(d => d.name || d.metadata?.name).slice(0, 5);
+        const placeNames = input.retrievedDocs.map(d => d.name || d.metadata?.name).slice(0, 8);
         logger.info(`📝 Context formatted with ${input.retrievedDocs.length} places:`);
         placeNames.forEach((name, i) => {
             logger.info(`   RANK #${i + 1}: ${name}`);

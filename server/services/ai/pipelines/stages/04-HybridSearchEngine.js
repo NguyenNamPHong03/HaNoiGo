@@ -37,7 +37,7 @@ class HybridSearchEngine {
             }
 
             const promises = [];
-            const textLimit = input.intent === 'ITINERARY' ? 20 : 5;
+            const textLimit = input.intent === 'ITINERARY' ? 20 : 8;
             const queryIntent = input.queryIntent || 'GENERAL';
             const districtFilter = input.districtMustQuery || null; // 📍 Get district filter
             

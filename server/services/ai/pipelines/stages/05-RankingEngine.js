@@ -104,18 +104,18 @@ class RankingEngine {
             return a.distanceKm - b.distanceKm;
         });
 
-        // Limit to top 5 nearest places
-        const top5Nearest = sorted.slice(0, 5);
+        // Limit to top 8 nearest places
+        const top8Nearest = sorted.slice(0, 8);
 
-        const closestPlace = top5Nearest[0];
+        const closestPlace = top8Nearest[0];
         if (closestPlace?.distanceKm !== null) {
             logger.info(`📍 Closest place: ${closestPlace.metadata?.name || 'Unknown'} (${closestPlace.distanceKm}km)`);
-            logger.info(`📍 Showing top ${top5Nearest.length} nearest places`);
+            logger.info(`📍 Showing top ${top8Nearest.length} nearest places`);
         }
 
         return {
             ...input,
-            retrievedDocs: top5Nearest
+            retrievedDocs: top8Nearest
         };
     }
 

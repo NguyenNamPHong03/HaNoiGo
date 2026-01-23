@@ -36,24 +36,97 @@ Mục tiêu chính:
 ```plaintext
 server/services/ai/
 ├── config/                     # Cấu hình tập trung
+│   ├── constants.js            # AI constants
+│   ├── keywords.js             # Food keywords dictionary
+│   └── index.js                # Config exports
+│
 ├── core/                       # LLM & DB Connection
+│   ├── cacheClient.js          # Redis cache
+│   ├── llmFactory.js           # LLM provider factory
+│   ├── telemetry.js            # Logging & monitoring
+│   └── vectorStoreFactory.js   # Vector DB factory
+│
 ├── prompts/
 │   ├── templates/
 │   │   ├── system.v1.txt       # Persona (Fong)
 │   │   ├── rag_query.v1.txt    # Standard RAG Prompt
 │   │   ├── itinerary_gen.v1.txt # JSON Prompt cho lịch trình
-│   │   ├── intent_classify.v1.txt # Prompt phân loại ý định
+│   │   ├── query_rewrite.v1.txt # Query rewriting
+│   │   └── intent_classify.v1.txt # Prompt phân loại ý định
 │   └── promptLoader.js         
+│
 ├── retrieval/                  # Search strategies & Reranker
+│   ├── reranker.js             # Result reranking
+│   ├── extractors/             # Intent & keyword extractors
+│   │   ├── intentExtractor.js
+│   │   ├── intentClassifier.js
+│   │   ├── foodKeywordExtractor.js
+│   │   └── districtExtractor.js
+│   ├── loaders/                # Data loaders
+│   │   └── mongoLoader.js
+│   ├── splitters/              # Document splitters
+│   │   ├── semanticSplitter.js
+│   │   └── propositionSplitter.js
+│   └── strategies/             # Retrieval strategies
+│       ├── basicRetriever.js
+│       ├── hybridRetriever.js
+│       └── hybridSearch.js
+│
 ├── pipelines/
-│   └── mainChatPipeline.js     # Router Pattern Orchestrator:
-│                               # 1. Input Guard
-│                               # 2. Intent Classify (Itinerary vs Chat)
-│                               # 3. Weather/Time Context Injection
-│                               # 4. Branch Execution
-│                               # 5. Output Format
+│   ├── mainChatPipeline.js     # Router Pattern Orchestrator:
+│   │                           # 1. Input Guard
+│   │                           # 2. Intent Classify (Itinerary vs Chat)
+│   │                           # 3. Weather/Time Context Injection
+│   │                           # 4. Branch Execution
+│   │                           # 5. Output Format
+│   ├── ingestionPipeline.js    # Data ingestion pipeline
+│   ├── feedbackPipeline.js     # Feedback learning pipeline
+│   └── stages/                 # Modular pipeline stages
+│       ├── 01-InputProcessor.js       # Input processing
+│       ├── 02-QueryAnalyzer.js        # Query analysis
+│       ├── 03-SemanticRetrieval.js    # Semantic search
+│       ├── 04-HybridSearchEngine.js   # Hybrid search
+│       ├── 05-RankingEngine.js        # Ranking & reordering
+│       ├── 06-PromptBuilder.js        # Prompt construction
+│       ├── 07-LLMInvoker.js           # LLM generation
+│       ├── 08-ResponseFormatter.js    # Response formatting
+│       ├── filters/                   # Query filters
+│       └── retrieval/                 # Retrieval strategies
+│           ├── AddressRegexStrategy.js   # Address matching
+│           ├── KeywordSearchStrategy.js  # Keyword search
+│           └── NearbySearchStrategy.js   # Geospatial search
+│
 ├── guardrails/
-└── index.js                    
+│   ├── inputGuard.js           # Input sanitization
+│   └── outputGuard.js          # Output validation
+│
+├── scripts/                    # Utility & test scripts
+│   ├── runIngestion.js
+│   ├── testChat.js
+│   ├── debugDistrictData.js
+│   ├── testDatingFilter.js
+│   ├── testDatingQuery.js
+│   ├── testDistrictFilter.js
+│   ├── testDistrictFilterIntegration.js
+│   └── verifyDistrictFilter.js
+│
+├── tools/                      # AI Tools (Function Calling)
+│   ├── index.js
+│   ├── bookingTool.js
+│   └── weatherTool.js
+│
+├── utils/                      # AI Utilities
+│   ├── documentProcessor.js
+│   ├── errorHandler.js
+│   ├── errHandler.js
+│   ├── logger.js
+│   ├── outputParsers.js
+│   ├── reorderUtils.js
+│   ├── tokenCounter.js
+│   ├── distanceUtils.js
+│   └── preferencesMapper.js
+│
+└── index.js                    # Main exports
 ```
 
 ### External Services

@@ -347,10 +347,10 @@ server/
 │   │
 │   ├── ai/                      # 🤖 AI Service Module (RAG Architecture)
 │   │   ├── index.js             # Main exports
-│   │   ├── test-health.js       # Health check
 │   │   │
 │   │   ├── config/              # Configuration
 │   │   │   ├── constants.js     # AI constants
+│   │   │   ├── keywords.js      # Food keywords dictionary
 │   │   │   └── index.js         # Config exports
 │   │   │
 │   │   ├── core/                # Core AI components
@@ -366,7 +366,21 @@ server/
 │   │   ├── pipelines/           # AI Processing Pipelines
 │   │   │   ├── mainChatPipeline.js    # Main RAG chat flow với intent routing
 │   │   │   ├── ingestionPipeline.js   # Data ingestion
-│   │   │   └── feedbackPipeline.js    # Feedback learning
+│   │   │   ├── feedbackPipeline.js    # Feedback learning
+│   │   │   └── stages/          # Pipeline stages (modular)
+│   │   │       ├── 01-InputProcessor.js       # Input processing
+│   │   │       ├── 02-QueryAnalyzer.js        # Query analysis
+│   │   │       ├── 03-SemanticRetrieval.js    # Semantic search
+│   │   │       ├── 04-HybridSearchEngine.js   # Hybrid search
+│   │   │       ├── 05-RankingEngine.js        # Ranking & reordering
+│   │   │       ├── 06-PromptBuilder.js        # Prompt construction
+│   │   │       ├── 07-LLMInvoker.js           # LLM generation
+│   │   │       ├── 08-ResponseFormatter.js    # Response formatting
+│   │   │       ├── filters/                   # Query filters
+│   │   │       └── retrieval/                 # Retrieval strategies
+│   │   │           ├── AddressRegexStrategy.js   # Address matching
+│   │   │           ├── KeywordSearchStrategy.js  # Keyword search
+│   │   │           └── NearbySearchStrategy.js   # Geospatial search
 │   │   │
 │   │   ├── prompts/             # Prompt Engineering
 │   │   │   ├── promptLoader.js  # Dynamic prompt loader
@@ -381,8 +395,9 @@ server/
 │   │   │   ├── reranker.js      # Result reranking
 │   │   │   ├── extractors/
 │   │   │   │   ├── intentExtractor.js     # Legacy intent extraction
-│   │   │   │   ├── intentClassifier.js    # NEW: Multi-level intent classification
-│   │   │   │   └── foodKeywordExtractor.js # NEW: Food-specific keyword extraction
+│   │   │   │   ├── intentClassifier.js    # Multi-level intent classification
+│   │   │   │   ├── foodKeywordExtractor.js # Food-specific keyword extraction
+│   │   │   │   └── districtExtractor.js   # District/location extraction
 │   │   │   ├── loaders/
 │   │   │   │   └── mongoLoader.js        # MongoDB data loader
 │   │   │   ├── splitters/
@@ -393,9 +408,15 @@ server/
 │   │   │       ├── hybridRetriever.js    # Hybrid search
 │   │   │       └── hybridSearch.js       # Search strategy
 │   │   │
-│   │   ├── scripts/             # Utility scripts
+│   │   ├── scripts/             # Utility & test scripts
 │   │   │   ├── runIngestion.js  # Run data ingestion
-│   │   │   └── testChat.js      # Test chatbot
+│   │   │   ├── testChat.js      # Test chatbot
+│   │   │   ├── debugDistrictData.js         # Debug district data
+│   │   │   ├── testDatingFilter.js          # Test dating recommendations
+│   │   │   ├── testDatingQuery.js           # Test dating queries
+│   │   │   ├── testDistrictFilter.js        # Test district filtering
+│   │   │   ├── testDistrictFilterIntegration.js # Integration tests
+│   │   │   └── verifyDistrictFilter.js      # Verify district logic
 │   │   │
 │   │   ├── tools/               # AI Tools (Function Calling)
 │   │   │   ├── index.js         # Tool registry
@@ -410,8 +431,8 @@ server/
 │   │       ├── outputParsers.js      # Output parsing
 │   │       ├── reorderUtils.js       # Result reordering
 │   │       ├── tokenCounter.js       # Token counting
-│   │       ├── distanceUtils.js      # NEW: Distance & location utilities
-│   │       └── preferencesMapper.js  # NEW: User preferences mapping
+│   │       ├── distanceUtils.js      # Distance & location utilities
+│   │       └── preferencesMapper.js  # User preferences mapping
 │   │
 │   ├── imports/                 # Import services
 │   │   └── placeImportService.js # Goong/Google import logic

@@ -11,11 +11,11 @@ class ResponseFormatter {
      * Format final response for client
      */
     formatResponse(result) {
-        // Deduplicate and process places for UI - LIMIT TO TOP 5
+        // Deduplicate and process places for UI - LIMIT TO TOP 8
         const uniquePlacesMap = new Map();
         if (result.retrievedDocs) {
-            // GIỚI HẠN CHỈ LẤY TOP 5 QUÁN
-            const limitedDocs = result.retrievedDocs.slice(0, 5);
+            // GIỚI HẠN CHỈ LẤY TOP 8 QUÁN
+            const limitedDocs = result.retrievedDocs.slice(0, 8);
             limitedDocs.forEach(doc => {
                 const placeId = doc.metadata?.originalId || doc.metadata?.id;
                 if (placeId && !uniquePlacesMap.has(placeId)) {
@@ -39,7 +39,7 @@ class ResponseFormatter {
         }
 
         // 🔍 DEBUG: Log places order before return
-        const placesArray = Array.from(uniquePlacesMap.values()).slice(0, 5);
+        const placesArray = Array.from(uniquePlacesMap.values()).slice(0, 8);
         logger.info(`\n📊 ===== FINAL RESPONSE DEBUG =====`);
         logger.info(`📊 Places array length: ${placesArray.length}`);
         logger.info(`📊 Places order in response.places:`);
