@@ -42,9 +42,11 @@ class IntentClassifier {
 
         // 💕 PLACE VIBE - Tìm theo TAGS/MOOD (không phải tên quán)
         this.vibeKeywords = [
-            // Dating & Romance
+            // Dating & Romance (MỞ RỘNG)
             'hẹn hò', 'date', 'dating', 'lãng mạn', 'romantic', 'romance',
             'riêng tư', 'private', 'kín đáo', 'ấm cúng', 'cozy',
+            'buổi hẹn', 'đi hẹn', 'hẹn với crush', 'đưa crush', 'đưa bạn gái', 'đưa bạn trai',
+            'couple', 'đôi lứa', 'tình nhân', 'người yêu',
             
             // Mood & Atmosphere
             'chill', 'thư giãn', 'relax', 'yên tĩnh', 'quiet', 'peaceful',
@@ -53,12 +55,25 @@ class IntentClassifier {
             // Visual & Aesthetic
             'view đẹp', 'view', 'cảnh đẹp', 'scenic', 'sống ảo', 'instagram',
             'đẹp', 'aesthetic', 'vintage', 'sang trọng', 'luxury', 'cao cấp',
+            'ánh sáng đẹp', 'không gian đẹp', 'trang trí đẹp',
             
             // Social Context
             'gia đình', 'family', 'bạn bè', 'friends', 'đám đông', 'nhóm',
             
             // Study/Work
             'học bài', 'study', 'làm việc', 'work', 'làm việc nhóm'
+        ];
+
+        // 🚫 NEGATIVE KEYWORDS - Địa điểm KHÔNG phù hợp hẹn hò
+        this.datingNegativeKeywords = [
+            // Accommodation
+            'nhà nghỉ', 'khách sạn', 'hotel', 'motel', 'homestay',
+            // Buffet & drinking spots
+            'buffet', 'nhậu', 'bia', 'bar bia', 'quán nhậu', 'bia hơi',
+            // Street food & casual eats
+            'xiên', 'đồ xiên', 'quán xiên', 'bún đậu', 'bún đậu mắm tôm',
+            'nem', 'nem nướng', 'nem chua rán', 'ốc', 'quán ốc',
+            'vỉa hè', 'lề đường', 'ăn vặt'
         ];
 
         // 🎵 ACTIVITY - Hoạt động cụ thể
@@ -72,14 +87,18 @@ class IntentClassifier {
             'gym', 'thể thao', 'workout'
         ];
 
-        // Mapping vibe keywords → aiTags để search
+        // Mapping vibe keywords → aiTags để search (ENHANCED FOR DATING)
         this.vibeToTagsMap = {
-            // Dating & Romance
-            'hẹn hò': ['lãng mạn', 'romantic', 'date-night', 'riêng tư', 'ấm cúng'],
-            'date': ['lãng mạn', 'romantic', 'date-night', 'riêng tư'],
-            'lãng mạn': ['lãng mạn', 'romantic', 'ấm cúng', 'view đẹp'],
-            'romantic': ['lãng mạn', 'romantic', 'ấm cúng'],
-            'riêng tư': ['riêng tư', 'private', 'kín đáo', 'yên tĩnh'],
+            // Dating & Romance - ƯU TIÊN VIEW ĐẸP, LÃNG MẠN, FINE DINING
+            'hẹn hò': ['lãng mạn', 'romantic', 'view đẹp', 'ấm cúng', 'riêng tư', 'rooftop', 'fine dining'],
+            'date': ['lãng mạn', 'romantic', 'view đẹp', 'ấm cúng', 'riêng tư', 'rooftop'],
+            'dating': ['lãng mạn', 'romantic', 'view đẹp', 'ấm cúng', 'riêng tư'],
+            'buổi hẹn': ['lãng mạn', 'view đẹp', 'ấm cúng', 'riêng tư', 'rooftop'],
+            'lãng mạn': ['lãng mạn', 'romantic', 'ấm cúng', 'view đẹp', 'riêng tư', 'rooftop'],
+            'romantic': ['lãng mạn', 'romantic', 'ấm cúng', 'view đẹp', 'riêng tư'],
+            'riêng tư': ['riêng tư', 'private', 'kín đáo', 'yên tĩnh', 'ấm cúng'],
+            'couple': ['lãng mạn', 'romantic', 'view đẹp', 'ấm cúng', 'riêng tư'],
+            'đôi lứa': ['lãng mạn', 'view đẹp', 'ấm cúng', 'riêng tư'],
             
             // Mood
             'chill': ['chill', 'thư giãn', 'relax', 'yên tĩnh'],
@@ -101,12 +120,45 @@ class IntentClassifier {
     }
 
     /**
+     * Detect dating negative keywords (nhà nghỉ, buffet, etc.)
+     * @param {string} query 
+     * @returns {boolean}
+     */
+    hasDatingNegatives(query) {
+        const queryLower = query.toLowerCase();
+        return this.datingNegativeKeywords.some(kw => queryLower.includes(kw));
+    }
+
+    /**
+     * Check if query is dating-related
+     * @param {string} query 
+     * @returns {boolean}
+     */
+    isDatingQuery(query) {
+        const queryLower = query.toLowerCase();
+        const datingKeywords = [
+            'hẹn hò', 'date', 'dating', 'lãng mạn', 'romantic',
+            'buổi hẹn', 'đưa crush', 'đưa bạn gái', 'đưa bạn trai', 'couple'
+        ];
+        return datingKeywords.some(kw => queryLower.includes(kw));
+    }
+
+    /**
      * Classify query intent
      * @param {string} query 
-     * @returns {Object} { intent, keyword, tags, mustQuery }
+     * @returns {Object} { intent, keyword, tags, mustQuery, isDating, mustExclude }
      */
     classify(query) {
         const queryLower = query.toLowerCase().trim();
+        
+        // 🚫 CHECK: Detect dating query + negative keywords (nhà nghỉ, buffet)
+        const isDating = this.isDatingQuery(queryLower);
+        const hasNegatives = this.hasDatingNegatives(queryLower);
+        
+        if (isDating && hasNegatives) {
+            logger.warn(`⚠️ DATING QUERY WITH NEGATIVES DETECTED! Query: "${query}"`);
+            logger.warn(`🚫 User không nên search "hẹn hò" + "nhà nghỉ/buffet"`);
+        }
 
         // Priority 1: FOOD_ENTITY (cao nhất)
         const foodKeyword = this.detectKeyword(queryLower, this.foodKeywords);
@@ -117,7 +169,9 @@ class IntentClassifier {
                 intent: 'FOOD_ENTITY',
                 keyword: foodKeyword,
                 tags: null,
-                mustQuery
+                mustQuery,
+                isDating: false,
+                mustExclude: null
             };
         }
 
@@ -130,7 +184,9 @@ class IntentClassifier {
                 intent: 'ACTIVITY',
                 keyword: activityKeyword,
                 tags,
-                mustQuery: null // Will use tag filter
+                mustQuery: null,
+                isDating: false,
+                mustExclude: null
             };
         }
 
@@ -138,12 +194,34 @@ class IntentClassifier {
         const vibeKeyword = this.detectKeyword(queryLower, this.vibeKeywords);
         if (vibeKeyword) {
             const tags = this.vibeToTagsMap[vibeKeyword] || [vibeKeyword];
+            
+            // 💕 DATING MODE: Add mustExclude filter
+            let mustExclude = null;
+            if (isDating) {
+                mustExclude = {
+                    category: { $nin: ['Lưu trú'] }, // Exclude accommodation
+                    $and: [
+                        // Exclude hotels/accommodation in name
+                        { name: { $not: /nhà nghỉ|khách sạn|hotel|motel|homestay/i } },
+                        // Exclude buffet/street food/bar in name
+                        { name: { $not: /buffet|nhậu|bia hơi|quán nhậu|ăn vặt/i } },
+                        // 🔥 NEW: Exclude "xiên", "nem", "bún đậu" explicitly
+                        { name: { $not: /xiên|nem nướng|bún đậu|ốc|vỉa hè|lề đường/i } },
+                        // Exclude in description too
+                        { description: { $not: /nhà nghỉ|khách sạn|buffet|xiên|nem nướng|bún đậu/i } }
+                    ]
+                };
+                logger.info(`💕💕💕 DATING MODE ACTIVATED! Adding exclude filter for accommodation/buffet/street-food`);
+            }
+            
             logger.info(`💕 Intent: PLACE_VIBE - "${vibeKeyword}" → tags: ${tags.join(', ')}`);
             return {
                 intent: 'PLACE_VIBE',
                 keyword: vibeKeyword,
                 tags,
-                mustQuery: null // Will use tag filter
+                mustQuery: null,
+                isDating,
+                mustExclude
             };
         }
 

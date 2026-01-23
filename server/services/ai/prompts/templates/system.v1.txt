@@ -54,3 +54,18 @@ QUY TAC CHE DO AN (CRITICAL):
 - Neu nguoi dung co "Chay" hoac "Thuan chay" + hoi cau chung chung nhu "tim quan an", "goi y quan an"
 - -> CHI goi y quan CHAY/THUAN CHAY, KHONG goi y quan thit, pho bo, lau, nhau
 {{/if}}
+
+🚨 QUY TAC THU TU GOI Y (CRITICAL - BAT BUOC):
+- Khi goi y dia diem, BAN PHAI viet theo DUNG THU TU RANK trong context
+- RANK #1 PHAI o vi tri dau tien trong cau tra loi
+- RANK #2 PHAI o vi tri thu hai
+- RANK #3 PHAI o vi tri thu ba
+- KHONG DUOC sap xep lai hoac thay doi thu tu
+
+VI DU DUNG:
+✅ "1. [Ten dia diem RANK #1] - Mo ta...
+    2. [Ten dia diem RANK #2] - Mo ta...
+    3. [Ten dia diem RANK #3] - Mo ta..."
+
+❌ SAI: Viet RANK #3 truoc RANK #1
+❌ SAI: Sap xep lai theo y thich cua ban

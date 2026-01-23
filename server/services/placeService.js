@@ -607,7 +607,7 @@ export const getFeaturedPlaces = async (limit = 10) => {
  * @param {object} mustQuery - Optional hard filter (for food keyword matching)
  * @returns {array} Places array
  */
-export const searchPlaces = async (searchText, limit = 20, category = null, minPrice = null, mustQuery = null) => {
+export const searchPlaces = async (searchText, limit = 20, category = null, minPrice = null, mustQuery = null, districtFilter = null) => {
   const query = { $text: { $search: searchText } };
   
   // Add category filter if provided
@@ -623,6 +623,11 @@ export const searchPlaces = async (searchText, limit = 20, category = null, minP
   // 🍜 Add food keyword hard filter if provided
   if (mustQuery) {
     Object.assign(query, mustQuery);
+  }
+  
+  // 📍 Add district hard filter if provided
+  if (districtFilter) {
+    Object.assign(query, districtFilter);
   }
   
   const places = await Place.find(
@@ -644,7 +649,7 @@ export const searchPlaces = async (searchText, limit = 20, category = null, minP
  * @param {number} minPrice - Optional minimum price filter
  * @param {object} mustQuery - Optional hard filter (for food keyword matching)
  */
-export const searchPlacesByRegex = async (regex, limit = 5, category = null, minPrice = null, mustQuery = null) => {
+export const searchPlacesByRegex = async (regex, limit = 5, category = null, minPrice = null, mustQuery = null, districtFilter = null) => {
   const query = { address: regex };
   
   // Add category filter if provided
@@ -662,6 +667,11 @@ export const searchPlacesByRegex = async (regex, limit = 5, category = null, min
     Object.assign(query, mustQuery);
   }
   
+  // 📍 Add district hard filter if provided
+  if (districtFilter) {
+    Object.assign(query, districtFilter);
+  }
+  
   return await Place.find(query).limit(limit).lean();
 };
 
@@ -671,10 +681,15 @@ export const searchPlacesByRegex = async (regex, limit = 5, category = null, min
  * @param {number} limit
  * @param {string} category - Optional category filter
  * @param {number} minPrice - Optional minimum price filter
+ * @param {object} mustExclude - Optional exclude filter (for dating queries)
  * @returns {array} Places array
  */
-export const searchPlacesByVibe = async (tags, limit = 10, category = null, minPrice = null) => {
+export const searchPlacesByVibe = async (tags, limit = 10, category = null, minPrice = null, mustExclude = null, districtFilter = null) => {
   if (!tags || tags.length === 0) return [];
+
+  // 🎯 ENHANCED: Detect dating/romantic queries for boosting
+  const hasViewTag = tags.some(t => ['view đẹp', 'view', 'rooftop', 'scenic'].includes(t.toLowerCase()));
+  const hasRomanticTag = tags.some(t => ['lãng mạn', 'romantic', 'hẹn hò', 'date'].includes(t.toLowerCase()));
 
   // Build regex for each tag
   const tagRegexes = tags.map(tag => {
@@ -687,6 +702,7 @@ export const searchPlacesByVibe = async (tags, limit = 10, category = null, minP
       { 'aiTags.mood': { $in: tags } },
       { 'aiTags.space': { $in: tags } },
       { 'aiTags.suitability': { $in: tags } },
+      { 'aiTags.specialFeatures': { $in: tags } }, // 🆕 Search trong specialFeatures
       { description: { $in: tagRegexes } }
     ]
   };
@@ -700,8 +716,77 @@ export const searchPlacesByVibe = async (tags, limit = 10, category = null, minP
   if (minPrice) {
     query['priceRange.min'] = { $gte: minPrice };
   }
+  
+  // 📍 Add district hard filter if provided
+  if (districtFilter) {
+    Object.assign(query, districtFilter);
+  }
 
-  const places = await Place.find(query).limit(limit).lean();
+  // 💕 DATING MODE: Apply mustExclude filter
+  if (mustExclude) {
+    console.log('💕 Applying DATING EXCLUDE FILTER:', JSON.stringify(mustExclude));
+    
+    // Merge filters properly
+    if (mustExclude.category) {
+      query.category = mustExclude.category;
+    }
+    
+    // Merge $and conditions
+    if (mustExclude.$and) {
+      if (!query.$and) {
+        query.$and = [];
+      }
+      query.$and.push(...mustExclude.$and);
+    }
+    
+    console.log('💕 Final query with exclude:', JSON.stringify(query));
+  }
+
+  // 🔥 DATING BOOST: If has romantic/view tags, increase limit then filter top matches
+  const searchLimit = (hasRomanticTag || hasViewTag) ? limit * 3 : limit;
+
+  let places = await Place.find(query).limit(searchLimit).lean();
+
+  // 💕 POST-FILTER: For dating queries, prioritize places with multiple matching tags
+  if (hasRomanticTag || hasViewTag) {
+    places = places.map(place => {
+      let score = 0;
+      const allTags = [
+        ...(place.aiTags?.mood || []),
+        ...(place.aiTags?.space || []),
+        ...(place.aiTags?.suitability || []),
+        ...(place.aiTags?.specialFeatures || [])
+      ].map(t => t.toLowerCase());
+
+      // Score calculation
+      tags.forEach(tag => {
+        if (allTags.includes(tag.toLowerCase())) {
+          // 🎯 DATING BOOST: 3x score for romantic/view/rooftop tags
+          if (['lãng mạn', 'romantic', 'view đẹp', 'view', 'rooftop', 'hẹn hò'].includes(tag.toLowerCase())) {
+            score += 3;
+          } else {
+            score += 1;
+          }
+        }
+      });
+
+      // 🌟 Bonus for "view đẹp" in specialFeatures
+      if ((place.aiTags?.specialFeatures || []).some(f => f.toLowerCase().includes('view'))) {
+        score += 2;
+      }
+
+      // 🏆 Bonus for high rating
+      if (place.averageRating >= 4.5) score += 1;
+      if (place.averageRating >= 4.0) score += 0.5;
+
+      return { ...place, _matchScore: score };
+    })
+      .sort((a, b) => b._matchScore - a._matchScore)
+      .slice(0, limit);
+
+    console.log(`💕 DATING BOOST: Filtered ${places.length} places (top scoring)`);
+  }
+
   return places;
 };
 
@@ -725,7 +810,7 @@ export const searchNearbyPlaces = async (
     throw new Error('Valid latitude and longitude are required');
   }
 
-  const { category, minPrice, maxPrice, query } = filters;
+  const { category, minPrice, maxPrice, query, district } = filters;
 
   // Build match query for additional filters
   const matchQuery = {
@@ -743,6 +828,11 @@ export const searchNearbyPlaces = async (
 
   if (maxPrice) {
     matchQuery['priceRange.max'] = { $lte: maxPrice };
+  }
+  
+  // 📍 Add district hard filter if provided
+  if (district) {
+    matchQuery.district = district;
   }
 
   // 🔍 KEYWORD FILTER: Filter by query in name/description

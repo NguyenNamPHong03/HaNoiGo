@@ -7,7 +7,6 @@ import { optionalAuth } from '../middleware/auth.js';
 import Place from '../models/Place.js';
 import { healthCheck, processMessage } from '../services/ai/index.js';
 import { sortPlacesByDistance } from '../services/ai/utils/distanceUtils.js';
-import { sortPlacesByAnswerOrder } from '../services/ai/utils/reorderUtils.js';
 
 const router = express.Router();
 
@@ -148,10 +147,12 @@ router.post('/chat', optionalAuth, async (req, res) => {
       console.log(`📍 [nearMe=true] Preserving distance-sorted order from pipeline`);
       // Sort by distance to ensure consistency
       places = sortPlacesByDistance(places, latitude, longitude);
-    } else if (aiResult.answer && places.length > 0) {
-      // Normal mode: sort by AI answer order
-      places = sortPlacesByAnswerOrder(places, aiResult.answer);
-    }
+    } 
+    // DISABLED: sortPlacesByAnswerOrder causes RANK #1 to appear at wrong position
+    // else if (aiResult.answer && places.length > 0) {
+    //   // Normal mode: sort by AI answer order
+    //   places = sortPlacesByAnswerOrder(places, aiResult.answer);
+    // }
 
     // Add distance info even in non-nearMe mode (for display purposes)
     if (!nearMe && latitude && longitude && typeof latitude === 'number' && typeof longitude === 'number') {
@@ -272,9 +273,10 @@ router.post('/chat/stream', optionalAuth, async (req, res) => {
     }
 
     // REORDERING FIX 2.1 (Stream): Use shared utility
-    if (aiResult.answer && places.length > 0) {
-      places = sortPlacesByAnswerOrder(places, aiResult.answer);
-    }
+    // DISABLED: sortPlacesByAnswerOrder causes RANK #1 to appear at wrong position
+    // if (aiResult.answer && places.length > 0) {
+    //   places = sortPlacesByAnswerOrder(places, aiResult.answer);
+    // }
 
     // Send places event
     res.write(`data: ${JSON.stringify({
