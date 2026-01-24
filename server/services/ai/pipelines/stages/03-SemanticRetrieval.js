@@ -82,27 +82,50 @@ class SemanticRetrieval {
 
     /**
      * ITINERARY MULTI-QUERY RETRIEVAL
-     * Tìm kiếm đa dạng cho 8 loại địa điểm
+     * Tìm kiếm đa dạng cho 8 loại địa điểm (FULL_DAY) hoặc 3 loại (EVENING_SIMPLE)
      */
     async retrieveForItinerary(input) {
         return await telemetry.measureTime(RAG_STAGES.RETRIEVAL, async () => {
-            logger.info('📅 ITINERARY: Starting multi-query retrieval...');
-
-            // 8 queries cho 8 hoạt động trong ngày (với fallback)
-            const itineraryQueries = [
-                'quán phở ngon Hà Nội ăn sáng',           // 08:00 - Ăn sáng
-                'quán cafe yên tĩnh làm việc Hà Nội',     // 09:30 - Cafe
-                'Lăng Bác Hồ Chí Minh tham quan',         // 10:30 - Tham quan
-                'quán bún chả ngon Hà Nội ăn trưa',       // 12:00 - Ăn trưa
-                'văn miếu quốc tử giám di tích lịch sử', // 14:00 - Tham quan
-                'hồ tây công viên dạo chơi Hà Nội',       // 16:00 - Dạo chơi
-                'nhà hàng lẩu buffet ăn tối Hà Nội',      // 18:30 - Ăn tối
-                'hồ gươm phố cổ dạo bộ tối Hà Nội'        // 20:30 - Dạo bộ
-            ];
+            let itineraryQueries = [];
+            
+            // � EVENING FANCY: 3 queries cho buổi tối chỉnh chu
+            if (input.itineraryType === 'EVENING_FANCY') {
+                logger.info('🌟 EVENING FANCY: Starting retrieval (3 queries: Lẩu/Buffet → Karaoke → Hotel)...');
+                itineraryQueries = [
+                    'nhà hàng lẩu buffet cao cấp ăn tối Hà Nội',        // 18:00 - Ăn lẩu/buffet
+                    'karaoke music box hát cao cấp Hà Nội',             // 20:00 - Karaoke
+                    'A25 hotel khách sạn nghỉ ngơi Hà Nội',             // 22:30 - Nghỉ ngơi
+                    'khách sạn gần trung tâm Hà Nội',                   // 22:30 - Khách sạn backup
+                ];
+            }
+            // 🌙 EVENING SIMPLE: 3 queries cho buổi tối đơn giản
+            else if (input.itineraryType === 'EVENING_SIMPLE') {
+                logger.info('🌙 EVENING SIMPLE: Starting retrieval (3 queries: Fast food → Cafe → Dạo hồ)...');
+                itineraryQueries = [
+                    'KFC Jollibee McDonald fast food ăn nhanh Hà Nội',  // 18:00 - Ăn nhẹ fast food
+                    'quán phở bún cơm ăn nhanh Hà Nội',                 // 18:00 - Ăn nhẹ Việt Nam
+                    'quán cafe chill view đẹp Hà Nội',                  // 19:30 - Cafe
+                    'hồ hoàn kiếm hồ tây dạo bộ tối Hà Nội',            // 21:00 - Dạo hồ
+                ];
+            } 
+            // 📅 FULL DAY: 8 queries cho ngày đầy đủ
+            else {
+                logger.info('📅 FULL DAY ITINERARY: Starting multi-query retrieval (8 queries)...');
+                itineraryQueries = [
+                    'quán phở ngon Hà Nội ăn sáng',           // 08:00 - Ăn sáng
+                    'quán cafe yên tĩnh làm việc Hà Nội',     // 09:30 - Cafe
+                    'Lăng Bác Hồ Chí Minh tham quan',         // 10:30 - Tham quan
+                    'quán bún chả ngon Hà Nội ăn trưa',       // 12:00 - Ăn trưa
+                    'văn miếu quốc tử giám di tích lịch sử', // 14:00 - Tham quan
+                    'hồ tây công viên dạo chơi Hà Nội',       // 16:00 - Dạo chơi
+                    'nhà hàng lẩu buffet ăn tối Hà Nội',      // 18:30 - Ăn tối
+                    'hồ gươm phố cổ dạo bộ tối Hà Nội'        // 20:30 - Dạo bộ
+                ];
+            }
 
             // Parallel retrieval cho tất cả queries
             const promises = itineraryQueries.map(query => 
-                basicRetriever.retrieve(query, 5) // Tăng lên 5 kết quả mỗi query
+                basicRetriever.retrieve(query, 5) // Lấy 5 kết quả mỗi query
             );
 
             const allResults = await Promise.all(promises);

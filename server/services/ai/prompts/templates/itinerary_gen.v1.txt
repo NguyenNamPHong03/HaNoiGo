@@ -21,6 +21,94 @@ Danh sách Địa điểm có sẵn (Context):
 HƯỚNG DẪN TẠO LỊCH TRÌNH:
 
 *** QUY TẮC BẮT BUỘC (FOLLOW CHÍNH XÁC): ***
+
+🌙 TRƯỜNG HỢP 1: LỊCH TRÌNH BUỔI TỐI ĐỜN GIẢN (EVENING_SIMPLE)Nếu user hỏi "lịch trình một buổi tối đơn giản", "tối nay đi đâu cho nhanh", BẮT BUỘC tạo lịch trình 3 HOẠT ĐỘNG:
+
+1. 18:00 - ĂN NHẸ (TÌM trong Context theo thứ tự ưu tiên):
+   - OPTION 1: Fast food (KFC, Jollibee, McDonald's, Lotteria)
+   - OPTION 2: Quán phở/bún/cơm ăn nhanh (Phở 24, Cơm tấm, Bún đậu)
+   - Chọn quán GẦN NHẤT hoặc TIỆN LỢI nhất trong Context
+
+2. 19:30 - UỐNG CAFE (TÌM quán cafe trong Context):
+   - Ưu tiên: Cafe view đẹp, chill, không gian thoải mái
+   - VD: "The Coffee House", "Cộng Cà phê", "Highlands Coffee"
+
+3. 21:00 - DẠO HỒ (TÌM địa điểm dạo chơi trong Context):
+   - Ưu tiên: Hồ Hoàn Kiếm, Hồ Tây, Phố đi bộ
+   - Strip động từ "Dạo" để search: "Dạo hồ Hoàn Kiếm" → tìm "Hồ Hoàn Kiếm"
+
+*** FORMAT JSON CHO EVENING_SIMPLE (3 hoạt động): ***
+{{
+  "title": "Buổi tối đơn giản tại Hà Nội",
+  "schedule": [
+    {{
+      "time": "18:00",
+      "activity": "Ăn nhẹ",
+      "placeId": "[ID của KFC/Jollibee hoặc quán phở/bún từ Context]",
+      "placeName": "[Tên quán từ Context]",
+      "reason": "Ăn nhanh gọn, tiện lợi để bắt đầu buổi tối"
+    }},
+    {{
+      "time": "19:30",
+      "activity": "Uống cafe",
+      "placeId": "[ID của quán cafe từ Context]",
+      "placeName": "[Tên quán cafe từ Context]",
+      "reason": "Thư giãn, trò chuyện với bạn bè trong không gian chill"
+    }},
+    {{
+      "time": "21:00",
+      "activity": "Dạo hồ",
+      "placeId": "[ID của Hồ Hoàn Kiếm/Hồ Tây từ Context]",
+      "placeName": "[Hồ Hoàn Kiếm hoặc Hồ Tây từ Context]",
+      "reason": "Kết thúc ngày với không khí trong lành và phong cảnh đẹp"
+    }}
+  ]
+}}
+
+🌟 TRƯỜNG HỢP 2: LỊCH TRÌNH BUỔI TỐI CHỈNH CHU (EVENING_FANCY)Nếu user hỏi "lịch trình một buổi tối đơn giản", "tối nay đi đâu cho nhanh", BẮT BUỘC tạo lịch trình 3 HOẠT ĐỘNG:
+
+1. 18:00 - ĂN NHẸ (TÌM trong Context theo thứ tự ưu tiên):
+   - OPTION 1: Fast food (KFC, Jollibee, McDonald's, Lotteria)
+   - OPTION 2: Quán phở/bún/cơm ăn nhanh (Phở 24, Cơm tấm, Bún đậu)
+   - Chọn quán GẦN NHẤT hoặc TIỆN LỢI nhất trong Context
+
+2. 19:30 - UỐNG CAFE (TÌM quán cafe trong Context):
+   - Ưu tiên: Cafe view đẹp, chill, không gian thoải mái
+   - VD: "The Coffee House", "Cộng Cà phê", "Highlands Coffee"
+
+3. 21:00 - DẠO HỒ (TÌM địa điểm dạo chơi trong Context):
+   - Ưu tiên: Hồ Hoàn Kiếm, Hồ Tây, Phố đi bộ
+   - Nếu không có trong Context → Dùng tên chung "Dạo hồ Hoàn Kiếm" (placeId: null)
+
+*** FORMAT JSON CHO EVENING_SIMPLE (3 hoạt động): ***
+{{
+  "title": "Buổi tối đơn giản tại Hà Nội",
+  "schedule": [
+    {{
+      "time": "18:00",
+      "activity": "Ăn nhẹ",
+      "placeId": "[ID của KFC/Jollibee hoặc quán phở/bún từ Context]",
+      "placeName": "[Tên quán từ Context]",
+      "reason": "Ăn nhanh gọn, tiện lợi để bắt đầu buổi tối"
+    }},
+    {{
+      "time": "19:30",
+      "activity": "Uống cafe",
+      "placeId": "[ID của quán cafe từ Context]",
+      "placeName": "[Tên quán cafe từ Context]",
+      "reason": "Thư giãn, trò chuyện với bạn bè trong không gian chill"
+    }},
+    {{
+      "time": "21:00",
+      "activity": "Dạo hồ",
+      "placeId": "[ID của Hồ Hoàn Kiếm/Hồ Tây từ Context hoặc null]",
+      "placeName": "[Hồ Hoàn Kiếm/Hồ Tây từ Context hoặc 'Dạo hồ Hoàn Kiếm']",
+      "reason": "Kết thúc ngày với không khí trong lành và phong cảnh đẹp"
+    }}
+  ]
+}}
+
+📅 TRƯỜNG HỢP 2: LỊCH TRÌNH 1 NGÀY ĐẦY ĐỦ (FULL_DAY)
 Nếu user hỏi chung chung về "lịch trình 1 ngày Hà Nội" hoặc "khám phá Hà Nội", BẮT BUỘC phải tạo lịch trình theo ĐÚNG FLOW NÀY:
 
 1. 08:00 - ĂN PHỞ (TÌM quán phở trong Context, VD: "Phở Gia Truyền", "Phở 10 Lý Quốc Sư", bất kỳ quán nào có "Phở" trong tên)

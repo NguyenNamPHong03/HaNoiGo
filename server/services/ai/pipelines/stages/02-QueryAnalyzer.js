@@ -66,6 +66,7 @@ class QueryAnalyzer {
 
     /**
      * Sub-function: Intent Classification (CHAT vs ITINERARY)
+     * Phát hiện thêm: EVENING_SIMPLE vs FULL_DAY itinerary
      */
     async classifyIntent(input) {
         try {
@@ -75,11 +76,32 @@ class QueryAnalyzer {
             intent = intent.trim().toUpperCase();
             if (!intent.includes('ITINERARY')) intent = 'CHAT'; // Default to CHAT
 
-            logger.info(`🧠 Intent detected: ${intent}`);
-            return { intent };
+            // 🌙 DETECT EVENING ITINERARY TYPE
+            let itineraryType = 'FULL_DAY'; // Default
+            if (intent === 'ITINERARY') {
+                const question = input.question.toLowerCase();
+                // Match: "buổi tối", "tối nay", "tối ở", "lịch trình tối", "tối sang trọng"
+                const isEvening = /(?:buổi\s*)?tối(?:\s+(?:nay|ở|hà nội|thứ))?|evening/i.test(question);
+                const isSimple = /đơn giản|nhanh|gọn|casual|simple/.test(question);
+                const isFancy = /chỉnh chu|tươm tất|sang trọng|cao cấp|fancy|elegant|luxury/.test(question);
+                
+                if (isEvening && isFancy) {
+                    itineraryType = 'EVENING_FANCY';
+                    logger.info('🌟 Detected EVENING FANCY itinerary (Lẩu/Buffet → Karaoke → Hotel)');
+                } else if (isEvening && isSimple) {
+                    itineraryType = 'EVENING_SIMPLE';
+                    logger.info('🌙 Detected EVENING SIMPLE itinerary (Ăn nhẹ → Cafe → Dạo hồ)');
+                } else if (isEvening) {
+                    itineraryType = 'EVENING_FULL';
+                    logger.info('🌆 Detected EVENING FULL itinerary');
+                }
+            }
+
+            logger.info(`🧠 Intent detected: ${intent} | Type: ${itineraryType}`);
+            return { intent, itineraryType };
         } catch (error) {
             logger.error('Intent classification failed', error);
-            return { intent: 'CHAT' };
+            return { intent: 'CHAT', itineraryType: 'FULL_DAY' };
         }
     }
 

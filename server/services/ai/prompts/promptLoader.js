@@ -4,10 +4,10 @@
  * Trách nhiệm: Load prompt templates, fill variables, version control
  */
 
+import { PromptTemplate } from '@langchain/core/prompts';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { PromptTemplate } from '@langchain/core/prompts';
 import logger from '../utils/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -143,13 +143,24 @@ class PromptLoader {
      * @param {string} weather - Current weather description
      * @param {string} datetime - Current date/time
      * @param {string} userPreferences - Formatted user preferences (optional)
+     * @param {string} itineraryType - Type of itinerary (EVENING_SIMPLE, FULL_DAY)
      */
-    async formatItineraryGen(context, question, weather = 'Không xác định', datetime = '', userPreferences = '') {
+    async formatItineraryGen(context, question, weather = 'Không xác định', datetime = '', userPreferences = '', itineraryType = 'FULL_DAY') {
         if (!this.initialized) await this.initialize();
+
+        // Thêm hint cho LLM về loại lịch trình
+        let typeHint = '';
+        if (itineraryType === 'EVENING_FANCY') {
+            typeHint = '\n⚠️ QUAN TRỌNG: User yêu cầu LỊCH TRÌNH BUỔI TỐI CHỈNH CHU (3 hoạt động: Lẩu/Buffet → Karaoke → Hotel). Hãy follow TRƯỜNG HỢP 2 trong hướng dẫn!';
+        } else if (itineraryType === 'EVENING_SIMPLE') {
+            typeHint = '\n⚠️ QUAN TRỌNG: User yêu cầu LỊCH TRÌNH BUỔI TỐI ĐƠN GIẢN (3 hoạt động: Ăn nhẹ → Cafe → Dạo hồ). Hãy follow TRƯỜNG HỢP 1 trong hướng dẫn!';
+        } else {
+            typeHint = '\n⚠️ QUAN TRỌNG: User yêu cầu LỊCH TRÌNH 1 NGÀY ĐẦY ĐỦ (8 hoạt động). Hãy follow TRƯỜNG HỢP 3 trong hướng dẫn!';
+        }
 
         return this.templates.itineraryGen.format({
             context,
-            question,
+            question: question + typeHint,
             weather,
             datetime,
             userPreferences: userPreferences || 'Chưa có thông tin sở thích'

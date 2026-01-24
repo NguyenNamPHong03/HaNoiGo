@@ -131,17 +131,25 @@ TUYỆT ĐỐI KHÔNG sắp xếp lại theo tiêu chí khác!
             }
 
             let formatted;
-            const formatter = input.intent === 'ITINERARY'
-                ? promptLoader.formatItineraryGen
-                : promptLoader.formatRAGQuery;
-
-            formatted = await formatter.call(promptLoader,
-                input.context,
-                input.question,
-                enhancedWeatherDesc,
-                datetime,
-                preferencesContext
-            );
+            if (input.intent === 'ITINERARY') {
+                // Truyền itineraryType cho prompt template
+                formatted = await promptLoader.formatItineraryGen(
+                    input.context,
+                    input.question,
+                    enhancedWeatherDesc,
+                    datetime,
+                    preferencesContext,
+                    input.itineraryType || 'FULL_DAY'
+                );
+            } else {
+                formatted = await promptLoader.formatRAGQuery(
+                    input.context,
+                    input.question,
+                    enhancedWeatherDesc,
+                    datetime,
+                    preferencesContext
+                );
+            }
 
             return { ...input, prompt: formatted };
         });

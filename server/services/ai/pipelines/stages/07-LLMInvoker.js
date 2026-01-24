@@ -42,6 +42,9 @@ class LLMInvoker {
 
             let structuredData = null;
             if (input.intent === 'ITINERARY') {
+                const itineraryType = input.itineraryType || 'FULL_DAY';
+                logger.info(`📋 Parsing ${itineraryType} itinerary JSON...`);
+                
                 try {
                     const firstOpen = answer.indexOf('{');
                     const lastClose = answer.lastIndexOf('}');

@@ -196,11 +196,38 @@ router.post('/chat', optionalAuth, async (req, res) => {
           // Remove text in parentheses and trim FIRST
           let cleanName = placeName.replace(/\s*\(.*?\)\s*/g, '').trim();
           
-          // Skip ONLY if clean name is empty or contains "gần đây", "các quán"
-          if (!cleanName || cleanName.match(/gần đây|các quán|tự do/i)) {
-            console.log(`      ⚠️ Skipping (no specific place name)`);
+          // 🔧 STRIP ACTION VERBS (Dạo, Tham quan, Đi, Xem, v.v.)
+          // "Dạo hồ Hoàn Kiếm" → "Hồ Hoàn Kiếm"
+          // "Tham quan Văn Miếu" → "Văn Miếu"
+          cleanName = cleanName.replace(/^(Dạo|Tham quan|Đi|Xem|Thăm|Ghé)\s+/i, '').trim();
+          
+          // Capitalize first letter (fix "hồ" → "Hồ")
+          if (cleanName.length > 0) {
+            cleanName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+          }
+          
+          // 🌊 SPECIAL CASE: Only create placeholder for truly generic terms
+          if (!cleanName || cleanName.match(/^(gần đây|các quán|quán gần)$/i)) {
+            console.log(`      🏞️ Truly generic place, creating placeholder for: "${placeName}"`);
+            
+            const placeholderPlace = {
+              _id: `placeholder_${idx}`,
+              name: placeName,
+              address: 'Địa điểm tự do - Không cần đặt chỗ trước',
+              category: 'Vui chơi',
+              priceRange: { min: 0, max: 0 },
+              averageRating: 0,
+              totalReviews: 0,
+              images: ['https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=800'],
+              aiTags: { space: [], specialFeatures: [] },
+              isPlaceholder: true,
+              description: scheduleItem.reason || 'Địa điểm tự do'
+            };
+            
+            orderedPlaces.push(placeholderPlace);
+            console.log(`      ✅ Added PLACEHOLDER → ${placeName}`);
           } else {
-            console.log(`      🔎 Searching MongoDB by name: "${placeName}"`);
+            console.log(`      🔎 Searching MongoDB by name: "${cleanName}" (from "${placeName}")`);
           
             try {
             
@@ -211,7 +238,8 @@ router.post('/chat', optionalAuth, async (req, res) => {
               'Lăng Bác': 'Lăng Chủ tịch Hồ Chí Minh',
               'Lăng Hồ Chí Minh': 'Lăng Chủ tịch Hồ Chí Minh',
               'Văn Miếu': 'Văn Miếu – Quốc Tử Giám',
-              'Quốc Tử Giám': 'Văn Miếu – Quốc Tử Giám'
+              'Quốc Tử Giám': 'Văn Miếu – Quốc Tử Giám',
+              'Hồ Tây': 'Hồ Tây' // Ensure exact match
             };
             
             // Get all possible names (original + alias)
@@ -321,7 +349,7 @@ router.post('/chat', optionalAuth, async (req, res) => {
           } catch (error) {
             console.error(`      ❌ Error searching DB:`, error.message);
           }
-        }
+          }
         } else {
           console.log(`      ⚠️ Skipping (no placeName)`);
         }
