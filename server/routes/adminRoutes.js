@@ -13,6 +13,10 @@ import {
     updateAiTags,
     updatePlace
 } from '../controllers/placesController.js';
+import {
+    deleteReview as deleteReviewController,
+    getAllReviews
+} from '../controllers/reviewController.js';
 import { getUploadPlaceImage, uploadPlaceImageController } from '../controllers/uploadController.js';
 import {
     banUser,
@@ -78,5 +82,9 @@ router.get('/users/:id', getUserById);
 router.patch('/users/:id', updateUser);
 router.post('/users/:id/ban', banUser);
 router.delete('/users/:id', deleteUser);
+
+// Reviews management
+router.get('/reviews', getAllReviews);
+router.delete('/reviews/:id', deleteReviewController);
 
 export default router;

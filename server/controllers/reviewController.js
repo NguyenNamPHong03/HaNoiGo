@@ -1,6 +1,39 @@
 import * as reviewService from '../services/reviewService.js';
 
 /**
+ * @route   GET /api/admin/reviews
+ * @desc    Get all reviews (Admin only)
+ * @access  Private (Admin)
+ */
+export const getAllReviews = async (req, res) => {
+  try {
+    const { limit, skip, sort } = req.query;
+
+    const result = await reviewService.getAllReviews({
+      limit: parseInt(limit) || 100,
+      skip: parseInt(skip) || 0,
+      sort: sort || '-createdAt'
+    });
+
+    res.json({
+      success: true,
+      data: result.reviews,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        pages: result.pages
+      }
+    });
+  } catch (error) {
+    console.error('Error getting all reviews:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get reviews'
+    });
+  }
+};
+
+/**
  * @route   GET /api/reviews/place/:placeId
  * @desc    Get all reviews for a place (Google + User reviews)
  * @access  Public

@@ -223,3 +223,28 @@ export const markReviewHelpful = async (reviewId, userId) => {
 
   return review;
 };
+
+/**
+ * Get all reviews (Admin only)
+ * Includes user and place information
+ */
+export const getAllReviews = async (options = {}) => {
+  const { limit = 100, skip = 0, sort = '-createdAt' } = options;
+
+  const reviews = await Review.find({ status: 'published' })
+    .populate('user', 'displayName email avatarUrl')
+    .populate('place', 'name address district category')
+    .sort(sort)
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
+  const total = await Review.countDocuments({ status: 'published' });
+
+  return {
+    reviews,
+    total,
+    page: Math.floor(skip / limit) + 1,
+    pages: Math.ceil(total / limit)
+  };
+};
