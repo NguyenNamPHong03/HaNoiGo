@@ -140,10 +140,210 @@ router.post('/chat', optionalAuth, async (req, res) => {
       }
     }
 
-    // REORDERING FIX 2.1: Use shared utility
-    // Sort places by appearance in AI answer ONLY if NOT in nearMe mode
-    // In nearMe mode, preserve the distance-sorted order from pipeline
-    if (nearMe && latitude && longitude) {
+    console.log(`\n📊 ===== BEFORE REORDERING DEBUG =====`);
+    console.log(`📊 Intent: ${aiResult.intent}`);
+    console.log(`📊 Has schedule: ${!!aiResult.structuredData?.schedule}`);
+    console.log(`📊 Places count: ${places.length}`);
+    if (places.length > 0) {
+      console.log(`📊 Current places order:`);
+      places.forEach((p, i) => {
+        console.log(`   [${i}] → ${p.name} (ID: ${p._id})`);
+      });
+    }
+    console.log(`📊 =====================================\n`);
+
+    // SPECIAL CASE: ITINERARY - Sort by schedule order using placeId
+    // 🔥 CRITICAL FIX: ALWAYS run reordering for ITINERARY intent
+    if (aiResult.intent === 'ITINERARY' && aiResult.structuredData?.schedule) {
+      console.log(`📅 [ITINERARY] Reordering places by schedule placeId order`);
+      console.log(`📅 Schedule has ${aiResult.structuredData.schedule.length} items`);
+      
+      // Create map by ID for fast lookup
+      const placeMapById = new Map();
+      places.forEach(p => {
+        const idStr = p._id.toString();
+        placeMapById.set(idStr, p);
+        console.log(`   📍 Available place: ${p.name} (ID: ${idStr})`);
+      });
+      
+      // Reorder places to match schedule using placeId
+      const orderedPlaces = [];
+      const usedIds = new Set();
+      
+      // Process each schedule item
+      for (const [idx, scheduleItem] of aiResult.structuredData.schedule.entries()) {
+        const placeId = scheduleItem.placeId;
+        const placeName = scheduleItem.placeName;
+        
+        console.log(`\n   🔍 Processing schedule[${idx}]:`);
+        console.log(`      Activity: ${scheduleItem.activity}`);
+        console.log(`      PlaceId from schedule: ${placeId}`);
+        console.log(`      PlaceName: ${placeName}`);
+        
+        // Try 1: Match by placeId
+        if (placeId && placeMapById.has(placeId)) {
+          const place = placeMapById.get(placeId);
+          if (!usedIds.has(placeId)) {
+            orderedPlaces.push(place);
+            usedIds.add(placeId);
+            console.log(`      ✅ MATCHED by ID → ${place.name}`);
+          } else {
+            console.log(`      ⚠️ Already used this placeId`);
+          }
+        } 
+        // Try 2: Search MongoDB by name (for missing places like Lăng Bác, Văn Miếu)
+        else if (placeName) {
+          // Remove text in parentheses and trim FIRST
+          let cleanName = placeName.replace(/\s*\(.*?\)\s*/g, '').trim();
+          
+          // Skip ONLY if clean name is empty or contains "gần đây", "các quán"
+          if (!cleanName || cleanName.match(/gần đây|các quán|tự do/i)) {
+            console.log(`      ⚠️ Skipping (no specific place name)`);
+          } else {
+            console.log(`      🔎 Searching MongoDB by name: "${placeName}"`);
+          
+            try {
+            
+            // Alias mapping for common landmarks (Hồ Gươm = Hồ Hoàn Kiếm)
+            const aliasMap = {
+              'Hồ Gươm': 'Hồ Hoàn Kiếm',
+              'Hồ Hoàn Kiếm': 'Hồ Gươm',
+              'Lăng Bác': 'Lăng Chủ tịch Hồ Chí Minh',
+              'Lăng Hồ Chí Minh': 'Lăng Chủ tịch Hồ Chí Minh',
+              'Văn Miếu': 'Văn Miếu – Quốc Tử Giám',
+              'Quốc Tử Giám': 'Văn Miếu – Quốc Tử Giám'
+            };
+            
+            // Get all possible names (original + alias)
+            const searchNames = [cleanName];
+            if (aliasMap[cleanName]) {
+              searchNames.push(aliasMap[cleanName]);
+            }
+            
+            console.log(`      🔍 Search aliases: [${searchNames.join(', ')}]`);
+            
+            // Priority 1: Exact match (case-insensitive) with any alias
+            let foundPlace = await Place.findOne({
+              name: { 
+                $in: searchNames.map(n => new RegExp(`^${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'))
+              },
+              status: 'Published'
+            }).lean();
+            
+            // Priority 2: Starts with name (any alias)
+            if (!foundPlace) {
+              foundPlace = await Place.findOne({
+                $or: searchNames.map(n => ({
+                  name: { $regex: new RegExp(`^${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i') }
+                })),
+                status: 'Published'
+              }).lean();
+            }
+            
+            // Priority 3: Contains name (fuzzy) + Category filter for landmarks
+            if (!foundPlace) {
+              const isLandmark = /hồ|lăng|văn miếu|đền|chùa|bảo tàng|di tích/i.test(cleanName);
+              
+              // Extract first significant word for search (from any alias)
+              const firstWords = searchNames.map(n => n.split(/\s+/)[0]);
+              const query = {
+                name: { 
+                  $regex: new RegExp(firstWords.join('|'), 'i') // Search any first word
+                },
+                status: 'Published'
+              };
+              
+              // For landmarks: prioritize category "Khác" or "Vui chơi"
+              // Exclude restaurants/cafes when searching for landmarks
+              if (isLandmark) {
+                query.category = { $in: ['Khác', 'Vui chơi'] };
+                // Further filter: exclude places with "CGV", "Cinema", "Rạp" in name
+                query.name = { 
+                  $regex: new RegExp(firstWords.join('|'), 'i'),
+                  $not: /CGV|Cinema|Rạp|LOTTE|BHD|Plaza/i 
+                };
+              }
+              
+              const candidates = await Place.find(query).limit(10).lean();
+              
+              // Find best match by similarity
+              if (candidates.length > 0) {
+                console.log(`      🔍 Found ${candidates.length} candidates, finding best match...`);
+                candidates.forEach(c => console.log(`         - ${c.name} (${c.category})`));
+                
+                foundPlace = candidates.reduce((best, curr) => {
+                  const currNameLower = curr.name.toLowerCase();
+                  
+                  // Check if name contains ANY of the search terms
+                  const currMatchScore = searchNames.reduce((score, searchName) => {
+                    const searchLower = searchName.toLowerCase();
+                    if (currNameLower === searchLower) return score + 100; // Exact match
+                    if (currNameLower.includes(searchLower)) return score + 50; // Contains
+                    if (searchLower.includes(currNameLower)) return score + 30; // Reverse contains
+                    return score;
+                  }, 0);
+                  
+                  const bestMatchScore = best ? searchNames.reduce((score, searchName) => {
+                    const searchLower = searchName.toLowerCase();
+                    const bestLower = best.name.toLowerCase();
+                    if (bestLower === searchLower) return score + 100;
+                    if (bestLower.includes(searchLower)) return score + 50;
+                    if (searchLower.includes(bestLower)) return score + 30;
+                    return score;
+                  }, 0) : 0;
+                  
+                  if (currMatchScore > bestMatchScore) return curr;
+                  if (currMatchScore < bestMatchScore) return best;
+                  
+                  // Same score → prefer shorter name (more specific)
+                  if (!best || curr.name.length < best.name.length) return curr;
+                  return best;
+                }, null);
+              }
+            }
+
+            if (foundPlace) {
+              const foundIdStr = foundPlace._id.toString();
+              console.log(`      ✅ FOUND in DB → ${foundPlace.name} (${foundPlace.category}, ID: ${foundIdStr})`);
+              
+              if (!usedIds.has(foundIdStr)) {
+                orderedPlaces.push(foundPlace);
+                usedIds.add(foundIdStr);
+                
+                // Update placeId in schedule for future reference
+                scheduleItem.placeId = foundIdStr;
+              } else {
+                console.log(`      ⚠️ Already used this place`);
+              }
+            } else {
+              console.log(`      ⚠️ Not found in DB for: "${cleanName}"`);
+            }
+          } catch (error) {
+            console.error(`      ❌ Error searching DB:`, error.message);
+          }
+        }
+        } else {
+          console.log(`      ⚠️ Skipping (no placeName)`);
+        }
+      }
+      
+      // Add remaining places not in schedule
+      places.forEach(p => {
+        if (!usedIds.has(p._id.toString())) {
+          orderedPlaces.push(p);
+          console.log(`   📍 Extra place (not in schedule): ${p.name}`);
+        }
+      });
+      
+      places = orderedPlaces;
+      console.log(`\n✅ FINAL: Reordered to ${places.length} places (${usedIds.size} from schedule, ${places.length - usedIds.size} extra)`);
+      console.log(`📊 Final order:`);
+      places.forEach((p, i) => {
+        console.log(`   [${i}] → ${p.name}`);
+      });
+    }
+    // NORMAL CASE: nearMe mode
+    else if (nearMe && latitude && longitude) {
       console.log(`📍 [nearMe=true] Preserving distance-sorted order from pipeline`);
       // Sort by distance to ensure consistency
       places = sortPlacesByDistance(places, latitude, longitude);

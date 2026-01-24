@@ -41,6 +41,7 @@ DANH SÁCH ${input.retrievedDocs.length} ĐỊA ĐIỂM (ƯU TIÊN THEO THỨ T�
 
         const placesContext = input.retrievedDocs
             .map((doc, i) => {
+                const placeId = doc.metadata?.id || doc.id || 'N/A';
                 const placeName = doc.name || doc.metadata?.name || `Địa điểm ${i + 1}`;
                 const address = doc.metadata?.address ? `Địa chỉ: ${doc.metadata.address}` : '';
                 const price = doc.metadata?.price ? `Giá: ${doc.metadata.price} VND` : 'Giá: Liên hệ';
@@ -49,7 +50,7 @@ DANH SÁCH ${input.retrievedDocs.length} ĐỊA ĐIỂM (ƯU TIÊN THEO THỨ T�
                     ? `📍 Cách bạn ${doc.distanceKm}km` 
                     : '';
 
-                return `RANK #${i + 1} [${placeName}] ${category}\n${address} ${distance}| ${price}\n${doc.content}`;
+                return `RANK #${i + 1} [ID: ${placeId}] [${placeName}] ${category}\n${address} ${distance}| ${price}\n${doc.content}`;
             })
             .join('\n\n---\n\n');
 

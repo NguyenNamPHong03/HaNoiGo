@@ -175,17 +175,27 @@ class HybridSearchEngine {
         const excludePatterns = [
             /buffet/i, /nhậu/i, /bia hơi/i, /xiên/i, 
             /nem nướng/i, /bún đậu/i, /ốc/i, /vỉa hè/i,
-            /nhà nghỉ/i, /khách sạn/i, /hotel/i, /motel/i
+            /nhà nghỉ/i, /khách sạn/i, /hotel/i, /motel/i,
+            /bánh mì/i // 🔥 NEW: Exclude street food
         ];
+        
+        // 🔥 STRICT: Only allow "Ăn uống" category for dating (exclude Vui chơi, Dịch vụ, Lưu trú)
+        const allowedCategories = ['Ăn uống'];
         
         const filtered = docs.filter(doc => {
             const name = doc.metadata?.name || doc.name || '';
             const desc = doc.pageContent || doc.metadata?.description || '';
             const category = doc.metadata?.category || '';
             
-            // Exclude if category is "Lưu trú"
-            if (category === 'Lưu trú') {
-                logger.warn(`💕 POST-FILTER: Removed accommodation "${name}"`);
+            // 🔥 STRICT CATEGORY CHECK: Only allow "Ăn uống" for dating queries
+            if (category && !allowedCategories.includes(category)) {
+                logger.warn(`💕 POST-FILTER: Removed "${name}" (category: "${category}" not suitable for dating)`);
+                return false;
+            }
+            
+            // Fallback: If no category, reject if it's clearly not food-related
+            if (!category) {
+                logger.warn(`💕 POST-FILTER: Removed "${name}" (no category defined)`);
                 return false;
             }
             
