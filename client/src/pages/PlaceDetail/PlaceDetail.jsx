@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import PlaceMap from "../../components/common/PlaceMap/PlaceMap.jsx";
 import usePlaceDetail from "../../hooks/usePlaceDetail.js";
+import ReviewButton from "../../components/reviews/ReviewButton.jsx";
+import ReviewList from "../../components/reviews/ReviewList.jsx";
 import styles from "./PlaceDetail.module.css";
 
 const PlaceDetail = () => {
@@ -50,13 +52,13 @@ const PlaceDetail = () => {
     const menu = place.menu || [];
     // ✅ Ưu tiên googleReviews (từ Apify), sau đó mới dùng additionalInfo/googleData (legacy)
     const reviews = place.googleReviews || place.additionalInfo?.reviews || place.googleData?.reviews || [];
-    
+
     // Convert GeoJSON to {lat, lng} format for PlaceMap
-    const location = place.location?.coordinates 
+    const location = place.location?.coordinates
         ? {
             lng: place.location.coordinates[0], // GeoJSON: [longitude, latitude]
             lat: place.location.coordinates[1]
-          }
+        }
         : null;
 
     // Handler: Mở Google Maps để chỉ đường
@@ -92,7 +94,7 @@ const PlaceDetail = () => {
             <aside className={styles.leftSidebar}>
                 <div className={styles.sidebarContent}>
                     <h2 className={styles.sidebarTitle}>Ưu đãi & Món mới</h2>
-                    
+
                     {/* Placeholder cho promotions - sẽ fetch từ API sau */}
                     <div className={styles.promotionCard}>
                         <div className={styles.promotionBadge}>🎉 Ưu đãi đặc biệt</div>
@@ -152,19 +154,19 @@ const PlaceDetail = () => {
                 {/* Tabs Navigation */}
                 <div className={styles.tabsContainer}>
                     <div className={styles.tabs}>
-                        <button 
+                        <button
                             className={activeTab === 'overview' ? styles.activeTab : styles.tab}
                             onClick={() => setActiveTab('overview')}
                         >
                             Tổng quan
                         </button>
-                        <button 
+                        <button
                             className={activeTab === 'menu' ? styles.activeTab : styles.tab}
                             onClick={() => setActiveTab('menu')}
                         >
                             Menu
                         </button>
-                        <button 
+                        <button
                             className={activeTab === 'reviews' ? styles.activeTab : styles.tab}
                             onClick={() => setActiveTab('reviews')}
                         >
@@ -260,9 +262,9 @@ const PlaceDetail = () => {
                                                     {dayNames[day.toLowerCase()] || day}
                                                 </span>
                                                 <span className={styles.hourValue}>
-                                                    {typeof hours === 'string' 
-                                                        ? hours 
-                                                        : hours?.open && hours?.close 
+                                                    {typeof hours === 'string'
+                                                        ? hours
+                                                        : hours?.open && hours?.close
                                                             ? `${hours.open} - ${hours.close}`
                                                             : 'Đóng cửa'
                                                     }
@@ -295,8 +297,8 @@ const PlaceDetail = () => {
                                     {menu.map((item, idx) => (
                                         <div key={idx} className={styles.menuItem}>
                                             {item.image && (
-                                                <img 
-                                                    src={item.image} 
+                                                <img
+                                                    src={item.image}
                                                     alt={item.name}
                                                     className={styles.menuImage}
                                                 />
@@ -321,77 +323,15 @@ const PlaceDetail = () => {
 
                     {activeTab === 'reviews' && (
                         <div className={styles.reviewsTab}>
-                            {/* Rating Summary Box */}
-                            <div className={styles.ratingSummaryBox}>
-                                <div className={styles.ratingScoreMain}>
-                                    <span className={styles.bigRatingNumber}>{averageRating.toFixed(1)}</span>
-                                    <div className={styles.ratingStarsMain}>{'⭐'.repeat(Math.round(averageRating))}</div>
-                                    <p className={styles.totalReviewsText}>({totalReviews} đánh giá)</p>
-                                </div>
-                                
-                                {/* Rating Breakdown Bars */}
-                                <div className={styles.ratingBreakdown}>
-                                    {[5, 4, 3, 2, 1].map(star => {
-                                        const count = reviews.filter(r => (r.stars || r.rating) === star).length;
-                                        const percentage = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
-                                        return (
-                                            <div key={star} className={styles.ratingBar}>
-                                                <span className={styles.starLabel}>{star}★</span>
-                                                <div className={styles.barContainer}>
-                                                    <div 
-                                                        className={styles.barFill} 
-                                                        style={{ width: `${percentage}%` }}
-                                                    ></div>
-                                                </div>
-                                                <span className={styles.starCount}>{count}</span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                            {/* Review Button - Nút viết đánh giá */}
+                            <div className={styles.reviewButtonContainer}>
+                                <ReviewButton placeId={id} placeName={name} />
                             </div>
 
-                            <h3 className={styles.reviewsTitle}>Đánh giá từ Google ({reviews.length}):</h3>
-                            {reviews.length > 0 ? (
-                                <div className={styles.reviewsList}>
-                                    {reviews.map((review, idx) => {
-                                        const authorName = review.name || 'User';
-                                        const avatarUrl = review.reviewerPhotoUrl;
-                                        const fallbackAvatar = 'https://ui-avatars.com/api/?name=' + 
-                                            encodeURIComponent(authorName) + 
-                                            '&background=667eea&color=fff&size=80';
-                                        
-                                        return (
-                                            <div key={idx} className={styles.reviewItem}>
-                                                <div className={styles.reviewHeader}>
-                                                    <div className={styles.reviewerInfo}>
-                                                        <img 
-                                                            src={avatarUrl || fallbackAvatar} 
-                                                            alt={authorName}
-                                                            className={styles.reviewerAvatar}
-                                                            onError={(e) => {
-                                                                e.target.onerror = null;
-                                                                e.target.src = fallbackAvatar;
-                                                            }}
-                                                        />
-                                                        <div>
-                                                            <p className={styles.reviewerName}>{authorName}</p>
-                                                            <p className={styles.reviewDate}>
-                                                                {new Date(review.publishedAtDate).toLocaleDateString('vi-VN')}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <div className={styles.reviewRating}>
-                                                        {'⭐'.repeat(review.stars || 0)}
-                                                    </div>
-                                                </div>
-                                                <p className={styles.reviewText}>{review.text || review.textTranslated || 'Không có nội dung'}</p>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <p className={styles.noData}>Chưa có đánh giá</p>
-                            )}
+
+
+                            {/* Review List Component - Hiển thị tất cả reviews */}
+                            <ReviewList placeId={id} />
                         </div>
                     )}
                 </div>
@@ -402,7 +342,7 @@ const PlaceDetail = () => {
                 {/* Map Section */}
                 <div className={styles.mapSection}>
                     <h2 className={styles.mapTitle}>📍 Vị trí</h2>
-                    <PlaceMap 
+                    <PlaceMap
                         location={location}
                         placeName={name}
                         address={`${address}, ${district}`}

@@ -24,60 +24,70 @@ const useTextReveal = (options = {}) => {
         const element = elementRef.current;
         if (!element || !SplitText) return;
 
-        // Ensure parent is visible (in case CSS hid it to prevent FOUC)
-        gsap.set(element, { autoAlpha: 1 });
+        // Wait for fonts to load before splitting text
+        const initSplitText = async () => {
+            // Check if fonts are ready
+            if (document.fonts && document.fonts.ready) {
+                await document.fonts.ready;
+            }
 
-        // Create SplitText
-        const split = new SplitText(element, {
-            type: "lines,words",
-            linesClass: "reveal-line",
-            wordsClass: "reveal-word" // Optional, if needed
-        });
+            // Ensure parent is visible (in case CSS hid it to prevent FOUC)
+            gsap.set(element, { autoAlpha: 1 });
 
-        // Wrap lines for the mask effect
-        // We create a wrapper div with overflow: hidden for each line
-        const lines = split.lines;
-        lines.forEach((line) => {
-            const wrapper = document.createElement("div");
-            wrapper.style.overflow = "hidden";
-            wrapper.style.display = "block"; // Ensure it takes line width
-            line.parentNode.insertBefore(wrapper, line);
-            wrapper.appendChild(line);
-        });
+            // Create SplitText
+            const split = new SplitText(element, {
+                type: "lines,words",
+                linesClass: "reveal-line",
+                wordsClass: "reveal-word" // Optional, if needed
+            });
 
-        if (manual) {
-            // Manual Mode: Prepare state and wait for 'play' prop
-            gsap.set(lines, { yPercent: 100, opacity: 0 });
+            // Wrap lines for the mask effect
+            // We create a wrapper div with overflow: hidden for each line
+            const lines = split.lines;
+            lines.forEach((line) => {
+                const wrapper = document.createElement("div");
+                wrapper.style.overflow = "hidden";
+                wrapper.style.display = "block"; // Ensure it takes line width
+                line.parentNode.insertBefore(wrapper, line);
+                wrapper.appendChild(line);
+            });
 
-            if (play) {
-                gsap.to(lines, {
-                    yPercent: 0,
-                    opacity: 1,
+            if (manual) {
+                // Manual Mode: Prepare state and wait for 'play' prop
+                gsap.set(lines, { yPercent: 100, opacity: 0 });
+
+                if (play) {
+                    gsap.to(lines, {
+                        yPercent: 0,
+                        opacity: 1,
+                        duration: duration,
+                        stagger: stagger,
+                        ease: ease
+                    });
+                }
+            } else {
+                // ScrollTrigger Mode (Default)
+                gsap.from(lines, {
+                    scrollTrigger: {
+                        trigger: element,
+                        start: triggerStart,
+                        toggleActions: toggleActions,
+                    },
+                    yPercent: 100,
+                    opacity: 0,
                     duration: duration,
                     stagger: stagger,
-                    ease: ease
+                    ease: ease,
                 });
             }
-        } else {
-            // ScrollTrigger Mode (Default)
-            gsap.from(lines, {
-                scrollTrigger: {
-                    trigger: element,
-                    start: triggerStart,
-                    toggleActions: toggleActions,
-                },
-                yPercent: 100,
-                opacity: 0,
-                duration: duration,
-                stagger: stagger,
-                ease: ease,
-            });
-        }
 
-        // Cleanup
-        return () => {
-            split.revert();
+            // Cleanup
+            return () => {
+                split.revert();
+            };
         };
+
+        initSplitText();
 
     }, { scope: elementRef, dependencies: [manual, play] });
 

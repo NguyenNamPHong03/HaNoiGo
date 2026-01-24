@@ -147,6 +147,32 @@
     margin-bottom: 5px;
 }
 
+/* Rating Badge in Header */
+.ratingBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: linear-gradient(135deg, #FFF4E6 0%, #FFE5B4 100%);
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1.5px solid #FFB800;
+    box-shadow: 0 2px 6px rgba(255, 184, 0, 0.15);
+}
+
+.ratingValue {
+    font-size: 15px;
+    font-weight: 700;
+    color: #FF8C00;
+    line-height: 1;
+}
+
+.ratingCount {
+    font-size: 13px;
+    color: #8B6914;
+    font-weight: 500;
+    margin-left: 2px;
+}
+
 .detailPrice {
     font-size: 16px;
     font-weight: 500;
@@ -464,6 +490,13 @@
     color: #999;
     padding: 40px 20px;
     font-style: italic;
+}
+
+/* Review Button Wrapper */
+.reviewButtonWrapper {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #f0f0f0;
 }
 
 /* Reviews Tab Styles */

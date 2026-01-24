@@ -40,41 +40,39 @@ function UserMenu() {
     if (user?.avatarUrl) {
       return user.avatarUrl;
     }
-    
+
     // Default avatar with user initial
     const initial = user?.displayName?.charAt(0).toUpperCase() || 'U';
-    const fallbackUrl = `https://ui-avatars.com/api/?name=${initial}&background=ef4444&color=ffffff&size=40`;
-    console.log('⚠️ Using fallback avatar:', fallbackUrl);
-    return fallbackUrl;
+    return `https://ui-avatars.com/api/?name=${initial}&background=ef4444&color=ffffff&size=40`;
   };
 
   return (
     <div className={styles.userMenu} ref={dropdownRef}>
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className={styles.userButton}
       >
-        <img 
+        <img
           src={getAvatarUrl()}
           alt={user.displayName}
           className={styles.avatar}
         />
         <span className={styles.userName}>{user.displayName}</span>
-        <svg 
+        <svg
           className={`${styles.chevron} ${isOpen ? styles.chevronUp : ''}`}
-          width="16" 
-          height="16" 
-          viewBox="0 0 16 16" 
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
           fill="currentColor"
         >
-          <path d="M4.646 6.354a.5.5 0 0 1 .708 0L8 8.793l2.646-2.439a.5.5 0 0 1 .708.708l-3 2.75a.5.5 0 0 1-.708 0l-3-2.75a.5.5 0 0 1 0-.708z"/>
+          <path d="M4.646 6.354a.5.5 0 0 1 .708 0L8 8.793l2.646-2.439a.5.5 0 0 1 .708.708l-3 2.75a.5.5 0 0 1-.708 0l-3-2.75a.5.5 0 0 1 0-.708z" />
         </svg>
       </button>
 
       {isOpen && (
         <div className={styles.dropdown}>
           <div className={styles.userInfo}>
-            <img 
+            <img
               src={getAvatarUrl()}
               alt={user.displayName}
               className={styles.dropdownAvatar}
@@ -84,20 +82,20 @@ function UserMenu() {
               <div className={styles.dropdownEmail}>{user.email}</div>
             </div>
           </div>
-          
+
           <hr className={styles.divider} />
-          
-          <Link 
-            to="/profile" 
+
+          <Link
+            to="/profile"
             className={styles.menuItem}
             onClick={() => setIsOpen(false)}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-5 6s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3z"/>
+              <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-5 6s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3z" />
             </svg>
             Thông tin cá nhân
           </Link>
-          
+
           {user?.role === "admin" && (
             <button
               onClick={() => {
@@ -107,20 +105,20 @@ function UserMenu() {
               className={styles.menuItem}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                <path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z"/>
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
+                <path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z" />
               </svg>
               Trang quản lý
             </button>
           )}
-          
-          <button 
+
+          <button
             onClick={handleLogout}
             className={`${styles.menuItem} ${styles.logoutItem}`}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M6 12.5a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v2a.5.5 0 0 1-1 0V3a1.5 1.5 0 0 1 1.5-1.5h8A1.5 1.5 0 0 1 16 3v9a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 12.5v-2a.5.5 0 0 1 1 0v2z"/>
-              <path d="M.5 8a.5.5 0 0 1 .5-.5h5.793L4.146 5.854a.5.5 0 1 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L6.793 8.5H1a.5.5 0 0 1-.5-.5z"/>
+              <path d="M6 12.5a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v2a.5.5 0 0 1-1 0V3a1.5 1.5 0 0 1 1.5-1.5h8A1.5 1.5 0 0 1 16 3v9a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 12.5v-2a.5.5 0 0 1 1 0v2z" />
+              <path d="M.5 8a.5.5 0 0 1 .5-.5h5.793L4.146 5.854a.5.5 0 1 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L6.793 8.5H1a.5.5 0 0 1-.5-.5z" />
             </svg>
             Đăng xuất
           </button>

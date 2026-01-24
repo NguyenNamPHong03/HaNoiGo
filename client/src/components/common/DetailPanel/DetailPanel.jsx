@@ -1,13 +1,16 @@
 /* eslint-disable react/prop-types */
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import ImageViewer from '../ImageViewer/ImageViewer';
+import ReviewButton from '../../reviews/ReviewButton';
+import ReviewList from '../../reviews/ReviewList';
+import { usePlaceReviews } from '../../../hooks/useReviews';
 import styles from './DetailPanel.module.css';
 
 // Helper: Convert English day names to Vietnamese
 const convertDayToVietnamese = (dayName) => {
     const dayMap = {
         'Monday': 'Thứ Hai',
-        'Tuesday': 'Thứ Ba', 
+        'Tuesday': 'Thứ Ba',
         'Wednesday': 'Thứ Tư',
         'Thursday': 'Thứ Năm',
         'Friday': 'Thứ Sáu',
@@ -20,24 +23,24 @@ const convertDayToVietnamese = (dayName) => {
 // Helper: Convert "10 AM to 10 PM" to "10:00 - 22:00"
 const convertTimeFormat = (timeStr) => {
     if (!timeStr) return timeStr;
-    
+
     // Replace "to" with "-"
     let result = timeStr.replace(' to ', ' - ');
-    
+
     // Convert AM/PM to 24h format
     result = result.replace(/(\d+)(?::(\d+))?\s*(AM|PM)/gi, (match, hour, minute, period) => {
         let h = parseInt(hour);
         const m = minute || '00';
-        
+
         if (period.toUpperCase() === 'PM' && h !== 12) {
             h += 12;
         } else if (period.toUpperCase() === 'AM' && h === 12) {
             h = 0;
         }
-        
+
         return `${h.toString().padStart(2, '0')}:${m}`;
     });
-    
+
     return result;
 };
 
@@ -60,6 +63,11 @@ const DetailTabs = ({ place }) => {
         setIsLightboxOpen(false);
     }, []);
 
+    // 🔥 Fetch combined reviews data (user + Google reviews)
+    const { data: reviewsData } = usePlaceReviews(place._id);
+
+    console.log('🎯 DetailTabs reviewsData:', reviewsData);
+
     const description = place.description || `Welcome to ${place.name}`;
     const address = place.address;
     const category = place.category;
@@ -70,19 +78,25 @@ const DetailTabs = ({ place }) => {
     const operatingHours = place.operatingHours || {}; // Format cũ
     const contact = place.contact || {};
     const aiTags = place.aiTags || {};
-    const averageRating = place.averageRating || 0;
-    const totalReviews = place.totalReviews || 0;
 
-    // Rating Distribution
-    const reviewsDistribution = place.reviewsDistribution || {
-        fiveStar: 0, fourStar: 0, threeStar: 0, twoStar: 0, oneStar: 0
-    };
+    // 🔥 Use combined rating data from reviews API
+    // Don't fallback to place data if reviewsData exists (even if rating is 0)
+    const combinedAverageRating = reviewsData
+        ? (reviewsData.combinedAverageRating ?? 0)
+        : (place.averageRating || 0);
+    const totalReviews = reviewsData
+        ? (reviewsData.total ?? 0)
+        : (place.totalReviews || 0);
+    const combinedRatingDistribution = reviewsData
+        ? (reviewsData.combinedRatingDistribution ?? { fiveStar: 0, fourStar: 0, threeStar: 0, twoStar: 0, oneStar: 0 })
+        : { fiveStar: 0, fourStar: 0, threeStar: 0, twoStar: 0, oneStar: 0 };
 
-    // Real Reviews from Google Data
-    const reviews = place.additionalInfo?.reviews || place.googleData?.reviews || [];
-
-    // Calculate total for percentages
-    const totalRatingsCount = Object.values(reviewsDistribution).reduce((a, b) => a + b, 0) || totalReviews || 1;
+    console.log('📊 DetailTabs Rating Data:', {
+        hasReviewsData: !!reviewsData,
+        combinedAverageRating,
+        totalReviews,
+        combinedRatingDistribution
+    });
 
     // Google Data
     const liveStatus = place.googleData?.popularTimesLiveText;
@@ -313,105 +327,13 @@ const DetailTabs = ({ place }) => {
 
             {activeTab === 'reviews' && (
                 <div className={styles.tabContent}>
-                    {/* Rating Summary */}
-                    <div className={styles.ratingSummary}>
-                        <div className={styles.ratingOverview}>
-                            <div className={styles.ratingScore}>
-                                <span className={styles.ratingNumber}>{averageRating.toFixed(1)}</span>
-                                <div className={styles.ratingStars}>
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <svg key={star} width="16" height="16" viewBox="0 0 24 24" fill={star <= Math.round(averageRating) ? "#FFB800" : "rgba(255,255,255,0.3)"}>
-                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                                        </svg>
-                                    ))}
-                                </div>
-                                <p className={styles.ratingCount}>({totalReviews} đánh giá)</p>
-                            </div>
-
-                            {/* Rating Distribution Bars */}
-                            <div className={styles.ratingDistribution}>
-                                {['fiveStar', 'fourStar', 'threeStar', 'twoStar', 'oneStar'].map((key, index) => {
-                                    const stars = 5 - index;
-                                    const count = reviewsDistribution[key] || 0;
-                                    const percent = (count / totalRatingsCount) * 100;
-
-                                    return (
-                                        <div key={key} className={styles.distBarRow}>
-                                            <span className={styles.starLabel}>{stars}★</span>
-                                            <div className={styles.barContainer}>
-                                                <div
-                                                    className={styles.barFill}
-                                                    style={{ width: `${percent}%` }}
-                                                ></div>
-                                            </div>
-                                            <span className={styles.distCount}>{count}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                    {/* Review Button - Viết đánh giá */}
+                    <div className={styles.reviewButtonWrapper}>
+                        <ReviewButton placeId={place._id} placeName={place.name} />
                     </div>
 
-                    <div className={styles.reviewsList}>
-                        <p className={styles.label}>Đánh giá từ Google ({reviews.length}):</p>
-
-                        {reviews.length > 0 ? (
-                            reviews.map((review, idx) => (
-                                <div key={idx} className={styles.reviewItem}>
-                                    <div className={styles.reviewHeader}>
-                                        <div className={styles.reviewerInfo}>
-                                            <div className={styles.reviewerAvatar}>
-                                                {(review.profile_photo_url || review.reviewerPhotoUrl) ? (
-                                                    <img
-                                                        src={review.profile_photo_url || review.reviewerPhotoUrl}
-                                                        alt="User"
-                                                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-                                                    />
-                                                ) : (
-                                                    (review.author_name || review.name || 'U').charAt(0)
-                                                )}
-                                            </div>
-                                            <div>
-                                                <strong className={styles.reviewerName}>
-                                                    {review.author_name || review.name || 'Người dùng Google'}
-                                                </strong>
-                                                <div className={styles.reviewRating}>
-                                                    {[1, 2, 3, 4, 5].map((star) => (
-                                                        <svg key={star} width="12" height="12" viewBox="0 0 24 24" fill={star <= (review.rating || review.stars || 5) ? "#FFB800" : "#E0E0E0"}>
-                                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                                                        </svg>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <span className={styles.reviewDate}>
-                                            {review.relative_time_description || review.publishAt || 'Gần đây'}
-                                        </span>
-                                    </div>
-                                    <p className={styles.reviewText}>
-                                        {review.text}
-                                    </p>
-
-                                    {/* Support Review Images */}
-                                    {review.reviewImageUrls && review.reviewImageUrls.length > 0 && (
-                                        <div className={styles.reviewImages}>
-                                            {review.reviewImageUrls.map((img, i) => (
-                                                <img
-                                                    key={i}
-                                                    src={img}
-                                                    alt="Review attachment"
-                                                    className={styles.reviewImgThumb}
-                                                    onClick={() => openLightbox(review.reviewImageUrls, i)}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            ))
-                        ) : (
-                            <p className={styles.noData}>Chưa có đánh giá chi tiết.</p>
-                        )}
-                    </div>
+                    {/* Reviews List - User reviews + Google reviews */}
+                    <ReviewList placeId={place._id} />
                 </div>
             )}
 
@@ -438,6 +360,9 @@ const DetailPanel = memo(({ selectedItem }) => {
         return selectedItem._originalPlace || selectedItem;
     }, [selectedItem]);
 
+    // 🔥 Fetch combined reviews data for header display
+    const { data: reviewsData } = usePlaceReviews(place?._id);
+
     useEffect(() => {
         setActiveImage(0);
     }, [place?._id]);
@@ -445,10 +370,10 @@ const DetailPanel = memo(({ selectedItem }) => {
     // Handler: Open Google Maps with GPS coordinates (MUST be before early return)
     const handleOpenGoogleMaps = useCallback(() => {
         if (!place) return;
-        
+
         const address = place.address || selectedItem?.address || '';
         const location = place.location;
-        
+
         if (location && location.coordinates && location.coordinates.length === 2) {
             const [lng, lat] = location.coordinates;
             const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
@@ -467,6 +392,10 @@ const DetailPanel = memo(({ selectedItem }) => {
     const address = place.address || selectedItem.address;
     const priceRange = place.priceRange || { min: selectedItem.price, max: selectedItem.price };
     const images = place.images && place.images.length > 0 ? place.images : [selectedItem.image];
+
+    // 🔥 Combined rating from reviews
+    const combinedAverageRating = reviewsData?.combinedAverageRating || place.averageRating || 0;
+    const totalReviews = reviewsData?.total || place.totalReviews || 0;
 
     // Safety check: ensure at least one image exists
     const safeImages = images.filter(Boolean);
@@ -500,7 +429,18 @@ const DetailPanel = memo(({ selectedItem }) => {
             <div className={styles.detailInfo}>
                 <div className={styles.detailTitleRow}>
                     <div>
-                        <h2>{name}</h2>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                            <h2 style={{ margin: 0 }}>{name}</h2>
+                            {combinedAverageRating > 0 && (
+                                <div className={styles.ratingBadge}>
+                                    <span className={styles.ratingValue}>{combinedAverageRating.toFixed(1)}</span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFB800" style={{ marginLeft: '2px' }}>
+                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                    </svg>
+                                    <span className={styles.ratingCount}>({totalReviews})</span>
+                                </div>
+                            )}
+                        </div>
                         <div className={styles.detailAddress}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" fill="#0066FF" />
@@ -516,14 +456,14 @@ const DetailPanel = memo(({ selectedItem }) => {
                 <div className={styles.actionButtons}>
                     <button className={styles.contactBtn}>Liên hệ</button>
                     <button className={styles.orderBtn}>Đặt ngay</button>
-                    <button 
+                    <button
                         className={styles.directionsBtn}
                         onClick={handleOpenGoogleMaps}
                         title="Mở Google Maps để chỉ đường"
                     >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                            <circle cx="12" cy="10" r="3"/>
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                            <circle cx="12" cy="10" r="3" />
                         </svg>
                         Chỉ đường
                     </button>
