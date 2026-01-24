@@ -1,20 +1,22 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { ThumbsUp, Trash2, Edit2, Flag, MessageSquare } from 'lucide-react';
+import { Edit2, Flag, MessageSquare, ThumbsUp, Trash2 } from 'lucide-react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useUser } from '../../contexts/UserContext';
 import {
-  usePlaceReviews,
-  useDeleteReview,
-  useMarkReviewHelpful,
+    useDeleteReview,
+    useMarkReviewHelpful,
+    usePlaceReviews,
 } from '../../hooks/useReviews';
-import { formatDate, formatAbsoluteDateTime } from '../../utils/formatDate';
+import { formatAbsoluteDateTime, formatDate } from '../../utils/formatDate';
+import ReviewForm from './ReviewForm';
 import styles from './ReviewList.module.css';
 
 /**
  * ReviewCard Component - Hiển thị 1 review
  * ✅ Optimized with React.memo to prevent unnecessary re-renders
  */
-const ReviewCard = React.memo(({ review, placeId, onEdit }) => {
+const ReviewCard = React.memo(({ review, placeId, placeName }) => {
   const { user } = useUser();
+  const [isEditing, setIsEditing] = useState(false);
   const deleteReview = useDeleteReview(placeId);
   const markHelpful = useMarkReviewHelpful(placeId);
 
@@ -80,9 +82,9 @@ const ReviewCard = React.memo(({ review, placeId, onEdit }) => {
         {!isGoogleReview && isOwner && (
           <div className={styles.reviewActions}>
             <button
-              onClick={() => onEdit(review)}
+              onClick={() => setIsEditing(!isEditing)}
               className={`${styles.actionButton} ${styles.edit}`}
-              title="Sửa đánh giá"
+              title={isEditing ? "Hủy sửa" : "Sửa đánh giá"}
             >
               <Edit2 className="w-4 h-4" />
             </button>
@@ -98,26 +100,40 @@ const ReviewCard = React.memo(({ review, placeId, onEdit }) => {
         )}
       </div>
 
-      {/* Rating */}
-      <div className={styles.ratingStars}>
-        {stars.map((_, i) => (
-          <svg
-            key={i}
-            className={`${styles.star} ${i < review.rating ? styles.starFilled : styles.starEmpty
-              }`}
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-          >
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-          </svg>
-        ))}
-      </div>
+      {/* Inline Edit Form hoặc Review Content */}
+      {isEditing ? (
+        <ReviewForm
+          placeId={placeId}
+          placeName={placeName}
+          isOpen={true}
+          onClose={() => setIsEditing(false)}
+          editingReview={review}
+          inline={true}
+        />
+      ) : (
+        <>
+          {/* Rating */}
+          <div className={styles.ratingStars}>
+            {stars.map((_, i) => (
+              <svg
+                key={i}
+                className={`${styles.star} ${i < review.rating ? styles.starFilled : styles.starEmpty
+                  }`}
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+            ))}
+          </div>
 
-      {/* Comment */}
-      <p className={styles.reviewComment}>{review.comment}</p>
+          {/* Comment */}
+          <p className={styles.reviewComment}>{review.comment}</p>
+        </>
+      )}
 
-      {/* Images (nếu có) */}
-      {review.images && review.images.length > 0 && (
+      {/* Images (nếu có) - Chỉ hiển thị khi không edit */}
+      {!isEditing && review.images && review.images.length > 0 && (
         <div className={styles.reviewImages}>
           {review.images.map((img, idx) => (
             <img
@@ -130,8 +146,8 @@ const ReviewCard = React.memo(({ review, placeId, onEdit }) => {
         </div>
       )}
 
-      {/* Footer - Helpful button */}
-      {!isGoogleReview && (
+      {/* Footer - Helpful button - Chỉ hiển thị khi không edit */}
+      {!isEditing && !isGoogleReview && (
         <div className={styles.reviewFooter}>
           <button
             onClick={handleMarkHelpful}
@@ -160,14 +176,8 @@ ReviewCard.displayName = 'ReviewCard';
  * ReviewList Component - Hiển thị danh sách reviews
  * ✅ Optimized with useCallback for stable callback references
  */
-const ReviewList = ({ placeId }) => {
+const ReviewList = ({ placeId, placeName }) => {
   const { data, isLoading, isError, error } = usePlaceReviews(placeId);
-  const [editingReview, setEditingReview] = useState(null);
-
-  // ✅ Memoize callback để tránh re-render ReviewCard
-  const handleEditReview = useCallback((review) => {
-    setEditingReview(review);
-  }, []);
 
   if (isLoading) {
     return (
@@ -297,7 +307,7 @@ const ReviewList = ({ placeId }) => {
           key={review._id}
           review={review}
           placeId={placeId}
-          onEdit={handleEditReview}
+          placeName={placeName}
         />
       ))}
     </div>

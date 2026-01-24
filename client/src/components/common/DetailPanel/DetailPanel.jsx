@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import ImageViewer from '../ImageViewer/ImageViewer';
+import { usePlaceReviews } from '../../../hooks/useReviews';
 import ReviewButton from '../../reviews/ReviewButton';
 import ReviewList from '../../reviews/ReviewList';
-import { usePlaceReviews } from '../../../hooks/useReviews';
+import ImageViewer from '../ImageViewer/ImageViewer';
 import styles from './DetailPanel.module.css';
 
 // Helper: Convert English day names to Vietnamese
@@ -333,7 +333,7 @@ const DetailTabs = ({ place }) => {
                     </div>
 
                     {/* Reviews List - User reviews + Google reviews */}
-                    <ReviewList placeId={place._id} />
+                    <ReviewList placeId={place._id} placeName={place.name} />
                 </div>
             )}
 

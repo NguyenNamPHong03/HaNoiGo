@@ -169,7 +169,8 @@ export const deleteReview = async (reviewId, userId, isAdmin = false) => {
     throw new Error('You can only delete your own reviews');
   }
 
-  await review.remove();
+  // ✅ Sử dụng deleteOne() thay vì remove() (deprecated)
+  await review.deleteOne();
 
   return { message: 'Review deleted successfully' };
 };

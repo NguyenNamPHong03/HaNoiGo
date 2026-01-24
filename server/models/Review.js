@@ -84,9 +84,16 @@ reviewSchema.post('save', async function() {
   await updatePlaceRating(this.place);
 });
 
-// ✅ Post-remove: Update place's average rating when review deleted
-reviewSchema.post('remove', async function() {
+// ✅ Post-deleteOne: Update place's average rating when review deleted
+reviewSchema.post('deleteOne', { document: true, query: false }, async function() {
   await updatePlaceRating(this.place);
+});
+
+// ✅ Post-findOneAndDelete: Update place's average rating when review deleted via query
+reviewSchema.post('findOneAndDelete', async function(doc) {
+  if (doc) {
+    await updatePlaceRating(doc.place);
+  }
 });
 
 // Helper function to recalculate place rating

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import PlaceMap from "../../components/common/PlaceMap/PlaceMap.jsx";
-import usePlaceDetail from "../../hooks/usePlaceDetail.js";
 import ReviewButton from "../../components/reviews/ReviewButton.jsx";
 import ReviewList from "../../components/reviews/ReviewList.jsx";
+import usePlaceDetail from "../../hooks/usePlaceDetail.js";
 import styles from "./PlaceDetail.module.css";
 
 const PlaceDetail = () => {
@@ -331,7 +331,7 @@ const PlaceDetail = () => {
 
 
                             {/* Review List Component - Hiển thị tất cả reviews */}
-                            <ReviewList placeId={id} />
+                            <ReviewList placeId={id} placeName={name} />
                         </div>
                     )}
                 </div>

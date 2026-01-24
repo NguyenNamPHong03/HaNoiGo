@@ -1,20 +1,37 @@
-import { useState } from 'react';
 import { X } from 'lucide-react';
-import { useSubmitReview } from '../../hooks/useReviews';
+import { useEffect, useState } from 'react';
+import { useSubmitReview, useUpdateReview } from '../../hooks/useReviews';
 import styles from './ReviewForm.module.css';
 
 /**
- * ReviewForm Component - Form để submit review
+ * ReviewForm Component - Form để submit/edit review
  * Có thể hiển thị dạng modal hoặc inline
  * @param {boolean} inline - Nếu true, hiển thị inline thay vì modal
+ * @param {object} editingReview - Review đang sửa (nếu có)
  */
-const ReviewForm = ({ placeId, placeName, isOpen, onClose, inline = false }) => {
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState('');
+const ReviewForm = ({ placeId, placeName, isOpen, onClose, inline = false, editingReview = null }) => {
+  const isEditMode = !!editingReview;
+  
+  const [rating, setRating] = useState(editingReview?.rating || 5);
+  const [comment, setComment] = useState(editingReview?.comment || '');
   const [hoveredRating, setHoveredRating] = useState(0);
   const [errors, setErrors] = useState({});
 
   const submitReview = useSubmitReview(placeId);
+  const updateReview = useUpdateReview(placeId);
+  
+  // ✅ Update form khi editingReview thay đổi
+  useEffect(() => {
+    if (editingReview) {
+      setRating(editingReview.rating);
+      setComment(editingReview.comment || '');
+      setErrors({});
+    } else {
+      setRating(5);
+      setComment('');
+      setErrors({});
+    }
+  }, [editingReview]);
 
   // Validate form
   const validateForm = () => {
@@ -44,21 +61,44 @@ const ReviewForm = ({ placeId, placeName, isOpen, onClose, inline = false }) => 
       return;
     }
 
-    submitReview.mutate(
-      {
-        rating,
-        comment: comment.trim(),
-      },
-      {
-        onSuccess: () => {
-          // Reset form
-          setRating(5);
-          setComment('');
-          setErrors({});
-          onClose();
+    if (isEditMode) {
+      // ✅ Update existing review
+      updateReview.mutate(
+        {
+          reviewId: editingReview._id,
+          updateData: {
+            rating,
+            comment: comment.trim(),
+          },
         },
-      }
-    );
+        {
+          onSuccess: () => {
+            // Reset form
+            setRating(5);
+            setComment('');
+            setErrors({});
+            onClose();
+          },
+        }
+      );
+    } else {
+      // ✅ Create new review
+      submitReview.mutate(
+        {
+          rating,
+          comment: comment.trim(),
+        },
+        {
+          onSuccess: () => {
+            // Reset form
+            setRating(5);
+            setComment('');
+            setErrors({});
+            onClose();
+          },
+        }
+      );
+    }
   };
 
   // Handle rating click
@@ -151,22 +191,22 @@ const ReviewForm = ({ placeId, placeName, isOpen, onClose, inline = false }) => 
                 type="button"
                 onClick={onClose}
                 className={styles.cancelButton}
-                disabled={submitReview.isPending}
+                disabled={submitReview.isPending || updateReview.isPending}
               >
                 Hủy
               </button>
               <button
                 type="submit"
                 className={styles.submitButton}
-                disabled={submitReview.isPending}
+                disabled={submitReview.isPending || updateReview.isPending}
               >
-                {submitReview.isPending ? (
+                {(submitReview.isPending || updateReview.isPending) ? (
                   <>
                     <span className={styles.spinner}></span>
-                    Đang gửi...
+                    {isEditMode ? 'Đang cập nhật...' : 'Đang gửi...'}
                   </>
                 ) : (
-                  'Gửi đánh giá'
+                  isEditMode ? 'Cập nhật đánh giá' : 'Gửi đánh giá'
                 )}
               </button>
             </div>
@@ -194,7 +234,7 @@ const ReviewForm = ({ placeId, placeName, isOpen, onClose, inline = false }) => 
           {/* Header */}
           <div className={styles.header}>
             <div>
-              <h2 className={styles.title}>Đánh giá</h2>
+              <h2 className={styles.title}>{isEditMode ? 'Sửa đánh giá' : 'Đánh giá'}</h2>
               <p className={styles.subtitle}>{placeName}</p>
             </div>
             <button
@@ -285,22 +325,22 @@ const ReviewForm = ({ placeId, placeName, isOpen, onClose, inline = false }) => 
                 type="button"
                 onClick={onClose}
                 className={`${styles.button} ${styles.buttonCancel}`}
-                disabled={submitReview.isLoading}
+                disabled={submitReview.isLoading || updateReview.isLoading}
               >
                 Hủy
               </button>
               <button
                 type="submit"
-                disabled={submitReview.isLoading}
+                disabled={submitReview.isLoading || updateReview.isLoading}
                 className={`${styles.button} ${styles.buttonSubmit}`}
               >
-                {submitReview.isLoading ? (
+                {(submitReview.isLoading || updateReview.isLoading) ? (
                   <>
                     <div className={styles.spinner} />
-                    Đang gửi...
+                    {isEditMode ? 'Đang cập nhật...' : 'Đang gửi...'}
                   </>
                 ) : (
-                  'Gửi đánh giá'
+                  isEditMode ? 'Cập nhật đánh giá' : 'Gửi đánh giá'
                 )}
               </button>
             </div>
