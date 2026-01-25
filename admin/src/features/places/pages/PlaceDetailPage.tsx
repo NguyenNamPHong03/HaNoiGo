@@ -485,35 +485,28 @@ const PlaceDetailPage: React.FC<PlaceDetailPageProps> = ({ placeId, onBack, onEd
         {/* Reviews Tab */}
         {activeTab === 'reviews' && (
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Đánh giá từ người dùng</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4 text-center">Đánh giá từ người dùng</h3>
             
             {/* Rating Distribution */}
-            <div className="bg-gray-50 p-4 rounded-lg mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-gray-900">{place.averageRating.toFixed(1)}</div>
-                  <div className="mt-1">{renderStarRating(place.averageRating)}</div>
-                  <div className="text-sm text-gray-600 mt-1">{place.totalReviews} đánh giá</div>
-                </div>
-                <div className="space-y-2">
-                  {[5, 4, 3, 2, 1].map(star => {
-                    const starKey = ['fiveStar', 'fourStar', 'threeStar', 'twoStar', 'oneStar'][5 - star] as keyof typeof place.reviewsDistribution;
-                    const count = place.reviewsDistribution?.[starKey] || 0;
-                    const percentage = place.totalReviews > 0 
-                      ? Math.round((count / place.totalReviews) * 100) 
-                      : 0;
-                    
-                    return (
-                      <div key={star} className="flex items-center gap-2">
-                        <span className="text-sm w-8">{star} ⭐</span>
-                        <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div className="bg-yellow-400 h-2 rounded-full transition-all" style={{ width: `${percentage}%` }}></div>
-                        </div>
-                        <span className="text-sm text-gray-600 w-20 text-right">{count} ({percentage}%)</span>
-                      </div>
-                    );
-                  })}
-                </div>
+            <div className="bg-gray-50 p-4 rounded-lg mb-6 flex justify-center">
+              <div className="text-center">
+                {reviews.length > 0 ? (
+                  <>
+                    <div className="text-4xl font-bold text-gray-900">
+                      {(reviews.reduce((sum, r) => sum + (r.stars || r.rating || 0), 0) / reviews.length).toFixed(1)}
+                    </div>
+                    <div className="mt-1 flex justify-center">
+                      {renderStarRating(reviews.reduce((sum, r) => sum + (r.stars || r.rating || 0), 0) / reviews.length)}
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">{reviews.length} đánh giá</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-4xl font-bold text-gray-900">{place.averageRating.toFixed(1)}</div>
+                    <div className="mt-1 flex justify-center">{renderStarRating(place.averageRating)}</div>
+                    <div className="text-sm text-gray-600 mt-1">{place.totalReviews} đánh giá</div>
+                  </>
+                )}
               </div>
             </div>
 
