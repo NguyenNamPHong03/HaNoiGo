@@ -14,6 +14,11 @@ export const FOOD_KEYWORDS = [
     'lẩu', 'lẩu bò', 'lẩu thái', 'lẩu hải sản',
     'nướng', 'bbq', 'buffet', 'hotpot',
     
+    // 🐌 Hải sản & ốc (CRITICAL: Add missing keywords)
+    'ốc', 'ốc luộc', 'ốc hấp', 'ốc xào', 'ốc nhồi',
+    'hải sản', 'tôm', 'cua', 'mực', 'cá',
+    'sò', 'nghêu', 'hàu', 'ghẹ',
+    
     // Món ăn vặt
     'chè', 'kem', 'trà sữa', 'sinh tố',
     'bánh trôi', 'bánh chay', 'bánh rán',

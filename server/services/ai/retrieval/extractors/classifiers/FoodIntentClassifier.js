@@ -96,24 +96,57 @@ class FoodIntentClassifier {
      * @private
      * @param {string} keyword - Food keyword
      * 
-     * @returns {Object} MongoDB $or query
+     * @returns {Object} MongoDB $and query with category filter
      * 
      * @example
      * buildFoodMustQuery('phở');
      * // Returns: {
-     * //   $or: [
-     * //     { name: { $regex: 'phở', $options: 'i' } },
-     * //     { description: { $regex: 'phở', $options: 'i' } },
-     * //     { 'aiTags.food': 'phở' }
+     * //   $and: [
+     * //     { $or: [{ name: /phở/i }, { description: /phở/i }, ...] },
+     * //     { $or: [{ category: {$in: ['Quán ăn', ...]} }, ...] }
      * //   ]
      * // }
      */
     buildFoodMustQuery(keyword) {
+        // 🍜 FOOD-ONLY CATEGORIES (loại bỏ karaoke, spa, gym...)
+        const foodRelatedCategories = [
+            'Quán ăn',
+            'Nhà hàng',
+            'Quán cafe',
+            'Quán ăn vặt',
+            'Buffet',
+            'Tiệm ăn',
+            'Ăn uống',
+            'Cafe',
+            'Coffee',
+            'Trà sữa',
+            'Dessert',
+            'Chay',
+            'Hải sản',
+            'Lẩu',
+            'Nướng',
+            'BBQ',
+            'Fast food',
+        ];
+
         return {
-            $or: [
-                { name: { $regex: keyword, $options: 'i' } },
-                { description: { $regex: keyword, $options: 'i' } },
-                { 'aiTags.food': keyword }
+            $and: [
+                // Condition 1: Keyword match in name/description/tags
+                {
+                    $or: [
+                        { name: { $regex: keyword, $options: 'i' } },
+                        { description: { $regex: keyword, $options: 'i' } },
+                        { 'aiTags.food': keyword },
+                        { 'menu.name': { $regex: keyword, $options: 'i' } }
+                    ]
+                },
+                // Condition 2: Category MUST be food-related (exclude karaoke, spa, gym...)
+                {
+                    $or: [
+                        { category: { $in: foodRelatedCategories } },
+                        { category: { $regex: /ăn|uống|cafe|coffee|nhà hàng|quán|buffet|food/i } }
+                    ]
+                }
             ]
         };
     }

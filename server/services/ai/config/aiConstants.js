@@ -6,17 +6,17 @@
 // ==================== PERFORMANCE CONSTANTS ====================
 
 export const PERFORMANCE = {
-    // Cache settings
-    CACHE_MAX_SIZE: 500,
-    CACHE_DEFAULT_TTL: 3600, // 1 hour in seconds
+    // Cache settings (⚡ OPTIMIZED for faster responses)
+    CACHE_MAX_SIZE: 1000, // ✅ Increased from 500 (cache more queries)
+    CACHE_DEFAULT_TTL: 7200, // ✅ 2 hours (longer cache, fewer LLM calls)
     CACHE_CLEANUP_INTERVAL: 300000, // 5 minutes in ms
     
-    // LLM settings
-    LLM_MAX_TOKENS: 1024,
+    // LLM settings (⚡ OPTIMIZED for speed)
+    LLM_MAX_TOKENS: 800, // ✅ Reduced from 1024 (faster generation)
     LLM_MAX_RETRIES: 2,
-    LLM_TIMEOUT: 30000, // 30 seconds
+    LLM_TIMEOUT: 25000, // ✅ 25s (stricter timeout)
     
-    // Search settings
+    // Search settings (⚡ OPTIMIZED retrieval)
     SEARCH_TEXT_LIMIT_CHAT: 5,
     SEARCH_TEXT_LIMIT_ITINERARY: 20,
     SEARCH_MAX_RESULTS: 50,
@@ -25,6 +25,10 @@ export const PERFORMANCE = {
     // Nearby search
     NEARBY_MAX_DISTANCE_METERS: 5000, // 5km
     NEARBY_DEFAULT_LIMIT: 15,
+    
+    // ⚡ NEW: Retrieval optimization
+    PINECONE_TOP_K: 12, // ✅ Reduced from 20 (faster vector search)
+    RERANK_TOP_K: 6,    // ✅ Reduced from 8 (faster reranking)
 };
 
 // ==================== ERROR TYPES ====================

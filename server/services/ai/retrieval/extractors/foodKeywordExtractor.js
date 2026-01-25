@@ -20,6 +20,11 @@ class FoodKeywordExtractor {
             'lẩu', 'lẩu bò', 'lẩu thái', 'lẩu hải sản',
             'nướng', 'bbq', 'buffet', 'hotpot',
             
+            // Hải sản & ốc (🐌 CRITICAL: Missing keywords)
+            'ốc', 'ốc luộc', 'ốc hấp', 'ốc xào', 'ốc nhồi',
+            'hải sản', 'tôm', 'cua', 'mực', 'cá',
+            'sò', 'nghêu', 'hàu', 'ghẹ',
+            
             // Món ăn vặt
             'chè', 'kem', 'trà sữa', 'sinh tố',
             'bánh trôi', 'bánh chay', 'bánh rán',
@@ -70,30 +75,65 @@ class FoodKeywordExtractor {
     /**
      * Build MongoDB hard filter query
      * @param {string} keyword - Món ăn (vd: "phở")
-     * @returns {Object} - MongoDB query object
+     * @returns {Object} - MongoDB query object with category filter
      */
     buildFoodMustQuery(keyword) {
         // Escape regex special characters
         const safeKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const regex = new RegExp(`\\b${safeKeyword}\\b`, 'i');
 
-        // Hard filter: PHẢI chứa keyword trong 1 trong các fields
+        // 🍜 FOOD-ONLY CATEGORIES (loại bỏ karaoke, spa, gym...)
+        const foodRelatedCategories = [
+            'Quán ăn',
+            'Nhà hàng',
+            'Quán cafe',
+            'Quán ăn vặt',
+            'Buffet',
+            'Tiệm ăn',
+            'Ăn uống',
+            'Cafe',
+            'Coffee',
+            'Trà sữa',
+            'Dessert',
+            'Chay',
+            'Hải sản',
+            'Lẩu',
+            'Nướng',
+            'BBQ',
+            'Fast food',
+        ];
+
+        // Hard filter: PHẢI chứa keyword + category phải là food-related
         const mustQuery = {
-            $or: [
-                { name: regex },
-                { address: regex },
-                { description: regex },
-                { category: regex },
-                // Semantic tags (nếu là array)
-                { 'aiTags.space': regex },
-                { 'aiTags.mood': regex },
-                { 'aiTags.suitability': regex },
-                // Reviews aggregated text (nếu có)
-                { 'ai.reviewsText': regex },
+            $and: [
+                // Condition 1: Keyword match
+                {
+                    $or: [
+                        { name: regex },
+                        { address: regex },
+                        { description: regex },
+                        { category: regex },
+                        // Semantic tags (nếu là array)
+                        { 'aiTags.space': regex },
+                        { 'aiTags.mood': regex },
+                        { 'aiTags.suitability': regex },
+                        // Menu items
+                        { 'menu.name': regex },
+                        // Reviews aggregated text (nếu có)
+                        { 'ai.reviewsText': regex },
+                    ]
+                },
+                // Condition 2: Category MUST be food-related (exclude karaoke, spa, gym...)
+                {
+                    $or: [
+                        { category: { $in: foodRelatedCategories } },
+                        { category: { $regex: /ăn|uống|cafe|coffee|nhà hàng|quán|buffet|food/i } },
+                    ]
+                }
             ]
         };
 
-        logger.info(`🔒 MongoDB hard filter built:`, mustQuery);
+        logger.info(`🔒 MongoDB hard filter built with category:`, JSON.stringify(mustQuery, null, 2));
         return mustQuery;
     }
 

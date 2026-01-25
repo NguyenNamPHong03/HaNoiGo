@@ -117,12 +117,23 @@ class SemanticRetrieval {
             // PHASE 2 OPTIMIZATION: Pre-filter metadata before vector search
             const metadataFilter = this._buildMetadataFilter(input);
             
+            // ⚡ PERFORMANCE: Reduce top_k for faster retrieval (12 instead of 20)
+            const { PINECONE_TOP_K } = await import('../../config/aiConstants.js').then(m => m.PERFORMANCE);
+            const topK = PINECONE_TOP_K || 12;
+            
             // Execute retrieval with pre-filtering
-            const results = await basicRetriever.retrieve(queryToUse, 20, metadataFilter);
+            const results = await basicRetriever.retrieve(queryToUse, topK, metadataFilter);
             
             // 🔥 DEDUPLICATE: Remove duplicate places (same metadata.id)
-            const dedupedResults = this.deduplicateByPlaceId(results);
+            let dedupedResults = this.deduplicateByPlaceId(results);
             logger.info(`🧹 Deduplication: ${results.length} docs → ${dedupedResults.length} unique places`);
+            
+            // 🍜 POST-FILTER: Apply food category filter if FOOD_ENTITY query
+            if (input.queryIntent === 'FOOD_ENTITY' && input.queryMustQuery) {
+                const beforeFilter = dedupedResults.length;
+                dedupedResults = this._applyFoodCategoryFilter(dedupedResults, input.queryMustQuery);
+                logger.info(`🍜 Food category filter: ${beforeFilter} → ${dedupedResults.length} places`);
+            }
             
             // PHASE 2: Cache the query results
             await cacheClient.setQueryResultCache(cacheKey, dedupedResults, {
@@ -283,6 +294,59 @@ class SemanticRetrieval {
 
         // Only return filter if it has properties
         return Object.keys(filter).length > 0 ? filter : undefined;
+    }
+
+    /**
+     * 🍜 Apply food category filter to retrieved documents
+     * Filters out non-food categories (karaoke, spa, gym, etc.) when user searches for food
+     * 
+     * @param {Array} docs - Retrieved documents from vector search
+     * @param {Object} mustQuery - MongoDB $and query with category filter
+     * @returns {Array} Filtered documents matching food categories only
+     */
+    _applyFoodCategoryFilter(docs, mustQuery) {
+        // Extract food-related categories from mustQuery
+        const foodRelatedCategories = [
+            'Quán ăn',
+            'Nhà hàng',
+            'Quán cafe',
+            'Quán ăn vặt',
+            'Buffet',
+            'Tiệm ăn',
+            'Ăn uống',
+            'Cafe',
+            'Coffee',
+            'Trà sữa',
+            'Dessert',
+            'Chay',
+            'Hải sản',
+            'Lẩu',
+            'Nướng',
+            'BBQ',
+            'Fast food',
+        ];
+
+        const foodCategoryRegex = /ăn|uống|cafe|coffee|nhà hàng|quán|buffet|food/i;
+
+        return docs.filter(doc => {
+            const category = doc.metadata?.category || doc.pageContent?.match(/Category:\s*([^\n]+)/)?.[1];
+            
+            if (!category) {
+                // No category info - keep it (better to include than exclude)
+                return true;
+            }
+
+            // Check if category is food-related
+            const isFoodCategory = 
+                foodRelatedCategories.includes(category) || 
+                foodCategoryRegex.test(category);
+
+            if (!isFoodCategory) {
+                logger.info(`🚫 Filtered out non-food category: "${category}" (place: ${doc.metadata?.name || 'unknown'})`);
+            }
+
+            return isFoodCategory;
+        });
     }
 }
 

@@ -56,8 +56,8 @@ export const CACHE_CONFIG = {
 
 // Retrieval Settings
 export const RETRIEVAL_CONFIG = {
-    TOP_K: 8,                    // Giới hạn 8 địa điểm gợi ý cho người dùng
-    RERANK_TOP_K: 8,             // Lấy top 8 sau khi rerank
+    TOP_K: 6,                    // ⚡ Reduced from 8 (fewer places = faster LLM)
+    RERANK_TOP_K: 6,             // ⚡ Reduced from 8 (faster reranking)
     RERANK_MODEL: 'rerank-multilingual-v3.0', // Cohere Rerank Model
     MIN_SIMILARITY_SCORE: 0.25,  // Giảm nhẹ ngưỡng filter để bắt được các kết quả "ngõ ngách"
     CHUNK_SIZE: 1024,            // Document chunk size

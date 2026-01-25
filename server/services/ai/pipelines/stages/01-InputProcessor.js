@@ -65,7 +65,7 @@ class InputProcessor {
     }
 
     /**
-     * STAGE 13: Cache Response (ENABLED)
+     * STAGE 13: Cache Response (ENABLED with longer TTL)
      */
     async cacheResponse(input) {
         if (!input.cached && input.answer && input.retrievedDocs) {
@@ -77,6 +77,7 @@ class InputProcessor {
                 docsCount: input.retrievedDocs?.length || 0
             });
             
+            // ⚡ PERFORMANCE: Cache for 2 hours (7200s) to reduce LLM calls
             await enhancedCacheClient.setCache(key, {
                 question: input.question,
                 answer: input.answer,
@@ -84,7 +85,7 @@ class InputProcessor {
                 context: input.context,
                 intent: input.intent,
                 structuredData: input.structuredData
-            }, 3600); // 1 hour TTL
+            }, 7200); // ✅ 2 hours TTL (was 1 hour)
         }
         return input;
     }

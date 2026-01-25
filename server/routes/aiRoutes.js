@@ -433,7 +433,7 @@ router.post('/chat', optionalAuth, async (req, res) => {
     console.log(`\n🎯 ===== FINAL API RESPONSE =====`);
     console.log(`🎯 Places count: ${responseData.places.length}`);
     console.log(`🎯 Places names:`, responseData.places.map(p => p.name));
-    console.log(`🎯 Answer preview: ${responseData.answer.substring(0, 200)}...`);
+    console.log(`🎯 Answer preview: ${responseData.answer?.substring(0, 200) || 'N/A'}...`);
     console.log(`🎯 ================================\n`);
 
     res.json({
