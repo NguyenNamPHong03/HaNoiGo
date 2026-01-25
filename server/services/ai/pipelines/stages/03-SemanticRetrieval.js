@@ -38,6 +38,17 @@ class SemanticRetrieval {
             let queryToUse = input.refinedQuery || input.question;
             const queryLower = queryToUse.toLowerCase();
 
+            // ═══════════════════════════════════════════════════════════
+            // 🥗 DIETARY FILTER LOGIC (Only for personalization)
+            // ═══════════════════════════════════════════════════════════
+            // RULE:
+            // - User hỏi CHUNG CHUNG ("tìm quán ăn", "ăn gì đây")
+            //   → Áp dụng preferences (chay, yên tĩnh, etc.)
+            // 
+            // - User hỏi CỤ THỂ MÓN ĂN ("quán phở", "bún chả", "ốc")
+            //   → KHÔNG áp dụng dietary filter, search theo món user hỏi
+            // ═══════════════════════════════════════════════════════════
+
             // Only apply dietary filtering if Personalization is ENABLED
             const shouldIncludePersonalization = !!input.context?.usePersonalization;
             const userPreferences = input.context?.userPreferences || input.userPreferences || null;
@@ -51,33 +62,103 @@ class SemanticRetrieval {
             });
 
             if (shouldIncludePersonalization && userDietary.length > 0) {
-                const isVegetarian = userDietary.some(d => VEGETARIAN_KEYWORDS.includes(d.toLowerCase()));
+                // STEP 1: Check if user asked for SPECIFIC DISH (phở, ốc, bún chả...)
                 const isSpecificFoodQuery = SPECIFIC_FOOD_KEYWORDS.some(kw => queryLower.includes(kw));
-                const isGenericFoodQueryForDietary = GENERIC_FOOD_KEYWORDS.some(kw => queryLower.includes(kw));
-
-                console.log('🥗 Vegetarian check:', {
-                    isVegetarian,
+                
+                console.log('🔍 Step 1 - Specific food check:', {
                     isSpecificFoodQuery,
-                    isGenericFoodQueryForDietary
+                    matchedKeywords: SPECIFIC_FOOD_KEYWORDS.filter(kw => queryLower.includes(kw))
                 });
 
-                // Force vegetarian query if user is vegetarian/vegan AND query is generic food
-                if (isVegetarian && isGenericFoodQueryForDietary && !isSpecificFoodQuery) {
-                    logger.info('🥗 DIETARY FILTER: Vegetarian/Vegan user + generic food query -> Forcing "quán chay"');
-                    console.log('✅ Augmenting query to vegetarian');
-                    queryToUse = "top các quán chay ngon review tốt";
-                    input.refinedQuery = queryToUse;
-                    input.dietaryAugment = 'chay';
+                // ✅ IF SPECIFIC DISH → Skip dietary filter (respect user's explicit request)
+                if (isSpecificFoodQuery) {
+                    logger.info('🍜 SPECIFIC FOOD QUERY detected → Skipping dietary filter (user wants this specific dish)');
+                    // Continue with original query, NO override
+                } else {
+                    // STEP 2: Check if query is GENERIC FOOD ("tìm quán ăn", "ăn gì")
+                    const isGenericFoodQuery = GENERIC_FOOD_KEYWORDS.some(kw => queryLower.includes(kw));
+                    const isVegetarian = userDietary.some(d => VEGETARIAN_KEYWORDS.includes(d.toLowerCase()));
+
+                    console.log('🥗 Step 2 - Generic food + dietary check:', {
+                        isGenericFoodQuery,
+                        isVegetarian
+                    });
+
+                    // ✅ IF GENERIC FOOD + VEGETARIAN → Apply dietary filter
+                    if (isVegetarian && isGenericFoodQuery) {
+                        logger.info('🥗 DIETARY FILTER: Vegetarian user + generic query ("tìm quán ăn") → Forcing "quán chay"');
+                        console.log('✅ Augmenting query to vegetarian');
+                        queryToUse = "top các quán chay ngon review tốt";
+                        input.refinedQuery = queryToUse;
+                        input.dietaryAugment = 'chay';
+                    } else {
+                        logger.info('ℹ️ No dietary augmentation needed (query is not generic food)');
+                    }
                 }
             }
 
-            // Execute retrieval
-            const results = await basicRetriever.retrieve(queryToUse);
+            // PHASE 2 OPTIMIZATION: Check query result cache first
+            const cacheClient = (await import('../../core/cacheClient.js')).default;
+            const cacheKey = queryToUse;
+            const cacheFilters = {
+                dietary: input.dietaryAugment,
+                personalization: shouldIncludePersonalization
+            };
+
+            const cachedResults = await cacheClient.getQueryResultCache(cacheKey, cacheFilters);
+            if (cachedResults && cachedResults.length > 0) {
+                logger.info(`🎯 Query result cache HIT: ${cachedResults.length} results`);
+                return {
+                    ...input,
+                    retrievedDocs: cachedResults,
+                };
+            }
+
+            // PHASE 2 OPTIMIZATION: Pre-filter metadata before vector search
+            const metadataFilter = this._buildMetadataFilter(input);
+            
+            // Execute retrieval with pre-filtering
+            const results = await basicRetriever.retrieve(queryToUse, 20, metadataFilter);
+            
+            // 🔥 DEDUPLICATE: Remove duplicate places (same metadata.id)
+            const dedupedResults = this.deduplicateByPlaceId(results);
+            logger.info(`🧹 Deduplication: ${results.length} docs → ${dedupedResults.length} unique places`);
+            
+            // PHASE 2: Cache the query results
+            await cacheClient.setQueryResultCache(cacheKey, dedupedResults, {
+                filters: cacheFilters
+            });
+            
             return {
                 ...input,
-                retrievedDocs: results,
+                retrievedDocs: dedupedResults,
             };
         });
+    }
+
+    /**
+     * Deduplicate documents by place ID
+     * Giữ document có score cao nhất cho mỗi place
+     */
+    deduplicateByPlaceId(docs) {
+        const placeMap = new Map();
+        
+        docs.forEach(doc => {
+            const placeId = doc.metadata?.originalId || doc.metadata?.id;
+            if (!placeId) {
+                // Nếu không có placeId, vẫn giữ lại
+                placeMap.set(doc.id, doc);
+                return;
+            }
+            
+            const existing = placeMap.get(placeId);
+            if (!existing || (doc.score > existing.score)) {
+                // Giữ document có score cao hơn
+                placeMap.set(placeId, doc);
+            }
+        });
+        
+        return Array.from(placeMap.values());
     }
 
     /**
@@ -130,25 +211,78 @@ class SemanticRetrieval {
 
             const allResults = await Promise.all(promises);
             
-            // Merge và deduplicate
+            // Merge và deduplicate by placeId
             const mergedDocs = [];
             const seenIds = new Set();
 
             allResults.flat().forEach(doc => {
-                const docId = doc.metadata?.id || doc.id;
+                const docId = doc.metadata?.originalId || doc.metadata?.id || doc.id;
                 if (docId && !seenIds.has(docId)) {
                     seenIds.add(docId);
                     mergedDocs.push(doc);
                 }
             });
 
-            logger.info(`✅ ITINERARY: Retrieved ${mergedDocs.length} diverse places from ${itineraryQueries.length} queries`);
+            logger.info(`✅ ITINERARY: Retrieved ${mergedDocs.length} diverse places from ${itineraryQueries.length} queries (after dedup)`);
             
             return {
                 ...input,
                 retrievedDocs: mergedDocs,
             };
         });
+    }
+
+    /**
+     * Deduplicate documents by place ID
+     * Giữ document có score cao nhất cho mỗi place
+     */
+    deduplicateByPlaceId(docs) {
+        const placeMap = new Map();
+        
+        docs.forEach(doc => {
+            const placeId = doc.metadata?.originalId || doc.metadata?.id;
+            if (!placeId) {
+                // Nếu không có placeId, vẫn giữ lại
+                placeMap.set(doc.id, doc);
+                return;
+            }
+            
+            const existing = placeMap.get(placeId);
+            if (!existing || (doc.score > existing.score)) {
+                // Giữ document có score cao hơn
+                placeMap.set(placeId, doc);
+            }
+        });
+        
+        return Array.from(placeMap.values());
+    }
+
+    /**
+     * PHASE 2 OPTIMIZATION: Build metadata pre-filter
+     * Reduce vector search space by filtering in Pinecone
+     */
+    _buildMetadataFilter(input) {
+        const filter = {};
+
+        // District filter
+        if (input.districtMustQuery) {
+            filter.district = input.districtMustQuery;
+        }
+
+        // Price range filter
+        if (input.context?.filters?.priceRange) {
+            filter['priceRange.max'] = { 
+                $lte: input.context.filters.priceRange.max 
+            };
+        }
+
+        // Category filter
+        if (input.context?.filters?.category) {
+            filter.category = input.context.filters.category;
+        }
+
+        // Only return filter if it has properties
+        return Object.keys(filter).length > 0 ? filter : undefined;
     }
 }
 

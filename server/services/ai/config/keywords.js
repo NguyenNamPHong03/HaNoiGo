@@ -27,7 +27,10 @@ export const SPECIFIC_FOOD_KEYWORDS = [
     'phở', 'pho', 'bún chả', 'bun cha', 'thịt', 'thit', 'lẩu', 'lau',
     'bò', 'bo', 'gà', 'ga', 'heo', 'cá', 'ca', 'hải sản', 'hai san',
     'nhậu', 'nhau', 'bia', 'bar', 'pub', 'bbq', 'nướng', 'nuong',
-    'bún bò', 'bun bo', 'cơm tấm', 'com tam', 'bánh mì thịt', 'banh mi thit'
+    'bún bò', 'bun bo', 'cơm tấm', 'com tam', 'bánh mì thịt', 'banh mi thit',
+    'ốc', 'oc', 'quán ốc', 'quan oc', // ← Added ốc (snails)
+    'bún đậu', 'bun dau', 'bún đậu mắm tôm', // ← Added bún đậu
+    'nem', 'nem nướng', 'nem nuong', 'chả cá', 'cha ca'
 ];
 
 export const GENERIC_FOOD_KEYWORDS = [

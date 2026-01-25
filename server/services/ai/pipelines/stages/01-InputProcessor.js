@@ -4,10 +4,12 @@
  */
 
 import { RAG_STAGES } from '../../config/constants.js';
-import cacheClient from '../../core/cacheClient.js';
+import enhancedCacheClient from '../../core/enhancedCacheClient.js';
 import telemetry from '../../core/telemetry.js';
 import inputGuard from '../../guardrails/inputGuard.js';
-import logger from '../../utils/logger.js';
+import enhancedLogger from '../../utils/enhancedLogger.js';
+
+const logger = enhancedLogger.child('InputProcessor');
 
 class InputProcessor {
     /**
@@ -40,15 +42,15 @@ class InputProcessor {
     }
 
     /**
-     * STAGE 2: Semantic Cache (Currently DISABLED)
+     * STAGE 2: Semantic Cache (ENABLED)
      */
     async processSemanticCache(input) {
         return await telemetry.measureTime(RAG_STAGES.SEMANTIC_CACHE, async () => {
             const cacheKey = this.generateCacheKey(input);
-            const cached = await cacheClient.getCache(cacheKey);
+            const cached = await enhancedCacheClient.getCache(cacheKey);
 
             if (cached) {
-                logger.info(`🎯 Cache HIT! Key: "${cacheKey}"`);
+                logger.info(`Cache HIT! Returning cached response`, { cacheKey });
                 return {
                     ...input,
                     ...cached,
@@ -56,24 +58,33 @@ class InputProcessor {
                     cacheKey
                 };
             }
+            
+            logger.debug(`Cache MISS - proceeding with full pipeline`, { cacheKey });
             return { ...input, cached: false, cacheKey };
         });
     }
 
     /**
-     * STAGE 13: Cache Response (Currently DISABLED)
+     * STAGE 13: Cache Response (ENABLED)
      */
     async cacheResponse(input) {
         if (!input.cached && input.answer && input.retrievedDocs) {
             const key = input.cacheKey || input.question;
-            await cacheClient.setCache(key, {
+            
+            logger.debug('Caching response', { 
+                key: key.substring(0, 50),
+                hasAnswer: !!input.answer,
+                docsCount: input.retrievedDocs?.length || 0
+            });
+            
+            await enhancedCacheClient.setCache(key, {
                 question: input.question,
                 answer: input.answer,
                 retrievedDocs: input.retrievedDocs,
                 context: input.context,
                 intent: input.intent,
                 structuredData: input.structuredData
-            });
+            }, 3600); // 1 hour TTL
         }
         return input;
     }

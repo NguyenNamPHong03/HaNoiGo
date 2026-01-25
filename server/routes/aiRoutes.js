@@ -402,35 +402,43 @@ router.post('/chat', optionalAuth, async (req, res) => {
       address: src.metadata?.address
     }));
 
+    const responseData = {
+      question: aiResult.question,
+      answer: aiResult.answer,
+      cached: aiResult.cached,
+      sources: enrichedSources,
+      intent: aiResult.intent,
+      structuredData: aiResult.structuredData,
+      places: places.map(p => ({
+        _id: p._id,
+        name: p.name,
+        address: p.address,
+        district: p.district,
+        category: p.category,
+        priceRange: p.priceRange,
+        priceDisplay: p.priceDisplay,
+        averageRating: p.averageRating,
+        totalReviews: p.totalReviews,
+        images: p.images,
+        aiTags: p.aiTags,
+        openingHours: p.openingHours,
+        operatingHours: p.operatingHours,
+        contact: p.contact,
+        additionalInfo: p.additionalInfo,
+        googleData: p.googleData,
+        distanceKm: p.distanceKm // Include distance if available
+      }))
+    };
+
+    console.log(`\n🎯 ===== FINAL API RESPONSE =====`);
+    console.log(`🎯 Places count: ${responseData.places.length}`);
+    console.log(`🎯 Places names:`, responseData.places.map(p => p.name));
+    console.log(`🎯 Answer preview: ${responseData.answer.substring(0, 200)}...`);
+    console.log(`🎯 ================================\n`);
+
     res.json({
       success: true,
-      data: {
-        question: aiResult.question,
-        answer: aiResult.answer,
-        cached: aiResult.cached,
-        sources: enrichedSources,
-        intent: aiResult.intent,
-        structuredData: aiResult.structuredData,
-        places: places.map(p => ({
-          _id: p._id,
-          name: p.name,
-          address: p.address,
-          district: p.district,
-          category: p.category,
-          priceRange: p.priceRange,
-          priceDisplay: p.priceDisplay,
-          averageRating: p.averageRating,
-          totalReviews: p.totalReviews,
-          images: p.images,
-          aiTags: p.aiTags,
-          openingHours: p.openingHours,
-          operatingHours: p.operatingHours,
-          contact: p.contact,
-          additionalInfo: p.additionalInfo,
-          googleData: p.googleData,
-          distanceKm: p.distanceKm // Include distance if available
-        }))
-      }
+      data: responseData
     });
   } catch (error) {
     console.error('AI Chat Error:', error);

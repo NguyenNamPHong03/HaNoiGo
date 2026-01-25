@@ -1,0 +1,32 @@
+{
+  "transform": {},
+  "testEnvironment": "node",
+  "testMatch": [
+    "**/tests/**/*.test.js"
+  ],
+  "testPathIgnorePatterns": [
+    "/node_modules/",
+    "/uploads/",
+    "/logs/"
+  ],
+  "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+  "collectCoverageFrom": [
+    "services/ai/**/*.js",
+    "!services/ai/scripts/**",
+    "!services/ai/**/index.js"
+  ],
+  "coverageThreshold": {
+    "global": {
+      "branches": 75,
+      "functions": 80,
+      "lines": 80,
+      "statements": 80
+    }
+  },
+  "testTimeout": 30000,
+  "verbose": true,
+  "bail": false,
+  "maxWorkers": "50%",
+  "forceExit": true,
+  "detectOpenHandles": false
+}

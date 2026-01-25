@@ -34,7 +34,9 @@ const SearchResult = () => {
                 }
             });
         }
-    }, [initialQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+        // Only run once when initialQuery changes
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialQuery]);
 
     // Filter States
     const [filters, setFilters] = useState({
@@ -114,9 +116,20 @@ const SearchResult = () => {
     const aiPlaces = aiChat.data?.data?.places || [];
     const places = aiPlaces; // Chỉ hiển thị places mà AI gợi ý
 
+    // 🔍 DEBUG: Log places count
+    console.log('\n🔍 ===== SearchResult PLACES DEBUG =====');
+    console.log('🔍 Full aiChat.data:', aiChat.data);
+    console.log('🔍 aiChat.data?.data:', aiChat.data?.data);
+    console.log('🔍 aiPlaces:', aiPlaces);
+    console.log('🔍 aiChatDataExists:', !!aiChat.data);
+    console.log('🔍 aiPlacesCount:', aiPlaces.length);
+    console.log('🔍 placesCount:', places.length);
+    console.log('🔍 All places:', places.map((p, i) => `[${i}] ${p.name} (${p._id})`));
+    console.log('🔍 ====================================\n');
+
     // Transform places to PropertyCard format
     const transformedPlaces = useMemo(() => {
-        return places.map(place => ({
+        const result = places.map(place => ({
             id: place._id,
             title: place.name,
             address: place.address,
@@ -140,6 +153,16 @@ const SearchResult = () => {
             distanceKm: place.distanceKm, // Pass distance from backend
             _originalPlace: place
         }));
+        
+        // 🔍 DEBUG: Log transformation
+        console.log('\n🔍 ===== PLACES TRANSFORMATION =====');
+        console.log('🔍 Input places count:', places.length);
+        console.log('🔍 Output result count:', result.length);
+        console.log('🔍 Input places:', places.map((p, i) => `[${i}] ${p.name}`));
+        console.log('🔍 Output transformed:', result.map((p, i) => `[${i}] ${p.title} (id: ${p.id})`));
+        console.log('🔍 ===================================\n');
+        
+        return result;
     }, [places]);
 
     // Get selected place from list for DetailPanel

@@ -5,10 +5,13 @@
 
 import { ACCOMMODATION_KEYWORDS, LUXURY_KEYWORDS } from '../../config/keywords.js';
 import telemetry from '../../core/telemetry.js';
-import logger from '../../utils/logger.js';
+import enhancedLogger from '../../utils/enhancedLogger.js';
 import addressRegexStrategy from './retrieval/AddressRegexStrategy.js';
 import keywordSearchStrategy from './retrieval/KeywordSearchStrategy.js';
 import nearbySearchStrategy from './retrieval/NearbySearchStrategy.js';
+import { DistrictFilter, DatingFilter } from '../../retrieval/filters/index.js';
+
+const logger = enhancedLogger.child('HybridSearchEngine');
 
 class HybridSearchEngine {
     /**
@@ -37,7 +40,7 @@ class HybridSearchEngine {
             }
 
             const promises = [];
-            const textLimit = input.intent === 'ITINERARY' ? 20 : 8;
+            const textLimit = input.intent === 'ITINERARY' ? 20 : 5;
             const queryIntent = input.queryIntent || 'GENERAL';
             const districtFilter = input.districtMustQuery || null; // 📍 Get district filter
             
@@ -77,11 +80,13 @@ class HybridSearchEngine {
 
             logger.info(`✅ Final retrievedDocs count: ${combined.length} (semantic: ${input.retrievedDocs?.length || 0}, nearby: ${mongoDocs.length})`);
 
-            // � POST-FILTER: If district constraint, remove places from other districts
-            let filtered = this.applyDistrictFilter(input, combined);
+            // 📍 POST-FILTER: Apply district filter using DistrictFilter module
+            const targetDistrict = input.queryDistrict || null;
+            let filtered = DistrictFilter.apply(combined, targetDistrict);
             
-            // 💕 POST-FILTER: If dating query, remove unwanted places
-            filtered = this.applyDatingFilter(input, filtered);
+            // 💕 POST-FILTER: Apply dating filter using DatingFilter module
+            const isDatingMode = input.isDatingQuery || false;
+            filtered = DatingFilter.apply(filtered, isDatingMode);
 
             return {
                 ...input,
@@ -130,90 +135,9 @@ class HybridSearchEngine {
         return combined;
     }
 
-    /**
-     * Apply district hard filter (POST-FILTER for semantic results)
-     */
-    applyDistrictFilter(input, docs) {
-        const targetDistrict = input.queryDistrict || null;
-        
-        if (!targetDistrict || docs.length === 0) {
-            return docs;
-        }
-
-        const filtered = docs.filter(doc => {
-            const docDistrict = doc.metadata?.district || null;
-            
-            // Hard match on district field
-            if (docDistrict === targetDistrict) {
-                return true;
-            }
-            
-            // Fallback: check if address contains district name
-            if (!docDistrict) {
-                const address = doc.metadata?.address || doc.address || '';
-                return address.includes(targetDistrict);
-            }
-            
-            return false;
-        });
-
-        logger.info(`📍 District filter: ${docs.length} → ${filtered.length} places (${targetDistrict})`);
-
-        return filtered;
-    }
-
-    /**
-     * Apply dating mode filter
-     */
-    applyDatingFilter(input, docs) {
-        const isDatingMode = input.isDatingQuery || false;
-        
-        if (!isDatingMode || docs.length === 0) {
-            return docs;
-        }
-
-        const excludePatterns = [
-            /buffet/i, /nhậu/i, /bia hơi/i, /xiên/i, 
-            /nem nướng/i, /bún đậu/i, /ốc/i, /vỉa hè/i,
-            /nhà nghỉ/i, /khách sạn/i, /hotel/i, /motel/i,
-            /bánh mì/i // 🔥 NEW: Exclude street food
-        ];
-        
-        // 🔥 STRICT: Only allow "Ăn uống" category for dating (exclude Vui chơi, Dịch vụ, Lưu trú)
-        const allowedCategories = ['Ăn uống'];
-        
-        const filtered = docs.filter(doc => {
-            const name = doc.metadata?.name || doc.name || '';
-            const desc = doc.pageContent || doc.metadata?.description || '';
-            const category = doc.metadata?.category || '';
-            
-            // 🔥 STRICT CATEGORY CHECK: Only allow "Ăn uống" for dating queries
-            if (category && !allowedCategories.includes(category)) {
-                logger.warn(`💕 POST-FILTER: Removed "${name}" (category: "${category}" not suitable for dating)`);
-                return false;
-            }
-            
-            // Fallback: If no category, reject if it's clearly not food-related
-            if (!category) {
-                logger.warn(`💕 POST-FILTER: Removed "${name}" (no category defined)`);
-                return false;
-            }
-            
-            // Exclude if name/description contains negative keywords
-            for (const pattern of excludePatterns) {
-                if (pattern.test(name) || pattern.test(desc)) {
-                    logger.warn(`💕 POST-FILTER: Removed "${name}" (matched ${pattern})`);
-                    return false;
-                }
-            }
-            
-            return true;
-        });
-        
-        logger.info(`💕 POST-FILTER: ${docs.length} → ${filtered.length} places (removed ${docs.length - filtered.length} unwanted)`);
-        
-        return filtered;
-    }
+    // ✅ REMOVED: Filter logic moved to dedicated modules
+    // - DistrictFilter.js handles district filtering
+    // - DatingFilter.js handles dating mode filtering
 }
 
 export default new HybridSearchEngine();

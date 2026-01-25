@@ -135,10 +135,22 @@ app.use(errorHandler);
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('📦 Connected to MongoDB');
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📍 API Health Check: http://localhost:${PORT}/api/health`);
-    });
+    
+    // Try to start the server
+    try {
+      const server = app.listen(PORT, () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+        console.log(`📍 API Health Check: http://localhost:${PORT}/api/health`);
+      });
+      
+      server.on('error', (error) => {
+        console.error('❌ Server error:', error);
+        process.exit(1);
+      });
+    } catch (error) {
+      console.error('❌ Error starting server:', error);
+      process.exit(1);
+    }
   })
   .catch((error) => {
     console.error('❌ MongoDB connection error:', error);
@@ -147,7 +159,15 @@ mongoose.connect(process.env.MONGODB_URI)
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
-  console.error('❌ Unhandled Promise Rejection:', err.message);
+  console.error('❌ Unhandled Promise Rejection:', err);
+  console.error('Stack:', err.stack);
+  process.exit(1);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+  console.error('Stack:', err.stack);
   process.exit(1);
 });
 

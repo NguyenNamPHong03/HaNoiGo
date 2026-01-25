@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI Agent Quality Test</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .test-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+        }
+        .test-card:hover {
+            transform: translateY(-5px);
+        }
+        .test-card.running {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        .test-card.success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        .test-card.failed {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        .query {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .status.pending { background: #e9ecef; color: #6c757d; }
+        .status.running { background: #fff3cd; color: #856404; }
+        .status.success { background: #28a745; color: white; }
+        .status.failed { background: #dc3545; color: white; }
+        .meta {
+            font-size: 0.9em;
+            color: #666;
+            margin: 5px 0;
+        }
+        .response-preview {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #495057;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        .controls {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .summary {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-top: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .summary h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        .stat {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Agent Quality Test</h1>
+            <p>Test AI chatbot với nhiều loại câu hỏi khác nhau</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn" id="runTests" onclick="runAllTests()">
+                ▶️ Chạy Test
+            </button>
+        </div>
+
+        <div class="test-grid" id="testGrid"></div>
+
+        <div class="summary" id="summary" style="display: none;">
+            <h2>📊 Kết Quả Tổng Hợp</h2>
+            <div class="summary-stats">
+                <div class="stat">
+                    <div class="stat-value" id="totalTests">0</div>
+                    <div class="stat-label">Tổng số test</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" style="color: #28a745" id="successTests">0</div>
+                    <div class="stat-label">Thành công</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" style="color: #dc3545" id="failedTests">0</div>
+                    <div class="stat-label">Thất bại</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="successRate">0%</div>
+                    <div class="stat-label">Tỷ lệ thành công</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="avgTime">0ms</div>
+                    <div class="stat-label">Thời gian TB</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="avgPlaces">0</div>
+                    <div class="stat-label">Địa điểm TB</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const testQueries = [
+            { query: 'Tìm quán phở gần đây', expect: 'phở', category: 'Món cụ thể' },
+            { query: 'Quán bún chả ngon ở Ba Đình', expect: 'bún chả', category: 'Món cụ thể' },
+            { query: 'Cafe pha phin truyền thống', expect: 'cafe', category: 'Món cụ thể' },
+            { query: 'Quán cafe yên tĩnh để học bài', expect: 'yên tĩnh', category: 'Tâm trạng' },
+            { query: 'Chỗ lãng mạn để hẹn hò', expect: 'lãng mạn', category: 'Tâm trạng' },
+            { query: 'Quán ăn sôi động cho nhóm đông', expect: 'sôi động', category: 'Tâm trạng' },
+            { query: 'Quán ăn gần đây', expect: 'gần', category: 'Vị trí' },
+            { query: 'Nhà hàng ở Hoàn Kiếm', expect: 'Hoàn Kiếm', category: 'Vị trí' },
+            { query: 'Quán ăn dưới 100k', expect: '100', category: 'Ngân sách' },
+            { query: 'Nhà hàng cao cấp ở Tây Hồ', expect: 'cao cấp', category: 'Ngân sách' },
+            { query: 'Quán chay healthy gần đây', expect: 'chay', category: 'Ăn kiêng' },
+            { query: 'Xin chào', expect: 'chào', category: 'Edge case' },
+        ];
+
+        let results = [];
+
+        function createTestCard(test, index) {
+            return `
+                <div class="test-card" id="card-${index}">
+                    <div class="status pending" id="status-${index}">⏳ Chưa test</div>
+                    <div class="query">"${test.query}"</div>
+                    <div class="meta">📂 ${test.category}</div>
+                    <div class="meta" id="meta-${index}"></div>
+                    <div class="response-preview" id="preview-${index}" style="display: none;"></div>
+                </div>
+            `;
+        }
+
+        function renderTests() {
+            const grid = document.getElementById('testGrid');
+            grid.innerHTML = testQueries.map((test, i) => createTestCard(test, i)).join('');
+        }
+
+        async function runTest(test, index) {
+            const card = document.getElementById(`card-${index}`);
+            const status = document.getElementById(`status-${index}`);
+            const meta = document.getElementById(`meta-${index}`);
+            const preview = document.getElementById(`preview-${index}`);
+
+            // Update to running
+            card.className = 'test-card running';
+            status.className = 'status running';
+            status.textContent = '⏳ Đang test...';
+
+            const startTime = Date.now();
+
+            try {
+                const response = await fetch('http://localhost:5000/api/ai/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: test.query })
+                });
+
+                const duration = Date.now() - startTime;
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    const { answer = '', places = [], intent } = data.data || {};
+                    const placeCount = places.length;
+
+                    // Success
+                    card.className = 'test-card success';
+                    status.className = 'status success';
+                    status.textContent = '✅ Thành công';
+                    
+                    meta.innerHTML = `
+                        ⏱️ ${duration}ms | 
+                        📍 ${placeCount} địa điểm | 
+                        🎯 ${intent || 'N/A'}
+                    `;
+
+                    preview.style.display = 'block';
+                    preview.textContent = answer.substring(0, 200) + '...';
+
+                    return { success: true, duration, placeCount, intent };
+                } else {
+                    throw new Error(data.message || 'Unknown error');
+                }
+            } catch (error) {
+                // Failed
+                const duration = Date.now() - startTime;
+                card.className = 'test-card failed';
+                status.className = 'status failed';
+                status.textContent = '❌ Thất bại';
+                meta.innerHTML = `⏱️ ${duration}ms | ❌ ${error.message}`;
+
+                return { success: false, duration, error: error.message };
+            }
+        }
+
+        async function runAllTests() {
+            const btn = document.getElementById('runTests');
+            btn.disabled = true;
+            btn.textContent = '⏳ Đang chạy test...';
+
+            results = [];
+
+            for (let i = 0; i < testQueries.length; i++) {
+                const result = await runTest(testQueries[i], i);
+                results.push(result);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
+            }
+
+            showSummary();
+            btn.disabled = false;
+            btn.textContent = '🔄 Chạy lại';
+        }
+
+        function showSummary() {
+            const summary = document.getElementById('summary');
+            summary.style.display = 'block';
+
+            const total = results.length;
+            const successful = results.filter(r => r.success).length;
+            const failed = total - successful;
+            const avgTime = Math.round(results.reduce((sum, r) => sum + r.duration, 0) / total);
+            const avgPlaces = Math.round(results.reduce((sum, r) => sum + (r.placeCount || 0), 0) / total);
+            const successRate = Math.round((successful / total) * 100);
+
+            document.getElementById('totalTests').textContent = total;
+            document.getElementById('successTests').textContent = successful;
+            document.getElementById('failedTests').textContent = failed;
+            document.getElementById('successRate').textContent = successRate + '%';
+            document.getElementById('avgTime').textContent = avgTime + 'ms';
+            document.getElementById('avgPlaces').textContent = avgPlaces;
+        }
+
+        // Initialize
+        renderTests();
+    </script>
+</body>
+</html>

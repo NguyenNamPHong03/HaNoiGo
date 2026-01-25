@@ -18,6 +18,7 @@ class PromptBuilder {
         if (input.cached) return input;
 
         // Build context with STRICT header
+        const placesCount = input.retrievedDocs.length;
         const contextHeader = `
 ==============================================
 🚨 DANH SÁCH DUY NHẤT BẠN ĐƯỢC GỢI Ý 🚨
@@ -27,6 +28,13 @@ BẠN CHỈ ĐƯỢC GỢI Ý CÁC ĐỊA ĐIỂM DƯỚI ĐÂY:
 - KHÔNG ĐƯỢC dùng ký ức về địa điểm khác
 - MỖI địa điểm bạn gợi ý PHẢI có RANK # trong danh sách
 
+🚨🚨🚨 QUY TẮC BẮT BUỘC - PHẢI LIST TẤT CẢ ${placesCount} ĐỊA ĐIỂM 🚨🚨🚨
+- Dưới đây có ${placesCount} địa điểm
+- BẠN PHẢI GỢI Ý TẤT CẢ ${placesCount} ĐỊA ĐIỂM
+- TUYỆT ĐỐI KHÔNG BỎ QUA bất kỳ địa điểm nào
+- Nếu có ${placesCount} địa điểm → câu trả lời PHẢI có ${placesCount} gợi ý
+- Ví dụ: Nếu có 5 địa điểm → PHẢI list cả 5 (1, 2, 3, 4, 5)
+
 🚨🚨🚨 QUY TẮC THỨ TỰ (CRITICAL - HIGHEST PRIORITY) 🚨🚨🚨
 - PHẢI list địa điểm THEO ĐÚNG THỨ TỰ RANK bên dưới
 - RANK #1 → PHẢI là địa điểm ĐẦU TIÊN trong câu trả lời
@@ -35,7 +43,7 @@ BẠN CHỈ ĐƯỢC GỢI Ý CÁC ĐỊA ĐIỂM DƯỚI ĐÂY:
 - TUYỆT ĐỐI KHÔNG ĐẢO NGƯỢC hoặc THAY ĐỔI thứ tự
 - Thứ tự RANK đã được tính toán kỹ theo độ phù hợp với yêu cầu
 
-DANH SÁCH ${input.retrievedDocs.length} ĐỊA ĐIỂM (ƯU TIÊN THEO THỨ TỰ):
+DANH SÁCH ${placesCount} ĐỊA ĐIỂM (ƯU TIÊN THEO THỨ TỰ):
 ==============================================
 `;
 
@@ -56,15 +64,22 @@ DANH SÁCH ${input.retrievedDocs.length} ĐỊA ĐIỂM (ƯU TIÊN THEO THỨ T�
 
         const contextFooter = `
 ==============================================
-🚨 NHẮC LẠI: PHẢI LIST THEO THỨ TỰ RANK 🚨
+🚨 NHẮC LẠI QUY TẮC QUAN TRỌNG NHẤT 🚨
 ==============================================
-Khi trả lời, bạn PHẢI gợi ý địa điểm theo ĐÚNG thứ tự:
-1. Địa điểm đầu tiên = RANK #1
-2. Địa điểm thứ hai = RANK #2
-3. Địa điểm thứ ba = RANK #3
-... và tiếp tục theo thứ tự RANK
+Khi trả lời user, bạn PHẢI:
 
-TUYỆT ĐỐI KHÔNG sắp xếp lại theo tiêu chí khác!
+✅ GỢI Ý TẤT CẢ ${placesCount} ĐỊA ĐIỂM ở trên (KHÔNG BỎ SÓT)
+✅ Sắp xếp ĐÚNG THỨ TỰ RANK (1 → 2 → 3 → ... → ${placesCount})
+
+Ví dụ chuẩn (nếu có 5 địa điểm):
+"Dưới đây là ${placesCount} quán mình gợi ý:
+1. [RANK #1 name] - [mô tả]
+2. [RANK #2 name] - [mô tả]
+3. [RANK #3 name] - [mô tả]
+4. [RANK #4 name] - [mô tả]
+5. [RANK #5 name] - [mô tả]"
+
+❌ TUYỆT ĐỐI KHÔNG chỉ list 2-3 địa điểm rồi bỏ qua phần còn lại!
 ==============================================
 `;
 

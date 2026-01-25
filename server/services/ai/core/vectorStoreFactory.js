@@ -28,13 +28,24 @@ class VectorStoreFactory {
         try {
             logger.info('🗂️  Initializing Vector Store...');
 
+            // Check if mock mode is enabled (for testing)
+            if (process.env.USE_MOCK_VECTOR_STORE === 'true') {
+                logger.info('🧪 MOCK MODE: Skipping Pinecone initialization');
+                this.initialized = true;
+                this.vectorStore = { mock: true };
+                return this.vectorStore;
+            }
+
             // Initialize Pinecone
             this.pinecone = new Pinecone({
                 apiKey: config.pinecone.apiKey,
             });
 
-            // Get index
-            const index = this.pinecone.Index(config.pinecone.indexName);
+            // Get index (with explicit host if needed for Pinecone v5+)
+            const indexHost = process.env.PINECONE_INDEX_HOST;
+            const index = indexHost 
+                ? this.pinecone.Index(config.pinecone.indexName, indexHost)
+                : this.pinecone.Index(config.pinecone.indexName);
 
             // Initialize embeddings
             this.embeddings = new OpenAIEmbeddings({
@@ -82,6 +93,12 @@ class VectorStoreFactory {
      */
     async querySimilar(query, topK = 5, minScore = 0.5) {
         try {
+            // Mock mode for testing (bypass Pinecone)
+            if (process.env.USE_MOCK_VECTOR_STORE === 'true') {
+                logger.info(`🧪 MOCK MODE: Bypassing Pinecone query for "${query}"`);
+                return []; // Return empty array, MongoDB search will provide results
+            }
+
             const embedding = await (await this.getEmbeddings()).embedQuery(query);
             const store = await this.getVectorStore();
 

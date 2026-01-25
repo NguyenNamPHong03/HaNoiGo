@@ -40,6 +40,20 @@ class LLMInvoker {
                 answer = response.text;
             }
 
+            // 🔍 VALIDATION: Check if LLM mentioned all places
+            if (input.intent !== 'ITINERARY' && input.retrievedDocs?.length > 0) {
+                const mentionedPlaces = this.validatePlaceMentions(answer, input.retrievedDocs);
+                
+                if (mentionedPlaces.missing.length > 0) {
+                    logger.warn(`⚠️ LLM bỏ qua ${mentionedPlaces.missing.length}/${input.retrievedDocs.length} places`);
+                    logger.warn(`   Missing: ${mentionedPlaces.missing.map(p => p.name).join(', ')}`);
+                    
+                    // Auto-append missing places
+                    answer = this.appendMissingPlaces(answer, mentionedPlaces.missing);
+                    logger.info(`✅ Auto-appended ${mentionedPlaces.missing.length} missing places to answer`);
+                }
+            }
+
             let structuredData = null;
             if (input.intent === 'ITINERARY') {
                 const itineraryType = input.itineraryType || 'FULL_DAY';
@@ -68,6 +82,50 @@ class LLMInvoker {
                 structuredData
             };
         });
+    }
+
+    /**
+     * Validate if LLM mentioned all places in answer
+     */
+    validatePlaceMentions(answer, retrievedDocs) {
+        const mentioned = [];
+        const missing = [];
+        
+        for (const doc of retrievedDocs) {
+            const placeName = doc.name || doc.metadata?.name || '';
+            
+            // Check if place name appears in answer (case-insensitive, fuzzy)
+            const normalizedName = placeName.toLowerCase().replace(/\s+/g, ' ').trim();
+            const normalizedAnswer = answer.toLowerCase().replace(/\s+/g, ' ');
+            
+            if (normalizedAnswer.includes(normalizedName)) {
+                mentioned.push({ name: placeName, doc });
+            } else {
+                missing.push({ name: placeName, doc });
+            }
+        }
+        
+        return { mentioned, missing };
+    }
+
+    /**
+     * Auto-append missing places to answer
+     */
+    appendMissingPlaces(answer, missingPlaces) {
+        if (missingPlaces.length === 0) return answer;
+        
+        const missingCount = missingPlaces.length;
+        const appendText = `\n\n🔍 **Bổ sung thêm ${missingCount} địa điểm khác cũng phù hợp:**\n\n` + 
+            missingPlaces.map((item, index) => {
+                const doc = item.doc;
+                const name = item.name;
+                const address = doc.metadata?.address || 'Địa chỉ: Đang cập nhật';
+                const price = doc.metadata?.price ? `${doc.metadata.price} VND` : 'Giá: Liên hệ';
+                
+                return `${index + 1}. **${name}**\n   ${address}\n   ${price}`;
+            }).join('\n\n');
+        
+        return answer + appendText;
     }
 }
 

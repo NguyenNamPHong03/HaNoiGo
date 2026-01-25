@@ -7,7 +7,10 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { RunnableSequence } from '@langchain/core/runnables';
 import config from '../config/index.js';
-import logger from '../utils/logger.js';
+import enhancedLogger from '../utils/enhancedLogger.js';
+import { PERFORMANCE } from '../config/aiConstants.js';
+
+const logger = enhancedLogger.child('LLMFactory');
 
 class LLMFactory {
     constructor() {
@@ -25,33 +28,30 @@ class LLMFactory {
         }
 
         try {
-            logger.info('🤖 Initializing LLM...');
+            logger.info('Initializing LLM...');
 
             this.llm = new ChatOpenAI({
                 apiKey: config.openai.apiKey,
                 modelName: config.openai.model,
-                maxTokens: 1024, // Balanced for speed and completion
+                maxTokens: PERFORMANCE.LLM_MAX_TOKENS,
 
                 // Retry logic
-                maxRetries: 2, // Reduced retries for faster failure
-                timeout: config.openai.timeout,
+                maxRetries: PERFORMANCE.LLM_MAX_RETRIES,
+                timeout: PERFORMANCE.LLM_TIMEOUT,
 
                 // Performance
                 streaming: config.features.streaming,
-                // Note: GPT-5-Mini only supports temperature=1 (default)
             });
 
-            // Test connection
-            // We'll skip forcing a live call here to avoid startup latency/cost, 
-            // but in strict prod we might want a quick ping. 
-            // await this.llm.invoke('test'); 
-
             this.initialized = true;
-            logger.info(`✅ LLM initialized: ${config.openai.model}`);
+            logger.info('LLM initialized successfully', { 
+                model: config.openai.model,
+                maxTokens: PERFORMANCE.LLM_MAX_TOKENS,
+            });
 
             return this.llm;
         } catch (error) {
-            logger.error('❌ LLM initialization failed:', error);
+            logger.error('LLM initialization failed', error);
             throw new Error(`LLM initialization failed: ${error.message}`);
         }
     }
