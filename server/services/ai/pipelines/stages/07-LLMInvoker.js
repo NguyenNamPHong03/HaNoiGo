@@ -57,22 +57,46 @@ class LLMInvoker {
             let structuredData = null;
             if (input.intent === 'ITINERARY') {
                 const itineraryType = input.itineraryType || 'FULL_DAY';
-                logger.info(`📋 Parsing ${itineraryType} itinerary JSON...`);
+                logger.info(`📋 Processing ${itineraryType} itinerary...`);
                 
-                try {
-                    const firstOpen = answer.indexOf('{');
-                    const lastClose = answer.lastIndexOf('}');
-                    let jsonString = answer;
-
-                    if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
-                        jsonString = answer.substring(firstOpen, lastClose + 1);
+                // Chỉ parse JSON cho EVENING types (có timeline component)
+                // FULL_DAY trả về text tự nhiên, không cần parse JSON
+                if (itineraryType === 'EVENING_SIMPLE' || itineraryType === 'EVENING_FANCY') {
+                    try {
+                        // Find JSON in answer (AI returns text + JSON for evening)
+                        const firstOpen = answer.indexOf('{');
+                        const lastClose = answer.lastIndexOf('}');
+                        
+                        if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
+                            // Extract JSON part
+                            const jsonString = answer.substring(firstOpen, lastClose + 1)
+                                .replace(/[\u0000-\u0019]+/g, "")
+                                .trim();
+                            
+                            structuredData = JSON.parse(jsonString);
+                            
+                            // Extract introduction text (before JSON)
+                            const introText = answer.substring(0, firstOpen).trim();
+                            
+                            // Update answer to only contain introduction (không có JSON thô)
+                            if (introText) {
+                                answer = introText;
+                            } else {
+                                // Nếu không có intro, tạo default message
+                                answer = `Dạ em đã tạo lịch trình "${structuredData.title}" cho bạn ạ! 🎉`;
+                            }
+                            
+                            logger.info('✅ Successfully parsed Evening Itinerary JSON');
+                            logger.info(`📝 Introduction text: "${answer.substring(0, 100)}..."`);
+                        } else {
+                            logger.warn('⚠️ No valid JSON found in evening itinerary response');
+                        }
+                    } catch (e) {
+                        logger.warn('⚠️ Failed to parse evening itinerary JSON', e);
                     }
-
-                    jsonString = jsonString.replace(/[\u0000-\u0019]+/g, "").trim();
-                    structuredData = JSON.parse(jsonString);
-                    logger.info('✅ Successfully parsed Itinerary JSON');
-                } catch (e) {
-                    logger.warn('⚠️ Failed to parse itinerary JSON', e);
+                } else {
+                    // FULL_DAY: Chỉ cần text tự nhiên, không parse JSON
+                    logger.info('✅ FULL_DAY itinerary returned as natural text (no JSON parsing)');
                 }
             }
 

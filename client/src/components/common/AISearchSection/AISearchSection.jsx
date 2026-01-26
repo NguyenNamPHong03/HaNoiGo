@@ -188,7 +188,22 @@ const AISearchSection = memo(({
                         </div>
                     ) : aiResponse ? (
                         timelineData ? (
-                            <ItineraryTimeline data={timelineData} />
+                            <>
+                                {/* Hiển thị text giới thiệu nếu có */}
+                                {aiResponse.answer && (
+                                    <div
+                                        className={styles.aiAnswer}
+                                        style={{ marginBottom: '1rem' }}
+                                        dangerouslySetInnerHTML={{
+                                            __html: (aiResponse.answer || '')
+                                                .replace(/\n/g, '<br/>')
+                                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                        }}
+                                    />
+                                )}
+                                {/* Hiển thị timeline */}
+                                <ItineraryTimeline data={timelineData} />
+                            </>
                         ) : (
                             <div
                                 className={styles.aiAnswer}
