@@ -12,6 +12,7 @@ import enhancedLogger from '../../utils/enhancedLogger.js';
 import enhancedCacheClient from '../../core/enhancedCacheClient.js';
 import { PERFORMANCE } from '../../config/aiConstants.js';
 import conversationManager from '../../core/conversationManager.js'; // PHASE 4
+import MOOD_MAPPING from '../../config/moodMapping.js';
 
 const logger = enhancedLogger.child('QueryAnalyzer');
 
@@ -40,7 +41,7 @@ class QueryAnalyzer {
             const sessionId = input.context?.sessionId;
             if (sessionId) {
                 const reference = await conversationManager.analyzeReference(input.question, sessionId);
-                
+
                 if (reference.type === 'REFERENCE' || reference.type === 'FOLLOW_UP') {
                     logger.info(`💬 ${reference.type} detected:`, reference);
                     return {
@@ -49,7 +50,7 @@ class QueryAnalyzer {
                         skipNormalRetrieval: true // Signal to skip normal RAG flow
                     };
                 }
-                
+
                 if (reference.type === 'REFINEMENT') {
                     logger.info('🔄 REFINEMENT query detected, carrying over context');
                     input.refinementContext = reference.baseContext;
@@ -65,17 +66,17 @@ class QueryAnalyzer {
             const needsLLMIntent = this.shouldUseLLMIntent(input.question);
 
             const llmPromises = [];
-            
+
             if (needsRewrite) {
                 llmPromises.push(this.rewriteQuery(input));
             }
-            
+
             if (needsLLMIntent) {
                 llmPromises.push(this.classifyIntent(input));
             }
 
             const llmResults = llmPromises.length > 0 ? await Promise.all(llmPromises) : [];
-            
+
             const rewriteRes = needsRewrite ? llmResults[0] : {};
             const intentRes = needsLLMIntent ? llmResults[needsRewrite ? 1 : 0] : { intent: 'CHAT', itineraryType: 'FULL_DAY' };
 
@@ -102,11 +103,11 @@ class QueryAnalyzer {
      */
     shouldUseLLMIntent(question) {
         const normalized = question.toLowerCase().trim();
-        
+
         // Skip LLM if query contains clear itinerary keywords
         const itineraryKeywords = ['lịch trình', 'itinerary', 'hành trình', 'tour', 'ngày'];
         const hasItinerary = itineraryKeywords.some(kw => normalized.includes(kw));
-        
+
         // Skip LLM for very short queries (likely simple CHAT)
         if (normalized.length < 15 && !hasItinerary) {
             return false;
@@ -154,7 +155,7 @@ class QueryAnalyzer {
                 const isEvening = /(?:buổi\s*)?tối(?:\s+(?:nay|ở|hà nội|thứ))?|evening/i.test(question);
                 const isSimple = /đơn giản|nhanh|gọn|casual|simple/.test(question);
                 const isFancy = /chỉnh chu|tươm tất|sang trọng|cao cấp|fancy|elegant|luxury/.test(question);
-                
+
                 if (isEvening && isFancy) {
                     itineraryType = 'EVENING_FANCY';
                     logger.info('🌟 Detected EVENING FANCY itinerary (Lẩu/Buffet → Karaoke → Hotel)');
@@ -208,17 +209,39 @@ class QueryAnalyzer {
             queryTags: intentData.tags,
             queryMustQuery: intentData.mustQuery,
             isDatingQuery: intentData.isDating,
-            mustExcludeQuery: intentData.mustExclude
+            mustExcludeQuery: intentData.mustExclude,
+            moodContext: this._detectMood(input.question) // ✅ MOOD DETECTION
         };
 
-        // ✅ Cache result (keep last 100 entries)
-        if (this.intentCache.size >= 100) {
-            const firstKey = this.intentCache.keys().next().value;
-            this.intentCache.delete(firstKey);
+        if (result.moodContext) {
+            logger.info(`🎭 MOOD DETECTED: ${result.moodContext.type} (Tags: ${result.moodContext.tags.join(', ')})`);
+            // If mood implies dating/romance, set isDatingQuery
+            if (result.moodContext.type === 'romantic') {
+                result.isDatingQuery = true;
+            }
         }
-        this.intentCache.set(cacheKey, result);
 
         return result;
+    }
+
+    /**
+     * ✅ NEW: Detect User Mood from Query
+     * Uses keyword matching from MOOD_MAPPING
+     */
+    _detectMood(query) {
+        const lowerQuery = query.toLowerCase();
+
+        for (const [moodType, config] of Object.entries(MOOD_MAPPING)) {
+            const hasKeyword = config.keywords.some(kw => lowerQuery.includes(kw));
+            if (hasKeyword) {
+                return {
+                    type: moodType,
+                    tags: config.relatedTags,
+                    excludeTags: config.excludeTags
+                };
+            }
+        }
+        return null;
     }
 
     /**
@@ -227,7 +250,7 @@ class QueryAnalyzer {
      */
     extractDistrict(input) {
         const district = districtExtractor.detectDistrict(input.question);
-        
+
         if (!district) {
             return {
                 queryDistrict: null,
@@ -236,7 +259,7 @@ class QueryAnalyzer {
         }
 
         logger.info(`📍 DISTRICT MODE: "${district}" → HARD FILTER`);
-        
+
         const districtMustQuery = districtExtractor.buildDistrictMustQuery(district);
 
         return {

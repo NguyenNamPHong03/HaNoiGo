@@ -54,8 +54,8 @@ DANH SÁCH ${placesCount} ĐỊA ĐIỂM (ƯU TIÊN THEO THỨ TỰ):
                 const address = doc.metadata?.address ? `Địa chỉ: ${doc.metadata.address}` : '';
                 const price = doc.metadata?.price ? `Giá: ${doc.metadata.price} VND` : 'Giá: Liên hệ';
                 const category = doc.metadata?.category ? `(${doc.metadata.category})` : '';
-                const distance = doc.distanceKm !== undefined && doc.distanceKm !== null 
-                    ? `📍 Cách bạn ${doc.distanceKm}km` 
+                const distance = doc.distanceKm !== undefined && doc.distanceKm !== null
+                    ? `📍 Cách bạn ${doc.distanceKm}km`
                     : '';
 
                 return `RANK #${i + 1} [ID: ${placeId}] [${placeName}] ${category}\n${address} ${distance}| ${price}\n${doc.content}`;
@@ -143,6 +143,13 @@ Ví dụ chuẩn (nếu có 5 địa điểm):
                 logger.info('👤 Personalization ENABLED');
             } else {
                 logger.info('👤 Personalization DISABLED or no preferences');
+            }
+
+            // 🎭 MOOD CONTEXT INJECTION
+            if (input.moodContext) {
+                const moodMsg = `\n\n📢 TÂM TRẠNG NGƯỜI DÙNG: Đang cảm thấy "${input.moodContext.type}".\n👉 YÊU CẦU: Hãy điều chỉnh tone giọng trả lời phù hợp (ví dụ: buồn -> nhẹ nhàng, an ủi; vui -> hào hứng).`;
+                preferencesContext += moodMsg;
+                logger.info(`🎭 Injected mood context into prompt: ${input.moodContext.type}`);
             }
 
             let formatted;

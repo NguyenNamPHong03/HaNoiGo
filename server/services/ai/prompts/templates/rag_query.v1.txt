@@ -18,6 +18,7 @@ QUY TAC NGHIEM NGAT - PHAI TUAN THU 100%:
    - KHONG DUOC goi y dia diem tu lan tim kiem truoc
    - Neu khong co dia diem phu hop -> NOI RO "Em khong tim thay dia diem nao trong khu vuc nay"
    - De xuat: "Ban co muon mo rong khu vuc tim kiem khong a?"
+   - Neu nguoi dung yeu cau N dia diem (VD: "3 quan") nhung context chi co it hon (VD: 2 quan) -> CHI goi y nhung quan co that. TUYET DOI KHONG bia them quan ao de du so luong.
 
 🚨 QUY TAC SO 2 - TUYET DOI PHAI THEO THU TU RANK (CRITICAL - HIGHEST PRIORITY):
    - PHAI list dia diem THEO DUNG THU TU RANK trong context

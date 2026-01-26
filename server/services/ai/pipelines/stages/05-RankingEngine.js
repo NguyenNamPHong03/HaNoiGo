@@ -16,17 +16,45 @@ class RankingEngine {
         if (input.cached || !input.retrievedDocs?.length) return input;
 
         return await telemetry.measureTime(RAG_STAGES.RERANKING, async () => {
+            // 🧹 Pre-filtering: Remove places with Missing Addresses
+            // User request: "mấy địa điểm mà không có địa chỉ thì loại luôn"
+            const validDocs = input.retrievedDocs.filter(doc => {
+                const address = doc.metadata?.address;
+                if (!address || address.trim() === '' || address.toLowerCase() === 'đang cập nhật') {
+                    logger.debug(`   🗑️ DROPPING Invalid Address: "${doc.metadata?.name}"`);
+                    return false;
+                }
+                return true;
+            });
+
+            // 🧹 Pre-rerank deduplication to ensure unique candidates
+            // Sometimes duplications slip through retrieval stages
+            const dedupedDocs = this.deduplicateByPlaceId(validDocs);
+
             const reranked = await reranker.rerank(
                 input.question,
-                input.retrievedDocs
+                dedupedDocs
             );
-            
+
             // PHASE 3 OPTIMIZATION: Apply preference-based ranking boost
-            const boosted = this._applyPreferenceBoost(reranked, input);
-            
+            let boosted = this._applyPreferenceBoost(reranked, input);
+
+            // 🎭 MOOD FILTERING: Apply mood-based boosting/demoting
+            boosted = this._applyMoodFiltering(boosted, input);
+
+            // 🍜 ENTITY FILTERING: Apply strict keyword check for FOOD_ENTITY
+            boosted = this._applyEntityFiltering(boosted, input);
+
+            // 🛡️ ENFORCE LIMIT: Slice to max Top K to prevent LLM overload
+            // Even if Reranker fails (returns all), we must limit here
+            const { RETRIEVAL_CONFIG } = await import('../../config/constants.js');
+            const finalDocs = boosted.slice(0, RETRIEVAL_CONFIG.RERANK_TOP_K || 8);
+
+            logger.info(`📉 Ranking complete: Keeping top ${finalDocs.length} documents (Limit: ${RETRIEVAL_CONFIG.RERANK_TOP_K})`);
+
             return {
                 ...input,
-                retrievedDocs: boosted,
+                retrievedDocs: finalDocs,
             };
         });
     }
@@ -53,7 +81,7 @@ class RankingEngine {
             if (userPreferences.favoriteFoods && userPreferences.favoriteFoods.length > 0) {
                 const menuItems = place.menu?.items || [];
                 const hasFavoriteFood = userPreferences.favoriteFoods.some(favFood =>
-                    menuItems.some(item => 
+                    menuItems.some(item =>
                         item.name?.toLowerCase().includes(favFood.toLowerCase())
                     )
                 );
@@ -125,7 +153,7 @@ class RankingEngine {
                 const originalScore = doc.score || 0;
                 const boostedScore = originalScore * boostMultiplier;
                 logger.info(`   📈 Boosted "${place.name}": ${originalScore.toFixed(3)} → ${boostedScore.toFixed(3)} (${matchedPreferences.join(', ')})`);
-                
+
                 return {
                     ...doc,
                     score: boostedScore,
@@ -139,6 +167,57 @@ class RankingEngine {
     }
 
     /**
+     * 🎭 Apply Mood Filtering (Boost related, Demote excluded)
+     */
+    _applyMoodFiltering(docs, input) {
+        if (!input.moodContext || !docs.length) return docs;
+
+        const { type, tags, excludeTags } = input.moodContext;
+        logger.info(`🎭 Applying mood filtering for "${type}"...`);
+
+        return docs.map(doc => {
+            let scoreMultiplier = 1.0;
+            const place = doc.metadata || {};
+            const aiTags = [
+                ...(place.aiTags?.space || []),
+                ...(place.aiTags?.mood || []),
+                ...(place.aiTags?.suitability || []),
+                place.category || ''
+            ].map(t => t.toLowerCase());
+
+            const description = (place.description || '').toLowerCase();
+            const fullText = `${aiTags.join(' ')} ${description}`;
+
+            // BOOST: If matches related tags
+            const matchesRelated = tags.some(tag => fullText.includes(tag.toLowerCase()));
+            if (matchesRelated) {
+                scoreMultiplier *= 1.2; // +20% boost
+            }
+
+            // DEMOTE: If matches exclude tags
+            if (excludeTags && excludeTags.length > 0) {
+                const matchesExclude = excludeTags.some(tag => fullText.includes(tag.toLowerCase()));
+                if (matchesExclude) {
+                    scoreMultiplier *= 0.5; // -50% penalty
+                    logger.info(`   🔻 Demoting "${place.name}" (matches exclude tag for mood ${type})`);
+                }
+            }
+
+            if (scoreMultiplier !== 1.0) {
+                const originalScore = doc.score || 0;
+                const newScore = originalScore * scoreMultiplier;
+                return {
+                    ...doc,
+                    score: newScore,
+                    _moodBoost: scoreMultiplier
+                };
+            }
+
+            return doc;
+        }).sort((a, b) => (b.score || 0) - (a.score || 0));
+    }
+
+    /**
      * STAGE 8.25: Dietary Filter (for vegetarian/vegan users)
      */
     async applyDietaryFilter(input) {
@@ -148,7 +227,7 @@ class RankingEngine {
         if (input.dietaryAugment !== 'chay') return input;
 
         logger.info('🥗 Applying vegetarian filter to retrieved docs...');
-        
+
         // 🔍 DEBUG: Check for duplicates BEFORE filtering
         const beforeIds = input.retrievedDocs.map(d => d.metadata?.id || d.metadata?.originalId);
         const uniqueBeforeIds = new Set(beforeIds);
@@ -164,18 +243,18 @@ class RankingEngine {
         const filtered = input.retrievedDocs.filter(doc => {
             const name = (doc.name || doc.metadata?.name || '').toLowerCase();
             const docId = doc.metadata?.id || doc.metadata?.originalId;
-            
+
             // Only keep places with "chay" or similar in the NAME
             const isVegetarianPlace = vegetarianNameKeywords.some(kw => name.includes(kw));
-            
+
             if (isVegetarianPlace) {
                 logger.info(`✅ Keeping vegetarian place: ${name} (ID: ${docId})`);
                 return true;
             }
-            
+
             return false;
         });
-        
+
         // 🔍 DEBUG: Check for duplicates AFTER filtering
         const afterIds = filtered.map(d => d.metadata?.id || d.metadata?.originalId);
         const uniqueAfterIds = new Set(afterIds);
@@ -196,7 +275,7 @@ class RankingEngine {
                 seenIds.add(id);
             }
         }
-        
+
         if (deduped.length !== filtered.length) {
             logger.warn(`🛡️ Deduplication removed ${filtered.length - deduped.length} duplicates`);
         }
@@ -205,6 +284,91 @@ class RankingEngine {
             ...input,
             retrievedDocs: deduped
         };
+    }
+
+    /**
+     * 🍜 Apply Food Entity Filtering
+     * Ensures "quán ốc" doesn't return "cafe" or "thịt chó"
+     */
+    _applyEntityFiltering(docs, input) {
+        if (input.queryIntent !== 'FOOD_ENTITY') return docs;
+
+        const keyword = (input.queryKeyword || '').toLowerCase();
+
+        logger.info(`🍜 Applying strict entity filtering for "${keyword}"...`);
+
+        // Categories that are explicitly NOT food (unless user asks for them)
+        const nonFoodCategories = ['spa', 'gym', 'khách sạn', 'hotel', 'homestay', 'shop', 'cửa hàng', 'siêu thị'];
+
+        // Categories that are typically drinks, not food
+        const drinkCategories = ['cafe', 'coffee', 'cà phê', 'trà sữa', 'giải khát', 'pub', 'bar'];
+
+        return docs.reduce((acc, doc) => {
+            let scoreMultiplier = 1.0;
+            const place = doc.metadata || {};
+            const name = (place.name || '').toLowerCase();
+            const category = (place.category || '').toLowerCase();
+            const description = (place.description || '').toLowerCase();
+            const fullText = `${name} ${category} ${description}`;
+
+            // --- 1. STRONG FILTER: NON-FOOD CATEGORIES ---
+            const isNonFood = nonFoodCategories.some(c => category.includes(c));
+            if (isNonFood) {
+                logger.info(`   🗑️ DROPPING "${place.name}" (Non-food category: ${category})`);
+                return acc; // DROP
+            }
+
+            // --- 2. STRONG FILTER: DRINK VS FOOD ---
+            const isDrinkPlace = drinkCategories.some(c => category.includes(c));
+            const userWantsDrink = drinkCategories.some(c => keyword.includes(c));
+
+            // If it's a "Cafe"/"Pub" and user wants "Food" (e.g. "ốc", "phở")
+            // Strict check: The place MUST explicitly mention the keyword.
+            const placeMentionsKeyword = fullText.includes(keyword);
+
+            // FIX: Check keyword.length >= 2 (so "ốc" works)
+            if (isDrinkPlace && !userWantsDrink && !placeMentionsKeyword && keyword.length >= 2) {
+                logger.info(`   🗑️ DROPPING Drink Place "${place.name}" (Query is food: "${keyword}")`);
+                return acc; // DROP
+            }
+
+            // --- 3. KEYWORD MATCHING ---
+            // Common generic keywords to ignore for strict filtering
+            const genericKeywords = ['quán', 'ăn', 'ngon', 'đâu', 'gì', 'tại', 'với', 'ở', 'tìm', 'thấy'];
+            const isGenericKeyword = genericKeywords.includes(keyword) || keyword.length < 2;
+
+            if (fullText.includes(keyword)) {
+                scoreMultiplier *= 1.5; // +50% boost
+                if (name.includes(keyword)) {
+                    scoreMultiplier *= 1.2; // Extra boost if in name
+                }
+            } else {
+                // If keyword matches nothing, penalize heavily or drop
+                // FIX: Check !isGenericKeyword (so "ốc" mismatch triggers penalty)
+                if (!isGenericKeyword) {
+                    scoreMultiplier *= 0.1; // -90% penalty (matches nothing relevant)
+                    logger.info(`   🔻 CRUSHING score for "${place.name}" (missing specific keyword "${keyword}")`);
+                }
+            }
+
+            // --- 5. THRESHOLD CHECK ---
+            if (scoreMultiplier < 0.2) {
+                logger.info(`   🗑️ DROPPING "${place.name}" (Low relevance score: ${scoreMultiplier})`);
+                return acc;
+            }
+
+            // Update score
+            const originalScore = doc.score || 0;
+            const newScore = originalScore * scoreMultiplier;
+
+            acc.push({
+                ...doc,
+                score: newScore,
+                _entityBoost: scoreMultiplier
+            });
+            return acc;
+
+        }, []).sort((a, b) => (b.score || 0) - (a.score || 0));
     }
 
     /**
@@ -309,6 +473,30 @@ class RankingEngine {
             ...input,
             retrievedDocs: reordered,
         };
+    }
+    /**
+     * Helper: Deduplicate documents by place ID or Name
+     */
+    deduplicateByPlaceId(docs) {
+        const placeMap = new Map();
+
+        docs.forEach(doc => {
+            // Priority: ID > Original ID > Name
+            const placeId = doc.metadata?.id || doc.metadata?.originalId || doc.metadata?.name;
+
+            if (!placeId) {
+                placeMap.set(doc.id || Math.random(), doc);
+                return;
+            }
+
+            // Keep the one with higher score if duplicate exists
+            const existing = placeMap.get(placeId);
+            if (!existing || (doc.score > existing.score)) {
+                placeMap.set(placeId, doc);
+            }
+        });
+
+        return Array.from(placeMap.values());
     }
 }
 

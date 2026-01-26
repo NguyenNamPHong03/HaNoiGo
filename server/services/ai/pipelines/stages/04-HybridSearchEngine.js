@@ -23,6 +23,13 @@ class HybridSearchEngine {
         return await telemetry.measureTime('KEYWORD_AUGMENT', async () => {
             let query = (input.refinedQuery || input.question).toLowerCase().trim();
 
+            // 🎭 MOOD INJECTION: Add related tags to query for broader keyword matching
+            if (input.moodContext && input.moodContext.tags) {
+                const moodTags = input.moodContext.tags.slice(0, 3).join(' '); // Take top 3 tags
+                query = `${query} ${moodTags}`;
+                logger.info(`🎭 Injecting mood tags into query: "${moodTags}"`);
+            }
+
             // Check for special modes
             const needsAccommodation = ACCOMMODATION_KEYWORDS.some(kw => query.includes(kw));
             const needsLuxury = LUXURY_KEYWORDS.some(kw => query.includes(kw));
@@ -43,7 +50,7 @@ class HybridSearchEngine {
             const textLimit = input.intent === 'ITINERARY' ? 20 : 5;
             const queryIntent = input.queryIntent || 'GENERAL';
             const districtFilter = input.districtMustQuery || null; // 📍 Get district filter
-            
+
             // 🔥 PRIORITY CHECK: If nearMe mode is active, ONLY use nearby search
             const isNearMeMode = input.context?.useLocation && input.context?.location?.lat && input.context?.location?.lng;
 
@@ -83,7 +90,7 @@ class HybridSearchEngine {
             // 📍 POST-FILTER: Apply district filter using DistrictFilter module
             const targetDistrict = input.queryDistrict || null;
             let filtered = DistrictFilter.apply(combined, targetDistrict);
-            
+
             // 💕 POST-FILTER: Apply dating filter using DatingFilter module
             const isDatingMode = input.isDatingQuery || false;
             filtered = DatingFilter.apply(filtered, isDatingMode);

@@ -50,7 +50,7 @@ class MainChatPipeline {
         this.chain = null;
         this.initialized = false;
         this.llm = null;
-        
+
         // Performance metrics
         this.metrics = {
             totalRequests: 0,
@@ -79,7 +79,7 @@ class MainChatPipeline {
                 promptLoader.initialize(),
                 reranker.initialize(),
             ]);
-            
+
             // Initialize LLM (sequential - requires API key validation)
             this.llm = await llmFactory.getLLM();
 
@@ -92,30 +92,30 @@ class MainChatPipeline {
                 // Stage 1: Input Processing & Cache Check
                 inputProcessor.processInputGuard.bind(inputProcessor),
                 inputProcessor.processSemanticCache.bind(inputProcessor),
-                
+
                 // Stage 2: Query Analysis (parallel intent + district)
                 queryAnalyzer.analyzeParallel.bind(queryAnalyzer),
-                
+
                 // Stage 3-4: Retrieval (semantic + hybrid)
                 semanticRetrieval.retrieve.bind(semanticRetrieval),
                 hybridSearchEngine.augmentWithKeywords.bind(hybridSearchEngine),
-                
+
                 // Stage 5: Ranking & Filtering
-                rankingEngine.rerank.bind(rankingEngine),
                 rankingEngine.applyDietaryFilter.bind(rankingEngine),
+                rankingEngine.rerank.bind(rankingEngine),
                 rankingEngine.sortByLocation.bind(rankingEngine),
-                
+
                 // Stage 6-7: Prompt & LLM
                 promptBuilder.formatContext.bind(promptBuilder),
                 promptBuilder.createPrompt.bind(promptBuilder),
                 llmInvoker.invoke.bind(llmInvoker),
-                
+
                 // Stage 8: Response Caching
                 inputProcessor.cacheResponse.bind(inputProcessor),
             ]);
 
             this.initialized = true;
-            
+
             const initDuration = Date.now() - startTime;
             logger.info('RAG pipeline initialized successfully', {
                 stages: 8,
@@ -145,7 +145,7 @@ class MainChatPipeline {
     async execute(question, metadata = {}) {
         const correlationId = enhancedLogger.generateCorrelationId();
         enhancedLogger.setCorrelationId(correlationId);
-        
+
         const startTime = Date.now();
         this.metrics.totalRequests++;
 
@@ -218,7 +218,7 @@ class MainChatPipeline {
                     result.conversationReference,
                     sessionId
                 );
-                
+
                 if (sessionId) {
                     await conversationManager.appendMessage(sessionId, {
                         role: 'assistant',
@@ -226,7 +226,7 @@ class MainChatPipeline {
                         timestamp: new Date(),
                     });
                 }
-                
+
                 this._trackMetrics(startTime, result.cached || false);
                 return response;
             }
@@ -269,14 +269,14 @@ class MainChatPipeline {
 
         } catch (error) {
             const duration = Date.now() - startTime;
-            
+
             logger.error('Pipeline execution failed', error, {
                 query: question.substring(0, 100),
                 duration: `${duration}ms`,
                 correlationId,
                 component: 'MainChatPipeline',
             });
-            
+
             // Return error response instead of throwing
             return {
                 success: false,
@@ -296,18 +296,18 @@ class MainChatPipeline {
      */
     _trackMetrics(startTime, cached) {
         const duration = Date.now() - startTime;
-        
+
         if (cached) {
             this.metrics.cacheHits++;
         }
-        
+
         this.metrics.durations.push(duration);
-        
+
         // Keep only last 100 requests
         if (this.metrics.durations.length > 100) {
             this.metrics.durations.shift();
         }
-        
+
         // Calculate average
         const total = this.metrics.durations.reduce((sum, d) => sum + d, 0);
         this.metrics.avgDuration = Math.round(total / this.metrics.durations.length);
@@ -357,7 +357,7 @@ class MainChatPipeline {
         if (type === 'FOLLOW_UP') {
             // Follow-up question about a place
             const queryLower = question.toLowerCase();
-            
+
             if (queryLower.includes('mở cửa') || queryLower.includes('phục vụ')) {
                 const hours = targetPlace.openingHours || 'Chưa có thông tin giờ mở cửa';
                 return {
@@ -371,7 +371,7 @@ class MainChatPipeline {
             }
 
             if (queryLower.includes('giá')) {
-                const price = targetPlace.priceRange 
+                const price = targetPlace.priceRange
                     ? `${targetPlace.priceRange.min?.toLocaleString('vi-VN')} - ${targetPlace.priceRange.max?.toLocaleString('vi-VN')}đ`
                     : 'Chưa có thông tin giá';
                 return {
@@ -443,7 +443,7 @@ class MainChatPipeline {
     _getTimeContext() {
         const now = new Date();
         const hour = now.getHours();
-        
+
         let period = 'general';
         let suggestion = '';
 
