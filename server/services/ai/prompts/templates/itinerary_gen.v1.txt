@@ -20,6 +20,21 @@ Danh sách Địa điểm có sẵn (Context):
 
 HƯỚNG DẪN TẠO LỊCH TRÌNH:
 
+*** 🔒 PHÂN LOẠI QUERY CHÍNH XÁC (BẮT BUỘC ĐỌC TRƯỚC): ***
+
+🚨 **NẾU query chứa "MỘT BUỔI TỐI" hoặc "1 BUỔI TỐI"** → CHỈ CÓ 2 TRƯỜNG HỢP:
+
+1. **EVENING_SIMPLE** nếu có từ: "đơn giản", "nhanh", "đơn giản"
+2. **EVENING_FANCY** nếu có từ: "chỉnh chu", "sang trọng", "fancy", "đặc biệt"
+
+⚠️ **TUYỆT ĐỐI**:
+- Chỉ trả về **ĐÚNG 3 HOẠT ĐỘNG** (18:00, 19:30, 21:00)
+- KHÔNG ĐƯỢC thêm hoạt động thứ 4, 5, 6, 7...
+- KHÔNG ĐƯỢC thêm gợi ý "Ngoài ra...", "Bạn cũng có thể...", "Khách sạn..."
+- Kết thúc NGAY SAU JSON - KHÔNG viết thêm gì
+
+🚨 **NẾU query KHÔNG chứa "MỘT BUỔI TỐI"** → Xem tiếp TRƯỜNG HỢP 3 (FULL_DAY)
+
 *** QUY TẮC BẮT BUỘC (FOLLOW CHÍNH XÁC): ***
 
 🌙 TRƯỜNG HỢP 1: LỊCH TRÌNH BUỔI TỐI ĐỜN GIẢN (EVENING_SIMPLE)Nếu user hỏi "lịch trình một buổi tối đơn giản", "tối nay đi đâu cho nhanh", BẮT BUỘC tạo lịch trình 3 HOẠT ĐỘNG:
@@ -29,103 +44,202 @@ HƯỚNG DẪN TẠO LỊCH TRÌNH:
    - OPTION 2: Quán phở/bún/cơm ăn nhanh (Phở 24, Cơm tấm, Bún đậu)
    - Chọn quán GẦN NHẤT hoặc TIỆN LỢI nhất trong Context
 
-2. 19:30 - UỐNG CAFE (TÌM quán cafe trong Context):
-   - Ưu tiên: Cafe view đẹp, chill, không gian thoải mái
-   - VD: "The Coffee House", "Cộng Cà phê", "Highlands Coffee"
+2. 19:30 - UỐNG CAFE (TÌM QUÁN CAFE trong Context):
+   - **BẮT BUỘC PHẢI TÌM ĐƯỢC**: Quán cafe thực sự từ Context (The Coffee House, Cộng, Highlands, Starbucks, hoặc bất kỳ quán cafe nào)
+   - **TUYỆT ĐỐI KHÔNG CHỌN**: A25 Hotel, Khách sạn, Nhà hàng, Bất kỳ địa điểm có "Hotel"
+   - **PHẢI CÓ placeId**: Bắt buộc copy chính xác ID từ Context
 
 3. 21:00 - DẠO HỒ (TÌM địa điểm dạo chơi trong Context):
-   - Ưu tiên: Hồ Hoàn Kiếm, Hồ Tây, Phố đi bộ
-   - Strip động từ "Dạo" để search: "Dạo hồ Hoàn Kiếm" → tìm "Hồ Hoàn Kiếm"
+   - **BẮT BUỘC PHẢI TÌM ĐƯỢC**: Hồ Hoàn Kiếm, Hồ Tây, Phố đi bộ, hoặc công viên từ Context
+   - **PHẢI CÓ placeId**: Bắt buộc copy chính xác ID từ Context
 
-*** FORMAT JSON CHO EVENING_SIMPLE (3 hoạt động): ***
+*** ĐỊNH DẠNG OUTPUT CHO EVENING_SIMPLE: ***
+
+🚨 **QUY TẮC NGHIÊM NGẶT**:
+- Câu giới thiệu (1-2 câu)
+- **CHỈ CÓ ĐÚNG 3 HOẠT ĐỘNG** theo format bên dưới
+- **TUYỆT ĐỐI KHÔNG** thêm gợi ý địa điểm khác
+- **TUYỆT ĐỐI KHÔNG** bổ sung danh sách "Ngoài ra..." hoặc "Các địa điểm khác..."
+
+Sau đó xuống dòng và đưa ra JSON:
 {{
   "title": "Buổi tối đơn giản tại Hà Nội",
   "schedule": [
     {{
       "time": "18:00",
       "activity": "Ăn nhẹ",
-      "placeId": "[ID của KFC/Jollibee hoặc quán phở/bún từ Context]",
+      "placeId": "[ID từ Context]",
       "placeName": "[Tên quán từ Context]",
       "reason": "Ăn nhanh gọn, tiện lợi để bắt đầu buổi tối"
     }},
     {{
       "time": "19:30",
       "activity": "Uống cafe",
-      "placeId": "[ID của quán cafe từ Context]",
-      "placeName": "[Tên quán cafe từ Context]",
+      "placeId": "[ID từ Context]",
+      "placeName": "[Tên cafe từ Context]",
       "reason": "Thư giãn, trò chuyện với bạn bè trong không gian chill"
     }},
     {{
       "time": "21:00",
       "activity": "Dạo hồ",
-      "placeId": "[ID của Hồ Hoàn Kiếm/Hồ Tây từ Context]",
-      "placeName": "[Hồ Hoàn Kiếm hoặc Hồ Tây từ Context]",
+      "placeId": "[ID từ Context hoặc null]",
+      "placeName": "[Tên hồ từ Context hoặc 'Dạo hồ Hoàn Kiếm']",
       "reason": "Kết thúc ngày với không khí trong lành và phong cảnh đẹp"
     }}
   ]
 }}
 
-🌟 TRƯỜNG HỢP 2: LỊCH TRÌNH BUỔI TỐI CHỈNH CHU (EVENING_FANCY)Nếu user hỏi "lịch trình một buổi tối đơn giản", "tối nay đi đâu cho nhanh", BẮT BUỘC tạo lịch trình 3 HOẠT ĐỘNG:
+⚠️ **KẾT THÚC NGAY SAU JSON - KHÔNG THÊM NỘI DUNG GÌ KHÁC**
+⚠️ **SAU JSON PHẢI DỪNG LẠI - KHÔNG ĐƯỢC VIẾT: "Dưới đây...", "Danh sách...", "Ngoài ra..."**
+⚠️ **ĐỪNG BAO GIỜ THÊM DANH SÁCH ĐỊA ĐIỂM SAU JSON**
 
-1. 18:00 - ĂN NHẸ (TÌM trong Context theo thứ tự ưu tiên):
-   - OPTION 1: Fast food (KFC, Jollibee, McDonald's, Lotteria)
-   - OPTION 2: Quán phở/bún/cơm ăn nhanh (Phở 24, Cơm tấm, Bún đậu)
-   - Chọn quán GẦN NHẤT hoặc TIỆN LỢI nhất trong Context
+🌟 TRƯỜNG HỢP 2: LỊCH TRÌNH BUỔI TỐI CHỈNH CHU (EVENING_FANCY)
+**TRIGGER**: Query chứa "một buổi tối" + ("chỉnh chu" HOẶC "sang trọng" HOẶC "fancy" HOẶC "đặc biệt")
 
-2. 19:30 - UỐNG CAFE (TÌM quán cafe trong Context):
-   - Ưu tiên: Cafe view đẹp, chill, không gian thoải mái
-   - VD: "The Coffee House", "Cộng Cà phê", "Highlands Coffee"
+BẮT BUỘC tạo lịch trình **ĐÚNG 3 HOẠT ĐỘNG**:
 
-3. 21:00 - DẠO HỒ (TÌM địa điểm dạo chơi trong Context):
-   - Ưu tiên: Hồ Hoàn Kiếm, Hồ Tây, Phố đi bộ
-   - Nếu không có trong Context → Dùng tên chung "Dạo hồ Hoàn Kiếm" (placeId: null)
+1. 18:00 - ĂN TỐI (TÌM trong Context theo thứ tự ưu tiên):
+   - OPTION 1: Nhà hàng (Nhà hàng Á, Âu, rooftop, fine dining)
+   - OPTION 2: Quán lẩu, nướng, buffet (Lẩu Thái, Lẩu Hải sản, BBQ, Buffet)
+   - Chọn quán có KHÔNG GIAN ĐẸP, SANG TRỌNG trong Context
 
-*** FORMAT JSON CHO EVENING_SIMPLE (3 hoạt động): ***
+2. 19:30 - UỐNG CAFE (CÁCH TÌM QUÁN CAFE trong Context):
+   
+   **BƯỚC 1 - TÌM TRONG CONTEXT**:
+   - Đọc kỹ danh sách Context từ đầu đến cuối
+   - Tìm địa điểm có TÊN chứa: "Coffee", "Cafe", "Cà phê", "Cộng", "Highlands", "Starbucks", "Trung Nguyên"
+   - Hoặc có CATEGORY: "Quán cà phê", "Coffee Shop", "Cafe"
+   - VD hợp lệ: "The Coffee House", "Highlands Coffee", "Cộng Cà Phê", "Phúc Long Coffee & Tea"
+   
+   **TUYỆT ĐỐI KHÔNG CHỌN**:
+   - ❌ Music Box Mỹ Đình, Tadioto Bar, The Hanoi Social Club (ĐÂY LÀ BAR!)
+   - ❌ A25 Hotel, khách sạn bất kỳ
+   - ❌ Nhà hàng, quán ăn
+   - ❌ Địa điểm có "Bar", "Pub", "Karaoke", "Music Box", "Hotel"
+   
+   **BƯỚC 2 - NẾU KHÔNG TÌM THẤY TRONG CONTEXT**:
+   - Sử dụng quán cafe phổ biến: "Highlands Coffee" hoặc "The Coffee House"
+   - placeId: null
+   - Reason: "Thư giãn với ly cà phê thơm ngon trong không gian hiện đại"
+
+3. 21:00 - GIẢI TRÍ (TÌM địa điểm vui chơi trong Context):
+   - **BẮT BUỘC PHẢI TÌM ĐƯỢC**: Music box, Bar, Pub, Karaoke, hoặc địa điểm giải trí từ Context
+   - VD: Music Box, Tadioto Bar, The Hanoi Social Club, hoặc bất kỳ quán bar/karaoke nào
+   - **PHẢI CÓ placeId**: Bắt buộc copy chính xác ID từ Context
+
+*** ĐỊNH DẠNG OUTPUT CHO EVENING_FANCY: ***
+
+🚨 **QUY TẮC NGHIÊM NGẶT**:
+- Câu giới thiệu (1-2 câu)
+- **CHỈ CÓ ĐÚNG 3 HOẠT ĐỘNG** theo format bên dưới
+- **TUYỆT ĐỐI KHÔNG** thêm gợi ý địa điểm khác
+- **TUYỆT ĐỐI KHÔNG** bổ sung danh sách "Ngoài ra..." hoặc "Các địa điểm khác..."
+
+Sau đó xuống dòng và đưa ra JSON:
 {{
-  "title": "Buổi tối đơn giản tại Hà Nội",
+  "title": "Buổi tối chỉnh chu tại Hà Nội",
   "schedule": [
     {{
       "time": "18:00",
-      "activity": "Ăn nhẹ",
-      "placeId": "[ID của KFC/Jollibee hoặc quán phở/bún từ Context]",
-      "placeName": "[Tên quán từ Context]",
-      "reason": "Ăn nhanh gọn, tiện lợi để bắt đầu buổi tối"
+      "activity": "Ăn tối",
+      "placeId": "[ID từ Context]",
+      "placeName": "[Tên nhà hàng/lẩu/nướng từ Context]",
+      "reason": "Thưởng thức bữa tối sang trọng với không gian đẹp và món ăn đa dạng"
     }},
     {{
       "time": "19:30",
       "activity": "Uống cafe",
-      "placeId": "[ID của quán cafe từ Context]",
-      "placeName": "[Tên quán cafe từ Context]",
+      "placeId": "[ID từ Context]",
+      "placeName": "[Tên cafe từ Context]",
       "reason": "Thư giãn, trò chuyện với bạn bè trong không gian chill"
     }},
     {{
       "time": "21:00",
-      "activity": "Dạo hồ",
-      "placeId": "[ID của Hồ Hoàn Kiếm/Hồ Tây từ Context hoặc null]",
-      "placeName": "[Hồ Hoàn Kiếm/Hồ Tây từ Context hoặc 'Dạo hồ Hoàn Kiếm']",
-      "reason": "Kết thúc ngày với không khí trong lành và phong cảnh đẹp"
+      "activity": "Giải trí",
+      "placeId": "[ID từ Context]",
+      "placeName": "[Tên bar/music box từ Context]",
+      "reason": "Kết thúc buổi tối với âm nhạc sôi động và không khí sôi nổi"
     }}
   ]
 }}
+
+⚠️ **STOP - KẾT THÚC TẠI ĐÂY**
+⚠️ **TUYỆT ĐỐI KHÔNG VIẾT GÌ SAU DẤU }} BÊN TRÊN**
+⚠️ **KHÔNG được thêm: "Dưới đây là danh sách...", "Ngoài ra...", "Các địa điểm khác..."**
+⚠️ **KHÔNG được thêm: nghỉ ngơi khách sạn, ăn buffet, hay BẤT KỲ hoạt động/địa điểm nào khác**
+⚠️ **CHỈ CÓ 3 HOẠT ĐỘNG - KHÔNG THÊM, KHÔNG BỚT**
 
 📅 TRƯỜNG HỢP 3: LỊCH TRÌNH 1 NGÀY ĐẦY ĐỦ (FULL_DAY)
+**TRIGGER**: Query KHÔNG chứa "một buổi tối" (VD: "lịch trình 1 ngày Hà Nội", "khám phá Hà Nội")
+
 Nếu user hỏi chung chung về "lịch trình 1 ngày Hà Nội" hoặc "khám phá Hà Nội", BẮT BUỘC tạo lịch trình với 8 HOẠT ĐỘNG theo ĐÚNG FLOW:
 
-1. 08:00 - ĂN PHỞ (TÌM quán phở trong Context, VD: "Phở Gia Truyền", "Phở 10 Lý Quốc Sư")
-2. 09:30 - UỐNG CAFE (TÌM quán cafe trong Context, VD: "The Coffee House", "Cộng Cà phê", "Highlands")
-3. 10:30 - THĂM LĂNG BÁC HỒ CHÍ MINH (TÌM địa điểm "Lăng Bác", "Lăng Hồ Chí Minh", "Lăng Chủ tịch" trong Context)
-4. 12:00 - ĂN TRƯA BÚN CHẢ (TÌM quán bún chả trong Context, VD: "Bún chả Hàng Mành", "Bún chả Đắc Kim")
-5. 14:00 - VĂN MIẾU QUỐC TỬ GIÁM (TÌM địa điểm "Văn Miếu", "Quốc Tử Giám", "di tích lịch sử" trong Context)
-6. 16:00 - CHIỀU DẠO HỒ TÂY (TÌM địa điểm "Hồ Tây", "West Lake", "công viên", "dạo chơi" trong Context)
-7. 18:30 - ĂN LẨU BUỔI TỐI (TÌM nhà hàng lẩu, buffet, ăn tối trong Context, VD: "Lẩu Nấm", "Kichi Kichi")
-8. 20:30 - DẠO HỒ GƯƠM (TÌM địa điểm "Hồ Gươm", "Hoàn Kiếm", "Phố cổ", "Phố đi bộ" trong Context)
+🚨 **QUY TẮC TÌM KIẾM ĐỊA ĐIỂM (QUAN TRỌNG)**:
+- ĐỌC KỸ TOÀN BỘ CONTEXT trước khi chọn địa điểm
+- Chỉ chọn địa điểm PHÙ HỢP với loại hoạt động
+- **TUYỆT ĐỐI KHÔNG**: Chọn Lăng Bác cho "Ăn phở", chọn Quán nhậu cho "Uống cafe"
+- Nếu KHÔNG TÌM THẤY → Dùng tên generic phù hợp + viết rõ "(do Context không có quán [loại])"
+
+**8 HOẠT ĐỘNG BẮT BUỘC**:
+
+1. 08:00 - ĂN PHỞ
+   - TÌM: Quán PHỞ trong Context (tên có "Phở", category "Quán ăn/Phở")
+   - VD: "Phở Gia Truyền", "Phở 10 Lý Quốc Sư", "Phở Bát Đàn"
+   - NẾU KHÔNG CÓ: Dùng "Phở Bát Đàn" hoặc "Phở Gia Truyền" (quán phổ biến)
+
+2. 09:30 - UỐNG CAFE
+   - TÌM: Quán CAFE trong Context (tên có "Coffee", "Cafe", "Cà phê")
+   - VD: "The Coffee House", "Highlands Coffee", "Cộng Cà Phê"
+   - **KHÔNG CHỌN**: Quán nhậu, nhà hàng, bar
+   - NẾU KHÔNG CÓ: Dùng "Highlands Coffee" hoặc "The Coffee House"
+
+3. 10:30 - THĂM LĂNG BÁC HỒ CHÍ MINH
+   - TÌM: "Lăng Bác", "Lăng Hồ Chí Minh", "Lăng Chủ tịch" trong Context
+   - NẾU KHÔNG CÓ: Tìm "Di tích lịch sử", "Bảo tàng"
+
+4. 12:00 - ĂN TRƯA BÚN CHẢ
+   - TÌM: Quán BÚN CHẢ trong Context (tên có "Bún chả")
+   - VD: "Bún chả Hàng Mành", "Bún chả Đắc Kim", "Bún chả cô Hằng"
+   - NẾU KHÔNG CÓ: Dùng "Bún chả Hàng Mành"
+
+5. 14:00 - VĂN MIẾU QUỐC TỬ GIÁM
+   - TÌM: "Văn Miếu", "Quốc Tử Giám" trong Context
+   - NẾU KHÔNG CÓ: Tìm "Di tích lịch sử", "Đền", "Chùa"
+
+6. 16:00 - CHIỀU DẠO HỒ TÂY
+   - TÌM: "Hồ Tây", "West Lake", "Công viên" trong Context
+   - NẾU KHÔNG CÓ: Dùng "Hồ Tây" (địa danh phổ biến)
+
+7. 18:30 - ĂN LẨU BUỔI TỐI
+   - TÌM: Nhà hàng LẨU, BUFFET trong Context (tên có "Lẩu", "Buffet", "BBQ")
+   - VD: "Lẩu Nấm", "Kichi Kichi", "HP3 Buffet Lẩu"
+   - NẾU KHÔNG CÓ: Tìm nhà hàng bất kỳ
+
+8. 20:30 - DẠO HỒ GƯƠM
+   - TÌM: "Hồ Gươm", "Hoàn Kiếm", "Phố cổ", "Phố đi bộ" trong Context
+   - NẾU KHÔNG CÓ: Dùng "Hồ Hoàn Kiếm" (địa danh phổ biến)
 
 *** NẾU THIẾU ĐỊA ĐIỂM TRONG CONTEXT (QUAN TRỌNG): ***
-- Nếu KHÔNG tìm thấy địa điểm CHÍNH XÁC, hãy tìm địa điểm TƯƠNG TỰ có trong Context
-  VD: Không có "Văn Miếu" → Tìm địa điểm loại "Di tích lịch sử", "Bảo tàng"
-  VD: Không có "Hồ Tây" → Tìm địa điểm loại "Công viên", "Hồ"
-- Chỉ dùng tên chung khi HOÀN TOÀN không có địa điểm nào tương tự
-  VD: "Các quán phở gần đây", "Hồ Tây (Tự do)"
+
+🚨 **QUY TẮC FALLBACK**:
+1. **TÌM LOẠI TƯƠNG TỰ TRƯỚC**: 
+   - Không có "Phở Gia Truyền" → Tìm quán phở KHÁC
+   - Không có quán phở NÀO → Dùng "Phở Bát Đàn" (quán phổ biến)
+   
+2. **KHÔNG BAO GIỜ CHỌN SAI LOẠI**:
+   - ❌ KHÔNG chọn Lăng Bác cho "Ăn phở"
+   - ❌ KHÔNG chọn Quán nhậu cho "Uống cafe"
+   - ❌ KHÔNG chọn Buffet lẩu cho "Ăn phở sáng"
+   
+3. **FALLBACK AN TOÀN**:
+   - Phở → "Phở Bát Đàn" hoặc "Phở 10 Lý Quốc Sư"
+   - Cafe → "Highlands Coffee" hoặc "The Coffee House"
+   - Bún chả → "Bún chả Hàng Mành"
+   - Lẩu → "Kichi Kichi" hoặc nhà hàng có trong Context
+   
+4. **LƯU Ý**:
+   - Mỗi địa điểm fallback PHẢI set: placeId: null
+   - Viết rõ trong mô tả: "quán phổ biến tại Hà Nội" (không viết "do Context không có")
 
 *** ĐỊNH DẠNG OUTPUT (BẮT BUỘC): ***
 
