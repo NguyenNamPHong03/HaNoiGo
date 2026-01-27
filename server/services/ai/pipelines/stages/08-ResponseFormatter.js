@@ -6,66 +6,40 @@
 import config from '../../config/index.js';
 import logger from '../../utils/logger.js';
 
+import { sortPlacesByAnswerOrder, filterAndSortPlaces } from '../../utils/reorderUtils.js';
+
 class ResponseFormatter {
-    /**
-     * Extract place names mentioned in AI answer
-     * @param {string} answer - AI generated answer
-     * @param {Array} retrievedDocs - All retrieved documents
-     * @returns {Array} - Ordered place names as mentioned in answer
-     */
-    extractPlaceNamesFromAnswer(answer, retrievedDocs) {
-        if (!answer || !retrievedDocs) return [];
-
-        const placeNames = retrievedDocs.map(doc => doc.metadata?.name).filter(Boolean);
-        const mentionedPlaces = [];
-        
-        // Find all place names mentioned in the answer (preserve order)
-        for (const placeName of placeNames) {
-            // Check if place name appears in answer (case-insensitive)
-            // Use word boundary to avoid partial matches
-            const regex = new RegExp(`\\b${placeName.replace(/[.*+?^${}()|[\]\\]/g, '\\\\$&')}`, 'i');
-            if (regex.test(answer)) {
-                // Find position of first mention
-                const match = answer.match(regex);
-                if (match && !mentionedPlaces.some(p => p.name === placeName)) {
-                    mentionedPlaces.push({
-                        name: placeName,
-                        position: match.index
-                    });
-                }
-            }
-        }
-        
-        // Sort by position (order of mention)
-        mentionedPlaces.sort((a, b) => a.position - b.position);
-        
-        logger.info(`\n🔍 ===== PLACE EXTRACTION FROM ANSWER =====`);
-        logger.info(`🔍 Total places in retrievedDocs: ${placeNames.length}`);
-        logger.info(`🔍 Places mentioned in answer: ${mentionedPlaces.length}`);
-        mentionedPlaces.forEach((p, i) => {
-            logger.info(`   [${i}] ${p.name} (pos: ${p.position})`);
-        });
-        logger.info(`🔍 ==========================================\n`);
-        
-        return mentionedPlaces.map(p => p.name);
-    }
-
     /**
      * Format final response for client
      */
     formatResponse(result) {
-        // STEP 1: Extract place names mentioned in AI answer
-        const mentionedPlaceNames = this.extractPlaceNamesFromAnswer(
-            result.answer, 
-            result.retrievedDocs
-        );
+        // 🧹 CLEANUP: Remove appended context list if present (Itinerary only)
+        // Does this BEFORE generating cards to ensure cards match the final text exactly.
+        let finalAnswer = result.answer;
+        if (result.intent === 'ITINERARY') {
+            // Regex to match separators or introductory phrases for reference lists
+            // Matches:
+            // 1. "---" or "___" (separator lines)
+            // 2. "Dưới đây là danh sách" (Intro to list)
+            // 3. "Địa điểm tham khảo" (Reference header)
+            // 4. "Context:" or "Context list"
+            const separatorRegex = /(\n\s*[-_]{3,}\s*\n)|(\n\s*(Dưới đây là danh sách|Địa điểm tham khảo|Danh sách địa điểm|Context list|Các địa điểm có trong|Danh sách context))/i;
 
-        // STEP 2: Build places map from retrievedDocs
-        const placesMap = new Map();
+            if (separatorRegex.test(finalAnswer)) {
+                logger.info('✂️ Truncating itinerary reference list from answer...');
+                finalAnswer = finalAnswer.split(separatorRegex)[0].trim();
+            }
+        }
+
+        // STEP 1: Build initial places list from retrievedDocs
+        // This ensures we have the full pool of potential places from the DB
+        let availablePlaces = [];
         if (result.retrievedDocs) {
+            const placesMap = new Map();
             result.retrievedDocs.forEach(doc => {
                 const placeId = doc.metadata?.originalId || doc.metadata?.id;
                 const placeName = doc.metadata?.name;
+
                 if (placeId && placeName && !placesMap.has(placeId)) {
                     placesMap.set(placeId, {
                         _id: placeId,
@@ -84,33 +58,23 @@ class ResponseFormatter {
                     });
                 }
             });
+            availablePlaces = Array.from(placesMap.values());
         }
 
-        // STEP 3: Reorder places by AI answer mention order
-        const orderedPlaces = [];
-        const usedIds = new Set();
+        // STEP 2: Sort and Filter places
+        let placesArray = [];
 
-        // Add places in order of mention in AI answer
-        for (const placeName of mentionedPlaceNames) {
-            for (const [placeId, place] of placesMap.entries()) {
-                if (place.name === placeName && !usedIds.has(placeId)) {
-                    orderedPlaces.push(place);
-                    usedIds.add(placeId);
-                    break;
-                }
-            }
+        if (result.intent === 'ITINERARY') {
+            // For Itinerary: STRICT filtering. Only show places mentioned in text.
+            // This prevents "ghost cards" for generic steps.
+            // 🚨 IMPORTANT: Use finalAnswer (cleaned) to avoid matching invisible references
+            const matchedPlaces = filterAndSortPlaces(availablePlaces, finalAnswer);
+            placesArray = matchedPlaces; // No limit, just show what's mentioned
+        } else {
+            // For General Chat: Sort by mention, but include others as fallback (up to 10)
+            const orderedPlaces = sortPlacesByAnswerOrder(availablePlaces, finalAnswer);
+            placesArray = orderedPlaces.slice(0, 10);
         }
-
-        // Add remaining places (not mentioned but high ranked)
-        for (const [placeId, place] of placesMap.entries()) {
-            if (!usedIds.has(placeId) && orderedPlaces.length < 10) {
-                orderedPlaces.push(place);
-                usedIds.add(placeId);
-            }
-        }
-
-        // Limit to top 10
-        const placesArray = orderedPlaces.slice(0, 10);
 
         // 🔍 DEBUG: Log places order before return
         logger.info(`\n📊 ===== FINAL RESPONSE DEBUG =====`);
@@ -123,7 +87,7 @@ class ResponseFormatter {
 
         return {
             question: result.question,
-            answer: result.answer,
+            answer: finalAnswer,
             context: result.context,
             cached: result.cached,
             places: placesArray,

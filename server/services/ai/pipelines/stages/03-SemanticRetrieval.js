@@ -19,7 +19,7 @@ class SemanticRetrieval {
         // 🔥 SKIP semantic retrieval if nearMe mode is active
         // Stage 7 (KeywordAugment) will handle nearby search exclusively
         const isNearMeMode = input.context?.useLocation && input.context?.location?.lat && input.context?.location?.lng;
-        
+
         if (isNearMeMode) {
             logger.info('📍 NEAR ME MODE: Skipping semantic retrieval (will use nearby search only)');
             return {
@@ -64,7 +64,7 @@ class SemanticRetrieval {
             if (shouldIncludePersonalization && userDietary.length > 0) {
                 // STEP 1: Check if user asked for SPECIFIC DISH (phở, ốc, bún chả...)
                 const isSpecificFoodQuery = SPECIFIC_FOOD_KEYWORDS.some(kw => queryLower.includes(kw));
-                
+
                 console.log('🔍 Step 1 - Specific food check:', {
                     isSpecificFoodQuery,
                     matchedKeywords: SPECIFIC_FOOD_KEYWORDS.filter(kw => queryLower.includes(kw))
@@ -116,30 +116,30 @@ class SemanticRetrieval {
 
             // PHASE 2 OPTIMIZATION: Pre-filter metadata before vector search
             const metadataFilter = this._buildMetadataFilter(input);
-            
+
             // ⚡ PERFORMANCE: Reduce top_k for faster retrieval (12 instead of 20)
             const { PINECONE_TOP_K } = await import('../../config/aiConstants.js').then(m => m.PERFORMANCE);
             const topK = PINECONE_TOP_K || 12;
-            
+
             // Execute retrieval with pre-filtering
             const results = await basicRetriever.retrieve(queryToUse, topK, metadataFilter);
-            
+
             // 🔥 DEDUPLICATE: Remove duplicate places (same metadata.id)
             let dedupedResults = this.deduplicateByPlaceId(results);
             logger.info(`🧹 Deduplication: ${results.length} docs → ${dedupedResults.length} unique places`);
-            
+
             // 🍜 POST-FILTER: Apply food category filter if FOOD_ENTITY query
             if (input.queryIntent === 'FOOD_ENTITY' && input.queryMustQuery) {
                 const beforeFilter = dedupedResults.length;
                 dedupedResults = this._applyFoodCategoryFilter(dedupedResults, input.queryMustQuery);
                 logger.info(`🍜 Food category filter: ${beforeFilter} → ${dedupedResults.length} places`);
             }
-            
+
             // PHASE 2: Cache the query results
             await cacheClient.setQueryResultCache(cacheKey, dedupedResults, {
                 filters: cacheFilters
             });
-            
+
             return {
                 ...input,
                 retrievedDocs: dedupedResults,
@@ -153,7 +153,7 @@ class SemanticRetrieval {
      */
     deduplicateByPlaceId(docs) {
         const placeMap = new Map();
-        
+
         docs.forEach(doc => {
             const placeId = doc.metadata?.originalId || doc.metadata?.id;
             if (!placeId) {
@@ -161,14 +161,14 @@ class SemanticRetrieval {
                 placeMap.set(doc.id, doc);
                 return;
             }
-            
+
             const existing = placeMap.get(placeId);
             if (!existing || (doc.score > existing.score)) {
                 // Giữ document có score cao hơn
                 placeMap.set(placeId, doc);
             }
         });
-        
+
         return Array.from(placeMap.values());
     }
 
@@ -179,7 +179,7 @@ class SemanticRetrieval {
     async retrieveForItinerary(input) {
         return await telemetry.measureTime(RAG_STAGES.RETRIEVAL, async () => {
             let itineraryQueries = [];
-            
+
             // � EVENING FANCY: 3 queries cho buổi tối chỉnh chu
             if (input.itineraryType === 'EVENING_FANCY') {
                 logger.info('🌟 EVENING FANCY: Starting retrieval (3 queries: Lẩu/Buffet → Karaoke → Hotel)...');
@@ -199,7 +199,7 @@ class SemanticRetrieval {
                     'quán cafe chill view đẹp Hà Nội',                  // 19:30 - Cafe
                     'hồ hoàn kiếm hồ tây dạo bộ tối Hà Nội',            // 21:00 - Dạo hồ
                 ];
-            } 
+            }
             // 📅 FULL DAY: 8 queries cho ngày đầy đủ
             else {
                 logger.info('📅 FULL DAY ITINERARY: Starting multi-query retrieval (8 queries)...');
@@ -216,26 +216,34 @@ class SemanticRetrieval {
             }
 
             // Parallel retrieval cho tất cả queries
-            const promises = itineraryQueries.map(query => 
+            const promises = itineraryQueries.map(query =>
                 basicRetriever.retrieve(query, 5) // Lấy 5 kết quả mỗi query
             );
 
             const allResults = await Promise.all(promises);
-            
-            // Merge và deduplicate by placeId
+
+            // Stratified Selection: Ensure we pick top result from EACH category
             const mergedDocs = [];
             const seenIds = new Set();
+            const docsPerCategory = 2; // Pick top 2 for each valid query
 
-            allResults.flat().forEach(doc => {
-                const docId = doc.metadata?.originalId || doc.metadata?.id || doc.id;
-                if (docId && !seenIds.has(docId)) {
-                    seenIds.add(docId);
-                    mergedDocs.push(doc);
+            allResults.forEach((results, index) => {
+                let count = 0;
+                for (const doc of results) {
+                    if (count >= docsPerCategory) break;
+
+                    const docId = doc.metadata?.originalId || doc.metadata?.id || doc.id;
+                    if (docId && !seenIds.has(docId)) {
+                        seenIds.add(docId);
+                        mergedDocs.push(doc);
+                        count++;
+                    }
                 }
+                logger.info(`   - Query "${itineraryQueries[index]}": added ${count} docs`);
             });
 
-            logger.info(`✅ ITINERARY: Retrieved ${mergedDocs.length} diverse places from ${itineraryQueries.length} queries (after dedup)`);
-            
+            logger.info(`✅ ITINERARY: Retrieved ${mergedDocs.length} balanced places from ${itineraryQueries.length} categories`);
+
             return {
                 ...input,
                 retrievedDocs: mergedDocs,
@@ -249,7 +257,7 @@ class SemanticRetrieval {
      */
     deduplicateByPlaceId(docs) {
         const placeMap = new Map();
-        
+
         docs.forEach(doc => {
             const placeId = doc.metadata?.originalId || doc.metadata?.id;
             if (!placeId) {
@@ -257,14 +265,14 @@ class SemanticRetrieval {
                 placeMap.set(doc.id, doc);
                 return;
             }
-            
+
             const existing = placeMap.get(placeId);
             if (!existing || (doc.score > existing.score)) {
                 // Giữ document có score cao hơn
                 placeMap.set(placeId, doc);
             }
         });
-        
+
         return Array.from(placeMap.values());
     }
 
@@ -282,8 +290,8 @@ class SemanticRetrieval {
 
         // Price range filter
         if (input.context?.filters?.priceRange) {
-            filter['priceRange.max'] = { 
-                $lte: input.context.filters.priceRange.max 
+            filter['priceRange.max'] = {
+                $lte: input.context.filters.priceRange.max
             };
         }
 
@@ -330,15 +338,15 @@ class SemanticRetrieval {
 
         return docs.filter(doc => {
             const category = doc.metadata?.category || doc.pageContent?.match(/Category:\s*([^\n]+)/)?.[1];
-            
+
             if (!category) {
                 // No category info - keep it (better to include than exclude)
                 return true;
             }
 
             // Check if category is food-related
-            const isFoodCategory = 
-                foodRelatedCategories.includes(category) || 
+            const isFoodCategory =
+                foodRelatedCategories.includes(category) ||
                 foodCategoryRegex.test(category);
 
             if (!isFoodCategory) {

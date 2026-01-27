@@ -105,7 +105,7 @@ class QueryAnalyzer {
         const normalized = question.toLowerCase().trim();
 
         // Skip LLM if query contains clear itinerary keywords
-        const itineraryKeywords = ['lịch trình', 'itinerary', 'hành trình', 'tour', 'ngày'];
+        const itineraryKeywords = ['lịch trình', 'itinerary', 'hành trình', 'tour', 'ngày', 'lộ trình'];
         const hasItinerary = itineraryKeywords.some(kw => normalized.includes(kw));
 
         // Skip LLM for very short queries (likely simple CHAT)
@@ -145,6 +145,14 @@ class QueryAnalyzer {
             const response = await this.llm.invoke(prompt);
             let intent = typeof response === 'string' ? response : response.content;
             intent = intent.trim().toUpperCase();
+
+            // 🚨 FORCE ITINERARY for strict keywords (override LLM if it fails)
+            const itineraryRegex = /lịch trình|lộ trình|hành trình|tour|itinerary/i;
+            if (itineraryRegex.test(input.question)) {
+                intent = 'ITINERARY';
+                logger.info('🚨 Forced intent to ITINERARY based on keywords');
+            }
+
             if (!intent.includes('ITINERARY')) intent = 'CHAT'; // Default to CHAT
 
             // 🌙 DETECT EVENING ITINERARY TYPE

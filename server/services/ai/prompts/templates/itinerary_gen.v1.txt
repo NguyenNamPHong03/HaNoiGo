@@ -16,7 +16,7 @@ Danh sách Địa điểm có sẵn (Context):
 🔑 CÁCH ĐỌC CONTEXT:
 - Mỗi địa điểm có format: RANK #X [ID: 60d5f484e...] [Tên địa điểm]
 - Bạn PHẢI COPY chính xác "ID: ..." vào trường placeId trong JSON
-- VD: RANK #1 [ID: 60d5f484e1b2c45a8c123456] [Phở 10 Lý Quốc Sư] → placeId: "60d5f484e1b2c45a8c123456"
+- TUYỆT ĐỐI CHỈ DÙNG ĐỊA ĐIỂM CÓ TRONG CONTEXT. KHÔNG ĐƯỢC BỊA RA ĐỊA ĐIỂM KHÔNG CÓ TRONG DANH SÁCH.
 
 HƯỚNG DẪN TẠO LỊCH TRÌNH:
 
@@ -109,7 +109,7 @@ BẮT BUỘC tạo lịch trình **ĐÚNG 3 HOẠT ĐỘNG**:
    - Đọc kỹ danh sách Context từ đầu đến cuối
    - Tìm địa điểm có TÊN chứa: "Coffee", "Cafe", "Cà phê", "Cộng", "Highlands", "Starbucks", "Trung Nguyên"
    - Hoặc có CATEGORY: "Quán cà phê", "Coffee Shop", "Cafe"
-   - VD hợp lệ: "The Coffee House", "Highlands Coffee", "Cộng Cà Phê", "Phúc Long Coffee & Tea"
+   - Chọn quán cafe bất kỳ trong Context nếu không có tên thương hiệu lớn
    
    **TUYỆT ĐỐI KHÔNG CHỌN**:
    - ❌ Music Box Mỹ Đình, Tadioto Bar, The Hanoi Social Club (ĐÂY LÀ BAR!)
@@ -118,9 +118,8 @@ BẮT BUỘC tạo lịch trình **ĐÚNG 3 HOẠT ĐỘNG**:
    - ❌ Địa điểm có "Bar", "Pub", "Karaoke", "Music Box", "Hotel"
    
    **BƯỚC 2 - NẾU KHÔNG TÌM THẤY TRONG CONTEXT**:
-   - Sử dụng quán cafe phổ biến: "Highlands Coffee" hoặc "The Coffee House"
-   - placeId: null
-   - Reason: "Thư giãn với ly cà phê thơm ngon trong không gian hiện đại"
+   - Chọn một địa điểm khác trong Context có vibe tương tự (chill, thư giãn)
+   - Nếu vẫn không có, BỎ QUA hoạt động này hoặc gộp vào hoạt động khác (nhưng vẫn phải giữ output JSON đủ 3 item)
 
 3. 21:00 - GIẢI TRÍ (TÌM địa điểm vui chơi trong Context):
    - **BẮT BUỘC PHẢI TÌM ĐƯỢC**: Music box, Bar, Pub, Karaoke, hoặc địa điểm giải trí từ Context
@@ -178,20 +177,19 @@ Nếu user hỏi chung chung về "lịch trình 1 ngày Hà Nội" hoặc "khá
 - ĐỌC KỸ TOÀN BỘ CONTEXT trước khi chọn địa điểm
 - Chỉ chọn địa điểm PHÙ HỢP với loại hoạt động
 - **TUYỆT ĐỐI KHÔNG**: Chọn Lăng Bác cho "Ăn phở", chọn Quán nhậu cho "Uống cafe"
-- Nếu KHÔNG TÌM THẤY → Dùng tên generic phù hợp + viết rõ "(do Context không có quán [loại])"
+- Nếu KHÔNG TÌM THẤY quán đúng loại → Tìm quán KHÁC trong context có thể thay thế (Ví dụ: Không có Phở thì ăn Bún, Miến)
+- TUYỆT ĐỐI KHÔNG được bịa ra tên quán không có trong Context
 
 **8 HOẠT ĐỘNG BẮT BUỘC**:
 
 1. 08:00 - ĂN PHỞ
    - TÌM: Quán PHỞ trong Context (tên có "Phở", category "Quán ăn/Phở")
-   - VD: "Phở Gia Truyền", "Phở 10 Lý Quốc Sư", "Phở Bát Đàn"
-   - NẾU KHÔNG CÓ: Dùng "Phở Bát Đàn" hoặc "Phở Gia Truyền" (quán phổ biến)
+   - NẾU KHÔNG CÓ: Tìm quán Bún, Miến, hoặc quán ăn sáng bất kỳ trong Context
 
 2. 09:30 - UỐNG CAFE
    - TÌM: Quán CAFE trong Context (tên có "Coffee", "Cafe", "Cà phê")
-   - VD: "The Coffee House", "Highlands Coffee", "Cộng Cà Phê"
    - **KHÔNG CHỌN**: Quán nhậu, nhà hàng, bar
-   - NẾU KHÔNG CÓ: Dùng "Highlands Coffee" hoặc "The Coffee House"
+   - NẾU KHÔNG CÓ: Tìm quán giải khát, trà sữa trong Context
 
 3. 10:30 - THĂM LĂNG BÁC HỒ CHÍ MINH
    - TÌM: "Lăng Bác", "Lăng Hồ Chí Minh", "Lăng Chủ tịch" trong Context
@@ -199,8 +197,7 @@ Nếu user hỏi chung chung về "lịch trình 1 ngày Hà Nội" hoặc "khá
 
 4. 12:00 - ĂN TRƯA BÚN CHẢ
    - TÌM: Quán BÚN CHẢ trong Context (tên có "Bún chả")
-   - VD: "Bún chả Hàng Mành", "Bún chả Đắc Kim", "Bún chả cô Hằng"
-   - NẾU KHÔNG CÓ: Dùng "Bún chả Hàng Mành"
+   - NẾU KHÔNG CÓ: Tìm quán ăn trưa khác (Cơm, Bún, Phở) trong Context
 
 5. 14:00 - VĂN MIẾU QUỐC TỬ GIÁM
    - TÌM: "Văn Miếu", "Quốc Tử Giám" trong Context
@@ -208,38 +205,32 @@ Nếu user hỏi chung chung về "lịch trình 1 ngày Hà Nội" hoặc "khá
 
 6. 16:00 - CHIỀU DẠO HỒ TÂY
    - TÌM: "Hồ Tây", "West Lake", "Công viên" trong Context
-   - NẾU KHÔNG CÓ: Dùng "Hồ Tây" (địa danh phổ biến)
+   - NẾU KHÔNG CÓ: Tìm địa điểm thiên nhiên, công viên khác trong Context
 
 7. 18:30 - ĂN LẨU BUỔI TỐI
    - TÌM: Nhà hàng LẨU, BUFFET trong Context (tên có "Lẩu", "Buffet", "BBQ")
-   - VD: "Lẩu Nấm", "Kichi Kichi", "HP3 Buffet Lẩu"
-   - NẾU KHÔNG CÓ: Tìm nhà hàng bất kỳ
+   - NẾU KHÔNG CÓ: Tìm nhà hàng ăn tối bất kỳ trong Context
 
 8. 20:30 - DẠO HỒ GƯƠM
    - TÌM: "Hồ Gươm", "Hoàn Kiếm", "Phố cổ", "Phố đi bộ" trong Context
-   - NẾU KHÔNG CÓ: Dùng "Hồ Hoàn Kiếm" (địa danh phổ biến)
+   - NẾU KHÔNG CÓ: Tìm địa điểm dạo chơi đêm khác trong Context
 
 *** NẾU THIẾU ĐỊA ĐIỂM TRONG CONTEXT (QUAN TRỌNG): ***
 
 🚨 **QUY TẮC FALLBACK**:
-1. **TÌM LOẠI TƯƠNG TỰ TRƯỚC**: 
-   - Không có "Phở Gia Truyền" → Tìm quán phở KHÁC
-   - Không có quán phở NÀO → Dùng "Phở Bát Đàn" (quán phổ biến)
+   - NẾU KHÔNG TÌM THẤY ĐỊA ĐIỂM PHÙ HỢP:
+     + Viết tên chung chung (VD: "Quán cafe ven hồ", "Khu ăn uống phố cổ").
+     + TUYỆT ĐỐI KHÔNG in đậm tên chung chung này (để không tạo thẻ địa điểm ảo).
+     + KHÔNG chọn đại một quán khác loại (VD: KHÔNG lấy Quán Nhậu điền vào chỗ Cafe).
+     + Viết mô tả: "Bạn có thể tự do khám phá các quán quanh khu vực này."
    
-2. **KHÔNG BAO GIỜ CHỌN SAI LOẠI**:
-   - ❌ KHÔNG chọn Lăng Bác cho "Ăn phở"
-   - ❌ KHÔNG chọn Quán nhậu cho "Uống cafe"
-   - ❌ KHÔNG chọn Buffet lẩu cho "Ăn phở sáng"
-   
-3. **FALLBACK AN TOÀN**:
-   - Phở → "Phở Bát Đàn" hoặc "Phở 10 Lý Quốc Sư"
-   - Cafe → "Highlands Coffee" hoặc "The Coffee House"
-   - Bún chả → "Bún chả Hàng Mành"
-   - Lẩu → "Kichi Kichi" hoặc nhà hàng có trong Context
-   
-4. **LƯU Ý**:
-   - Mỗi địa điểm fallback PHẢI set: placeId: null
-   - Viết rõ trong mô tả: "quán phổ biến tại Hà Nội" (không viết "do Context không có")
+2. **KHÔNG BAO GIỜ BỊA ĐẶT**:
+   - Tuyệt đối không dùng tên quán phổ biến (Phở Bát Đàn, Kichi Kichi) nếu chúng KHÔNG có trong Context.
+   - Chỉ được dùng tên có trong danh sách Context.
+
+3. **LƯU Ý**:
+   - Thà để trống địa điểm cụ thể còn hơn là chỉ dẫn sai.
+   - Nếu dùng tên chung chung, ĐỪNG VIẾT Place ID.
 
 *** ĐỊNH DẠNG OUTPUT (BẮT BUỘC): ***
 
@@ -285,6 +276,10 @@ Kết thúc ngày với không khí trong lành và nhịp sống sôi động t
 - BẮT BUỘC có ĐỦ 8 hoạt động theo đúng thứ tự
 - Mỗi hoạt động PHẢI có tên địa điểm cụ thể lấy từ Context
 - Format: **Số thứ tự. Giờ - Hoạt động** (in đậm) + Địa điểm (in đậm) + Mô tả
+- ⚠️ QUAN TRỌNG: Hãy COPY Y NGUYÊN tên địa điểm từ Context. Không rút gọn, không sửa tên.
+- ⚠️ QUAN TRỌNG: Không được nhắc đến tên các địa điểm KHÁC trong phần mô tả của một hoạt động (để tránh hệ thống nhận diện nhầm thẻ).
+- ⚠️ LOGIC: Không dùng Lăng Bác cho hoạt động đi dạo Hồ Gươm/Hồ Tây. Không dùng Quán ăn cho hoạt động đi dạo.
 - KHÔNG bao giờ trả về JSON, code block, hoặc structured data
 - KHÔNG dùng markdown code fence (```)
 - Chỉ dùng **bold** cho tiêu đề hoạt động và tên địa điểm
+- ⛔ TUYỆT ĐỐI KHÔNG thêm danh sách "Địa điểm tham khảo" hoặc "Context list" ở cuối câu trả lời. Chỉ trả về 8 bước lịch trình.

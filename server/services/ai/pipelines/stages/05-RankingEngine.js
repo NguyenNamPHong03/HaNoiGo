@@ -20,6 +20,10 @@ class RankingEngine {
             // User request: "mấy địa điểm mà không có địa chỉ thì loại luôn"
             const validDocs = input.retrievedDocs.filter(doc => {
                 const address = doc.metadata?.address;
+
+                // 📅 ITINERARY EXCEPTION: Allow landmarks (Lakes, Parks) even if they lack specific address
+                if (input.intent === 'ITINERARY') return true;
+
                 if (!address || address.trim() === '' || address.toLowerCase() === 'đang cập nhật') {
                     logger.debug(`   🗑️ DROPPING Invalid Address: "${doc.metadata?.name}"`);
                     return false;
@@ -48,9 +52,17 @@ class RankingEngine {
             // 🛡️ ENFORCE LIMIT: Slice to max Top K to prevent LLM overload
             // Even if Reranker fails (returns all), we must limit here
             const { RETRIEVAL_CONFIG } = await import('../../config/constants.js');
-            const finalDocs = boosted.slice(0, RETRIEVAL_CONFIG.RERANK_TOP_K || 8);
 
-            logger.info(`📉 Ranking complete: Keeping top ${finalDocs.length} documents (Limit: ${RETRIEVAL_CONFIG.RERANK_TOP_K})`);
+            // 📅 ITINERARY EXCEPTION: Need more docs to cover 8 time slots (at least 2 per slot = 16)
+            let limit = RETRIEVAL_CONFIG.RERANK_TOP_K || 8;
+            if (input.intent === 'ITINERARY') {
+                limit = 40; // MAX SAFETY: Allow all potential candidates (Semantic + Nearby) to pass
+                logger.info(`📅 ITINERARY MODE: Increased ranking limit to ${limit} docs`);
+            }
+
+            const finalDocs = boosted.slice(0, limit);
+
+            logger.info(`📉 Ranking complete: Keeping top ${finalDocs.length} documents (Limit: ${limit})`);
 
             return {
                 ...input,

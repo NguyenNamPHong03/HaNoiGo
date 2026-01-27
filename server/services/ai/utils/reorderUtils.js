@@ -84,3 +84,125 @@ export const sortPlacesByAnswerOrder = (places, answer) => {
 
     return scoredPlaces.map(item => item.place);
 };
+
+/**
+ * Helper: Normalize string for flexible matching
+ * - Lowercase
+ * - Remove Vietnamese accents (optional, but good for robust search)
+ * - Normalize punctuation (– to -)
+ */
+const normalizeForMatch = (str) => {
+    return str.toLowerCase()
+        .replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a")
+        .replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e")
+        .replace(/ì|í|ị|ỉ|ĩ/g, "i")
+        .replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o")
+        .replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u")
+        .replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y")
+        .replace(/đ/g, "d")
+        .replace(/–|—/g, "-") // Normalize dashes
+        .replace(/\s+/g, " ") // Collapse spaces
+        .trim();
+};
+
+/**
+ * Sorts and FILTERS places. Only returns places actually mentioned in the answer.
+ * @param {Array} places 
+ * @param {String} answer 
+ */
+export const filterAndSortPlaces = (places, answer) => {
+    if (!answer || !places || places.length === 0) {
+        return [];
+    }
+
+    let searchScope = answer;
+    let offset = 0;
+
+    // 🧠 SMART SORTING: Ignore "Intro" text for Itineraries
+    // Why? If Intro says "Visit Ho Guom and Lang Bac", but Step 1 is "Lang Bac",
+    // simple matching would put "Ho Guom" first (wrong order).
+    // Solution: Only start searching from "**1." (the first step).
+    const startMarker = '**1.';
+    const startIndex = answer.indexOf(startMarker);
+    if (startIndex !== -1) {
+        searchScope = answer.substring(startIndex);
+        offset = startIndex; // Keep offset to calculate real absolute index if needed
+    }
+
+    const answerLower = searchScope.toLowerCase();
+    const answerNormalized = normalizeForMatch(searchScope);
+
+    const matchedPlaces = places.map(p => {
+        const nameOriginal = p.name;
+        const nameLower = nameOriginal.toLowerCase();
+        const nameNormalized = normalizeForMatch(nameOriginal);
+
+        // --- MATCHING STRATEGIES ---
+        let index = -1;
+
+        // 1. Exact Match (Case-insensitive)
+        index = findSafeMatchIndex(answerLower, nameLower);
+
+        // 2. Normalized Match (Ignore accents/dashes)
+        if (index === -1) {
+            const normIndex = answerNormalized.indexOf(nameNormalized);
+            if (normIndex !== -1) {
+                index = normIndex;
+            }
+        }
+
+        // 3. Short Name (Before " - ")
+        if (index === -1 && nameLower.includes(' - ')) {
+            const shortName = nameLower.split(' - ')[0].trim();
+            if (shortName.length > 2) {
+                index = findSafeMatchIndex(answerLower, shortName);
+            }
+        }
+
+        // 4. Token Intersection
+        if (index === -1) {
+            const words = nameNormalized.split(' ').filter(w => w.length > 2);
+            if (words.length >= 3) {
+                const lastTwo = words.slice(-2).join(' ');
+                // 🛡️ SAFETY: Avoid matching common location suffixes
+                const BLACKLIST_PHRASES = [
+                    'ha noi', 'viet nam', 'mien bac',
+                    'hoan kiem', 'ba dinh', 'tay ho', 'dong da', 'cau giay',
+                    'hai ba trung', 'thanh xuan', 'hoang mai', 'long bien',
+                    'pho co', 'ha dong'
+                ];
+                if (!BLACKLIST_PHRASES.includes(lastTwo)) {
+                    const lastTwoIndex = answerNormalized.indexOf(lastTwo);
+                    if (lastTwoIndex !== -1) {
+                        index = lastTwoIndex;
+                    }
+                }
+            }
+        }
+
+        // 5. "Quán" Prefix handling
+        if (index === -1) {
+            const prefixes = ['quán', 'nhà hàng', 'tiệm'];
+            for (const prefix of prefixes) {
+                if (nameLower.startsWith(prefix + ' ')) {
+                    const nameWithoutPrefix = nameLower.substring(prefix.length + 1);
+                    index = findSafeMatchIndex(answerLower, nameWithoutPrefix);
+                    if (index !== -1) break;
+                }
+            }
+        }
+
+        return {
+            place: p,
+            index: index
+        };
+    }).filter(item => item.index !== -1);
+
+    // 🔍 DEBUG: Log matching status
+    console.log(`\n🔍 MATCHING STRATEGY DEBUG: Found ${matchedPlaces.length}/${places.length} places mentioned in text.`);
+
+    // Sort by appearance order
+    matchedPlaces.sort((a, b) => a.index - b.index);
+
+    return matchedPlaces.map(item => item.place);
+};

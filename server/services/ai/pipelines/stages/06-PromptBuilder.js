@@ -19,7 +19,26 @@ class PromptBuilder {
 
         // Build context with STRICT header
         const placesCount = input.retrievedDocs.length;
-        const contextHeader = `
+        let contextHeader = '';
+
+        if (input.intent === 'ITINERARY') {
+            // 📅 ITINERARY HEADER: Flexible - Only use what fits
+            contextHeader = `
+==============================================
+DANH SÁCH ĐỊA ĐIỂM CÓ SẴN (CONTEXT)
+==============================================
+Dưới đây là ${placesCount} địa điểm tìm được từ cơ sở dữ liệu:
+- Hãy chọn các địa điểm PHÙ HỢP NHẤT cho từng hoạt động trong lịch trình.
+- KHÔNG BẮT BUỘC phải dùng tất cả ${placesCount} địa điểm.
+- KHÔNG chọn địa điểm sai loại (Ví dụ: Không chọn Nhà hàng cho hoạt động Cafe).
+- Nếu không có địa điểm phù hợp cho 1 hoạt động, hãy để trống hoặc dùng tên chung chung.
+
+DANH SÁCH (ƯU TIÊN):
+==============================================
+`;
+        } else {
+            // 💬 CHAT HEADER: Strict - Must list all (for generic search)
+            contextHeader = `
 ==============================================
 🚨 DANH SÁCH DUY NHẤT BẠN ĐƯỢC GỢI Ý 🚨
 ==============================================
@@ -46,6 +65,7 @@ BẠN CHỈ ĐƯỢC GỢI Ý CÁC ĐỊA ĐIỂM DƯỚI ĐÂY:
 DANH SÁCH ${placesCount} ĐỊA ĐIỂM (ƯU TIÊN THEO THỨ TỰ):
 ==============================================
 `;
+        }
 
         const placesContext = input.retrievedDocs
             .map((doc, i) => {
