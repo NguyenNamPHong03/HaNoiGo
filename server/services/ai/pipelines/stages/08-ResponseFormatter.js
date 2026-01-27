@@ -40,9 +40,13 @@ class ResponseFormatter {
                 const placeId = doc.metadata?.originalId || doc.metadata?.id;
                 const placeName = doc.metadata?.name;
 
-                if (placeId && placeName && !placesMap.has(placeId)) {
-                    placesMap.set(placeId, {
-                        _id: placeId,
+                // 🔧 FIX: Handle places with missing ID (e.g., Văn Miếu, Starlake)
+                // Fallback to using NAME as unique key when ID is undefined
+                const uniqueKey = placeId || placeName;
+
+                if (placeName && !placesMap.has(uniqueKey)) {
+                    placesMap.set(uniqueKey, {
+                        _id: placeId || `temp-${placeName.replace(/\s+/g, '-').substring(0, 50)}`, // Generate temp ID if missing
                         name: placeName,
                         address: doc.metadata.address,
                         category: doc.metadata.category,
@@ -54,22 +58,40 @@ class ResponseFormatter {
                             space: doc.metadata.space ? doc.metadata.space.split(', ') : [],
                             specialFeatures: doc.metadata.specialFeatures ? doc.metadata.specialFeatures.split(', ') : []
                         },
-                        distanceKm: doc.distanceKm
+                        distanceKm: doc.distanceKm,
+                        _hasValidId: !!placeId // Track if this place has a real MongoDB ID
                     });
                 }
             });
             availablePlaces = Array.from(placesMap.values());
         }
 
+        // 🔍 DEBUG: Log places before filtering
+        logger.info(`🔍 [ResponseFormatter] Available Places (Total: ${availablePlaces.length}):`);
+        // availablePlaces.forEach(p => logger.debug(`   - ${p.name} (${p._id})`));
+
         // STEP 2: Sort and Filter places
         let placesArray = [];
 
         if (result.intent === 'ITINERARY') {
             // For Itinerary: STRICT filtering. Only show places mentioned in text.
-            // This prevents "ghost cards" for generic steps.
-            // 🚨 IMPORTANT: Use finalAnswer (cleaned) to avoid matching invisible references
+            logger.info(`🔍 [ResponseFormatter] ITINERARY MODE - Filtering places...`);
+
+            // Log the "search scope" logic for debugging
+            const startMarker = '**1.';
+            const startIndex = finalAnswer.indexOf(startMarker);
+            logger.info(`   Search Start Marker "${startMarker}" found at index: ${startIndex}`);
+
             const matchedPlaces = filterAndSortPlaces(availablePlaces, finalAnswer);
-            placesArray = matchedPlaces; // No limit, just show what's mentioned
+            placesArray = matchedPlaces;
+
+            // Log missing places
+            const matchedIds = new Set(matchedPlaces.map(p => p._id));
+            const missing = availablePlaces.filter(p => !matchedIds.has(p._id));
+            if (missing.length > 0) {
+                logger.info(`   ⚠️ ${missing.length} places NOT matched in answer:`);
+                missing.forEach(p => logger.info(`      ❌ ${p.name}`));
+            }
         } else {
             // For General Chat: Sort by mention, but include others as fallback (up to 10)
             const orderedPlaces = sortPlacesByAnswerOrder(availablePlaces, finalAnswer);

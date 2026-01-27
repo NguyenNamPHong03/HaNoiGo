@@ -72,26 +72,67 @@ router.post('/chat', optionalAuth, async (req, res) => {
     // PRIORITY: Use places from pipeline if available (already processed and ordered)
     // Only fallback to DB fetch if pipeline didn't return places
     let places = [];
-    
+
     if (aiResult.places && aiResult.places.length > 0) {
       // Use places directly from pipeline (already in correct order)
       console.log(`✅ Using ${aiResult.places.length} places from AI pipeline (pre-ordered)`);
       places = aiResult.places;
-      
+
       // Fetch full Place documents to get complete data (images, menu, etc.)
-      const placeIds = places.map(p => p._id).filter(Boolean);
-      if (placeIds.length > 0) {
+      // 🔧 FIX: Filter out temp IDs (not valid MongoDB ObjectIds) before querying
+      const validPlaceIds = places
+        .map(p => p._id)
+        .filter(id => id && !String(id).startsWith('temp-') && /^[a-f\d]{24}$/i.test(String(id)));
+
+      console.log(`   📊 Valid MongoDB IDs: ${validPlaceIds.length}/${places.length}`);
+
+      if (validPlaceIds.length > 0) {
         const fullPlaces = await Place.find({
-          _id: { $in: placeIds },
+          _id: { $in: validPlaceIds },
           status: 'Published',
           isActive: true
         }).lean();
-        
+
         // Merge full data while preserving order
         const placeMap = new Map(fullPlaces.map(p => [p._id.toString(), p]));
+
+        // 🔧 Also search by name for places with temp IDs
+        const placesWithTempIds = places.filter(p => String(p._id).startsWith('temp-') && p.name);
+        let nameToPlaceMap = new Map();
+
+        if (placesWithTempIds.length > 0) {
+          const tempPlaceNames = placesWithTempIds.map(p => p.name);
+          console.log(`   🔍 Searching MongoDB by name for ${tempPlaceNames.length} temp-ID places...`);
+
+          const nameMatchedPlaces = await Place.find({
+            name: { $in: tempPlaceNames },
+            status: 'Published',
+            isActive: true
+          }).lean();
+
+          nameToPlaceMap = new Map(nameMatchedPlaces.map(p => [p.name, p]));
+          console.log(`   ✅ Found ${nameMatchedPlaces.length} places by name`);
+        }
+
         places = places.map(p => {
-          const fullPlace = placeMap.get(p._id.toString());
-          return fullPlace ? { ...fullPlace, distanceKm: p.distanceKm } : p;
+          const idStr = String(p._id);
+
+          // Try 1: Match by ID
+          const fullPlace = placeMap.get(idStr);
+          if (fullPlace) {
+            return { ...fullPlace, distanceKm: p.distanceKm };
+          }
+
+          // Try 2: Match by name (for temp IDs)
+          if (idStr.startsWith('temp-') && p.name) {
+            const nameMatchedPlace = nameToPlaceMap.get(p.name);
+            if (nameMatchedPlace) {
+              console.log(`   ✅ Matched by name: ${p.name} → ID: ${nameMatchedPlace._id}`);
+              return { ...nameMatchedPlace, distanceKm: p.distanceKm };
+            }
+          }
+
+          return p; // Keep original place data if no match found
         }).filter(Boolean);
       }
     } else {
@@ -157,7 +198,7 @@ router.post('/chat', optionalAuth, async (req, res) => {
     if (aiResult.intent === 'ITINERARY' && aiResult.structuredData?.schedule) {
       console.log(`📅 [ITINERARY] Reordering places by schedule placeId order`);
       console.log(`📅 Schedule has ${aiResult.structuredData.schedule.length} items`);
-      
+
       // Create map by ID for fast lookup
       const placeMapById = new Map();
       places.forEach(p => {
@@ -165,21 +206,21 @@ router.post('/chat', optionalAuth, async (req, res) => {
         placeMapById.set(idStr, p);
         console.log(`   📍 Available place: ${p.name} (ID: ${idStr})`);
       });
-      
+
       // Reorder places to match schedule using placeId
       const orderedPlaces = [];
       const usedIds = new Set();
-      
+
       // Process each schedule item
       for (const [idx, scheduleItem] of aiResult.structuredData.schedule.entries()) {
         const placeId = scheduleItem.placeId;
         const placeName = scheduleItem.placeName;
-        
+
         console.log(`\n   🔍 Processing schedule[${idx}]:`);
         console.log(`      Activity: ${scheduleItem.activity}`);
         console.log(`      PlaceId from schedule: ${placeId}`);
         console.log(`      PlaceName: ${placeName}`);
-        
+
         // Try 1: Match by placeId
         if (placeId && placeMapById.has(placeId)) {
           const place = placeMapById.get(placeId);
@@ -190,26 +231,26 @@ router.post('/chat', optionalAuth, async (req, res) => {
           } else {
             console.log(`      ⚠️ Already used this placeId`);
           }
-        } 
+        }
         // Try 2: Search MongoDB by name (for missing places like Lăng Bác, Văn Miếu)
         else if (placeName) {
           // Remove text in parentheses and trim FIRST
           let cleanName = placeName.replace(/\s*\(.*?\)\s*/g, '').trim();
-          
+
           // 🔧 STRIP ACTION VERBS (Dạo, Tham quan, Đi, Xem, v.v.)
           // "Dạo hồ Hoàn Kiếm" → "Hồ Hoàn Kiếm"
           // "Tham quan Văn Miếu" → "Văn Miếu"
           cleanName = cleanName.replace(/^(Dạo|Tham quan|Đi|Xem|Thăm|Ghé)\s+/i, '').trim();
-          
+
           // Capitalize first letter (fix "hồ" → "Hồ")
           if (cleanName.length > 0) {
             cleanName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
           }
-          
+
           // 🌊 SPECIAL CASE: Only create placeholder for truly generic terms
           if (!cleanName || cleanName.match(/^(gần đây|các quán|quán gần)$/i)) {
             console.log(`      🏞️ Truly generic place, creating placeholder for: "${placeName}"`);
-            
+
             const placeholderPlace = {
               _id: `placeholder_${idx}`,
               name: placeName,
@@ -223,138 +264,138 @@ router.post('/chat', optionalAuth, async (req, res) => {
               isPlaceholder: true,
               description: scheduleItem.reason || 'Địa điểm tự do'
             };
-            
+
             orderedPlaces.push(placeholderPlace);
             console.log(`      ✅ Added PLACEHOLDER → ${placeName}`);
           } else {
             console.log(`      🔎 Searching MongoDB by name: "${cleanName}" (from "${placeName}")`);
-          
+
             try {
-            
-            // Alias mapping for common landmarks (Hồ Gươm = Hồ Hoàn Kiếm)
-            const aliasMap = {
-              'Hồ Gươm': 'Hồ Hoàn Kiếm',
-              'Hồ Hoàn Kiếm': 'Hồ Gươm',
-              'Lăng Bác': 'Lăng Chủ tịch Hồ Chí Minh',
-              'Lăng Hồ Chí Minh': 'Lăng Chủ tịch Hồ Chí Minh',
-              'Văn Miếu': 'Văn Miếu – Quốc Tử Giám',
-              'Quốc Tử Giám': 'Văn Miếu – Quốc Tử Giám',
-              'Hồ Tây': 'Hồ Tây' // Ensure exact match
-            };
-            
-            // Get all possible names (original + alias)
-            const searchNames = [cleanName];
-            if (aliasMap[cleanName]) {
-              searchNames.push(aliasMap[cleanName]);
-            }
-            
-            console.log(`      🔍 Search aliases: [${searchNames.join(', ')}]`);
-            
-            // Priority 1: Exact match (case-insensitive) with any alias
-            let foundPlace = await Place.findOne({
-              name: { 
-                $in: searchNames.map(n => new RegExp(`^${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'))
-              },
-              status: 'Published'
-            }).lean();
-            
-            // Priority 2: Starts with name (any alias)
-            if (!foundPlace) {
-              foundPlace = await Place.findOne({
-                $or: searchNames.map(n => ({
-                  name: { $regex: new RegExp(`^${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i') }
-                })),
-                status: 'Published'
-              }).lean();
-            }
-            
-            // Priority 3: Contains name (fuzzy) + Category filter for landmarks
-            if (!foundPlace) {
-              const isLandmark = /hồ|lăng|văn miếu|đền|chùa|bảo tàng|di tích/i.test(cleanName);
-              
-              // Extract first significant word for search (from any alias)
-              const firstWords = searchNames.map(n => n.split(/\s+/)[0]);
-              const query = {
-                name: { 
-                  $regex: new RegExp(firstWords.join('|'), 'i') // Search any first word
+
+              // Alias mapping for common landmarks (Hồ Gươm = Hồ Hoàn Kiếm)
+              const aliasMap = {
+                'Hồ Gươm': 'Hồ Hoàn Kiếm',
+                'Hồ Hoàn Kiếm': 'Hồ Gươm',
+                'Lăng Bác': 'Lăng Chủ tịch Hồ Chí Minh',
+                'Lăng Hồ Chí Minh': 'Lăng Chủ tịch Hồ Chí Minh',
+                'Văn Miếu': 'Văn Miếu – Quốc Tử Giám',
+                'Quốc Tử Giám': 'Văn Miếu – Quốc Tử Giám',
+                'Hồ Tây': 'Hồ Tây' // Ensure exact match
+              };
+
+              // Get all possible names (original + alias)
+              const searchNames = [cleanName];
+              if (aliasMap[cleanName]) {
+                searchNames.push(aliasMap[cleanName]);
+              }
+
+              console.log(`      🔍 Search aliases: [${searchNames.join(', ')}]`);
+
+              // Priority 1: Exact match (case-insensitive) with any alias
+              let foundPlace = await Place.findOne({
+                name: {
+                  $in: searchNames.map(n => new RegExp(`^${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'))
                 },
                 status: 'Published'
-              };
-              
-              // For landmarks: prioritize category "Khác" or "Vui chơi"
-              // Exclude restaurants/cafes when searching for landmarks
-              if (isLandmark) {
-                query.category = { $in: ['Khác', 'Vui chơi'] };
-                // Further filter: exclude places with "CGV", "Cinema", "Rạp" in name
-                query.name = { 
-                  $regex: new RegExp(firstWords.join('|'), 'i'),
-                  $not: /CGV|Cinema|Rạp|LOTTE|BHD|Plaza/i 
-                };
-              }
-              
-              const candidates = await Place.find(query).limit(10).lean();
-              
-              // Find best match by similarity
-              if (candidates.length > 0) {
-                console.log(`      🔍 Found ${candidates.length} candidates, finding best match...`);
-                candidates.forEach(c => console.log(`         - ${c.name} (${c.category})`));
-                
-                foundPlace = candidates.reduce((best, curr) => {
-                  const currNameLower = curr.name.toLowerCase();
-                  
-                  // Check if name contains ANY of the search terms
-                  const currMatchScore = searchNames.reduce((score, searchName) => {
-                    const searchLower = searchName.toLowerCase();
-                    if (currNameLower === searchLower) return score + 100; // Exact match
-                    if (currNameLower.includes(searchLower)) return score + 50; // Contains
-                    if (searchLower.includes(currNameLower)) return score + 30; // Reverse contains
-                    return score;
-                  }, 0);
-                  
-                  const bestMatchScore = best ? searchNames.reduce((score, searchName) => {
-                    const searchLower = searchName.toLowerCase();
-                    const bestLower = best.name.toLowerCase();
-                    if (bestLower === searchLower) return score + 100;
-                    if (bestLower.includes(searchLower)) return score + 50;
-                    if (searchLower.includes(bestLower)) return score + 30;
-                    return score;
-                  }, 0) : 0;
-                  
-                  if (currMatchScore > bestMatchScore) return curr;
-                  if (currMatchScore < bestMatchScore) return best;
-                  
-                  // Same score → prefer shorter name (more specific)
-                  if (!best || curr.name.length < best.name.length) return curr;
-                  return best;
-                }, null);
-              }
-            }
+              }).lean();
 
-            if (foundPlace) {
-              const foundIdStr = foundPlace._id.toString();
-              console.log(`      ✅ FOUND in DB → ${foundPlace.name} (${foundPlace.category}, ID: ${foundIdStr})`);
-              
-              if (!usedIds.has(foundIdStr)) {
-                orderedPlaces.push(foundPlace);
-                usedIds.add(foundIdStr);
-                
-                // Update placeId in schedule for future reference
-                scheduleItem.placeId = foundIdStr;
-              } else {
-                console.log(`      ⚠️ Already used this place`);
+              // Priority 2: Starts with name (any alias)
+              if (!foundPlace) {
+                foundPlace = await Place.findOne({
+                  $or: searchNames.map(n => ({
+                    name: { $regex: new RegExp(`^${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i') }
+                  })),
+                  status: 'Published'
+                }).lean();
               }
-            } else {
-              console.log(`      ⚠️ Not found in DB for: "${cleanName}"`);
+
+              // Priority 3: Contains name (fuzzy) + Category filter for landmarks
+              if (!foundPlace) {
+                const isLandmark = /hồ|lăng|văn miếu|đền|chùa|bảo tàng|di tích/i.test(cleanName);
+
+                // Extract first significant word for search (from any alias)
+                const firstWords = searchNames.map(n => n.split(/\s+/)[0]);
+                const query = {
+                  name: {
+                    $regex: new RegExp(firstWords.join('|'), 'i') // Search any first word
+                  },
+                  status: 'Published'
+                };
+
+                // For landmarks: prioritize category "Khác" or "Vui chơi"
+                // Exclude restaurants/cafes when searching for landmarks
+                if (isLandmark) {
+                  query.category = { $in: ['Khác', 'Vui chơi'] };
+                  // Further filter: exclude places with "CGV", "Cinema", "Rạp" in name
+                  query.name = {
+                    $regex: new RegExp(firstWords.join('|'), 'i'),
+                    $not: /CGV|Cinema|Rạp|LOTTE|BHD|Plaza/i
+                  };
+                }
+
+                const candidates = await Place.find(query).limit(10).lean();
+
+                // Find best match by similarity
+                if (candidates.length > 0) {
+                  console.log(`      🔍 Found ${candidates.length} candidates, finding best match...`);
+                  candidates.forEach(c => console.log(`         - ${c.name} (${c.category})`));
+
+                  foundPlace = candidates.reduce((best, curr) => {
+                    const currNameLower = curr.name.toLowerCase();
+
+                    // Check if name contains ANY of the search terms
+                    const currMatchScore = searchNames.reduce((score, searchName) => {
+                      const searchLower = searchName.toLowerCase();
+                      if (currNameLower === searchLower) return score + 100; // Exact match
+                      if (currNameLower.includes(searchLower)) return score + 50; // Contains
+                      if (searchLower.includes(currNameLower)) return score + 30; // Reverse contains
+                      return score;
+                    }, 0);
+
+                    const bestMatchScore = best ? searchNames.reduce((score, searchName) => {
+                      const searchLower = searchName.toLowerCase();
+                      const bestLower = best.name.toLowerCase();
+                      if (bestLower === searchLower) return score + 100;
+                      if (bestLower.includes(searchLower)) return score + 50;
+                      if (searchLower.includes(bestLower)) return score + 30;
+                      return score;
+                    }, 0) : 0;
+
+                    if (currMatchScore > bestMatchScore) return curr;
+                    if (currMatchScore < bestMatchScore) return best;
+
+                    // Same score → prefer shorter name (more specific)
+                    if (!best || curr.name.length < best.name.length) return curr;
+                    return best;
+                  }, null);
+                }
+              }
+
+              if (foundPlace) {
+                const foundIdStr = foundPlace._id.toString();
+                console.log(`      ✅ FOUND in DB → ${foundPlace.name} (${foundPlace.category}, ID: ${foundIdStr})`);
+
+                if (!usedIds.has(foundIdStr)) {
+                  orderedPlaces.push(foundPlace);
+                  usedIds.add(foundIdStr);
+
+                  // Update placeId in schedule for future reference
+                  scheduleItem.placeId = foundIdStr;
+                } else {
+                  console.log(`      ⚠️ Already used this place`);
+                }
+              } else {
+                console.log(`      ⚠️ Not found in DB for: "${cleanName}"`);
+              }
+            } catch (error) {
+              console.error(`      ❌ Error searching DB:`, error.message);
             }
-          } catch (error) {
-            console.error(`      ❌ Error searching DB:`, error.message);
-          }
           }
         } else {
           console.log(`      ⚠️ Skipping (no placeName)`);
         }
       }
-      
+
       // Add remaining places not in schedule
       places.forEach(p => {
         if (!usedIds.has(p._id.toString())) {
@@ -362,7 +403,7 @@ router.post('/chat', optionalAuth, async (req, res) => {
           console.log(`   📍 Extra place (not in schedule): ${p.name}`);
         }
       });
-      
+
       places = orderedPlaces;
       console.log(`\n✅ FINAL: Reordered to ${places.length} places (${usedIds.size} from schedule, ${places.length - usedIds.size} extra)`);
       console.log(`📊 Final order:`);
@@ -375,7 +416,7 @@ router.post('/chat', optionalAuth, async (req, res) => {
       console.log(`📍 [nearMe=true] Preserving distance-sorted order from pipeline`);
       // Sort by distance to ensure consistency
       places = sortPlacesByDistance(places, latitude, longitude);
-    } 
+    }
     // DISABLED: sortPlacesByAnswerOrder causes RANK #1 to appear at wrong position
     // else if (aiResult.answer && places.length > 0) {
     //   // Normal mode: sort by AI answer order

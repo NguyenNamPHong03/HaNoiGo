@@ -92,16 +92,14 @@ export const sortPlacesByAnswerOrder = (places, answer) => {
  * - Normalize punctuation (– to -)
  */
 const normalizeForMatch = (str) => {
-    return str.toLowerCase()
-        .replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a")
-        .replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e")
-        .replace(/ì|í|ị|ỉ|ĩ/g, "i")
-        .replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o")
-        .replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u")
-        .replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y")
-        .replace(/đ/g, "d")
-        .replace(/–|—/g, "-") // Normalize dashes
-        .replace(/\s+/g, " ") // Collapse spaces
+    if (!str) return '';
+    return str
+        .normalize("NFD") // Decompose characters (e.g., 'á' -> 'a' + '´')
+        .replace(/[\u0300-\u036f]/g, "") // Remove combining diacritics
+        .replace(/đ/g, "d").replace(/Đ/g, "d") // Handle Vietnamese 'd'
+        .toLowerCase()
+        .replace(/–|—/g, "-") // Normalize dashes (en-dash, em-dash to hyphen)
+        .replace(/\s+/g, " ") // Collapse multiple spaces
         .trim();
 };
 

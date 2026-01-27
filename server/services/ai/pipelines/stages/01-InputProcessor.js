@@ -58,7 +58,7 @@ class InputProcessor {
                     cacheKey
                 };
             }
-            
+
             logger.debug(`Cache MISS - proceeding with full pipeline`, { cacheKey });
             return { ...input, cached: false, cacheKey };
         });
@@ -70,13 +70,13 @@ class InputProcessor {
     async cacheResponse(input) {
         if (!input.cached && input.answer && input.retrievedDocs) {
             const key = input.cacheKey || input.question;
-            
-            logger.debug('Caching response', { 
+
+            logger.debug('Caching response', {
                 key: key.substring(0, 50),
                 hasAnswer: !!input.answer,
                 docsCount: input.retrievedDocs?.length || 0
             });
-            
+
             // ⚡ PERFORMANCE: Cache for 2 hours (7200s) to reduce LLM calls
             await enhancedCacheClient.setCache(key, {
                 question: input.question,
