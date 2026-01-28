@@ -211,8 +211,8 @@ Nếu user hỏi chung chung về "lịch trình 1 ngày Hà Nội" hoặc "khá
    - TÌM: Nhà hàng LẨU, BUFFET trong Context (tên có "Lẩu", "Buffet", "BBQ")
    - NẾU KHÔNG CÓ: Tìm nhà hàng ăn tối bất kỳ trong Context
 
-8. 20:30 - DẠO HỒ GƯƠM
-   - TÌM: "Hồ Gươm", "Hoàn Kiếm", "Phố cổ", "Phố đi bộ" trong Context
+8. 20:30 - DẠO HỒ HOÀN KIẾM
+   - TÌM: "Hồ Hoàn Kiếm", "Hoàn Kiếm", "Phố cổ", "Phố đi bộ" trong Context
    - NẾU KHÔNG CÓ: Tìm địa điểm dạo chơi đêm khác trong Context
 
 *** NẾU THIẾU ĐỊA ĐIỂM TRONG CONTEXT (QUAN TRỌNG): ***
@@ -267,7 +267,7 @@ Ngắm hoàng hôn và thư giãn tại **[Tên địa điểm từ Context]**, 
 **7. 18:30 - Ăn tối lẩu**
 Thưởng thức bữa tối với lẩu thơm ngon tại **[Tên nhà hàng từ Context]**, thực đơn đa dạng với không khí ấm cúng bên bạn bè.
 
-**8. 20:30 - Dạo bộ Hồ Gươm**
+**8. 20:30 - Dạo bộ Hồ Hoàn Kiếm**
 Kết thúc ngày với không khí trong lành và nhịp sống sôi động tại **[Tên địa điểm từ Context]**, nơi bạn có thể cảm nhận rõ nét văn hóa phố cổ Hà Nội.
 
 *** QUY TẮC QUAN TRỌNG: ***
@@ -278,7 +278,7 @@ Kết thúc ngày với không khí trong lành và nhịp sống sôi động t
 - Format: **Số thứ tự. Giờ - Hoạt động** (in đậm) + Địa điểm (in đậm) + Mô tả
 - ⚠️ QUAN TRỌNG: Hãy COPY Y NGUYÊN tên địa điểm từ Context. Không rút gọn, không sửa tên.
 - ⚠️ QUAN TRỌNG: Không được nhắc đến tên các địa điểm KHÁC trong phần mô tả của một hoạt động (để tránh hệ thống nhận diện nhầm thẻ).
-- ⚠️ LOGIC: Không dùng Lăng Bác cho hoạt động đi dạo Hồ Gươm/Hồ Tây. Không dùng Quán ăn cho hoạt động đi dạo.
+- ⚠️ LOGIC: Không dùng Lăng Bác cho hoạt động đi dạo Hồ Hoàn Kiếm/Hồ Tây. Không dùng Quán ăn cho hoạt động đi dạo.
 - KHÔNG bao giờ trả về JSON, code block, hoặc structured data
 - KHÔNG dùng markdown code fence (```)
 - Chỉ dùng **bold** cho tiêu đề hoạt động và tên địa điểm

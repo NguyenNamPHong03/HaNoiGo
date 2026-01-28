@@ -2,10 +2,10 @@
  * Debug script to check if Văn Miếu and Starlake exist in Pinecone
  */
 
-import { MongoClient } from 'mongodb';
 import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
+import { MongoClient } from 'mongodb';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,12 +39,12 @@ async function findPlaces() {
         console.log('\n🔍 Starlake result:');
         console.log(starlake ? `   ✅ Found: ${starlake.name} (ID: ${starlake._id})` : '   ❌ NOT FOUND');
 
-        // Search for Hồ Gươm
-        const hoGuom = await placesCollection.findOne({
-            name: { $regex: /hồ gươm|ho guom|hoàn kiếm|hoan kiem/i }
+        // Search for Hồ Hoàn Kiếm
+        const hoHoanKiem = await placesCollection.findOne({
+            name: { $regex: /hồ hoàn kiếm|hoàn kiếm|hồ gươm|ho guom|hoan kiem/i }
         });
-        console.log('\n🔍 Hồ Gươm result:');
-        console.log(hoGuom ? `   ✅ Found: ${hoGuom.name} (ID: ${hoGuom._id})` : '   ❌ NOT FOUND');
+        console.log('\n🔍 Hồ Hoàn Kiếm result:');
+        console.log(hoHoanKiem ? `   ✅ Found: ${hoHoanKiem.name} (ID: ${hoHoanKiem._id})` : '   ❌ NOT FOUND');
 
         // Count total places
         const total = await placesCollection.countDocuments();

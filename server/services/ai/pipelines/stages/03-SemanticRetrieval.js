@@ -211,7 +211,7 @@ class SemanticRetrieval {
                     'văn miếu quốc tử giám di tích lịch sử', // 14:00 - Tham quan
                     'hồ tây công viên dạo chơi Hà Nội',       // 16:00 - Dạo chơi
                     'nhà hàng lẩu buffet ăn tối Hà Nội',      // 18:30 - Ăn tối
-                    'hồ gươm phố cổ dạo bộ tối Hà Nội'        // 20:30 - Dạo bộ
+                    'hồ hoàn kiếm phố cổ dạo bộ tối Hà Nội'   // 20:30 - Dạo bộ
                 ];
             }
 

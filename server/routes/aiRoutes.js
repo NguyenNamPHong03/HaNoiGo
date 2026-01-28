@@ -272,10 +272,9 @@ router.post('/chat', optionalAuth, async (req, res) => {
 
             try {
 
-              // Alias mapping for common landmarks (Hồ Gươm = Hồ Hoàn Kiếm)
+              // Alias mapping for common landmarks (Hồ Hoàn Kiếm là tên chính)
               const aliasMap = {
-                'Hồ Gươm': 'Hồ Hoàn Kiếm',
-                'Hồ Hoàn Kiếm': 'Hồ Gươm',
+                'Hồ Gươm': 'Hồ Hoàn Kiếm',  // Map alias -> tên chính
                 'Lăng Bác': 'Lăng Chủ tịch Hồ Chí Minh',
                 'Lăng Hồ Chí Minh': 'Lăng Chủ tịch Hồ Chí Minh',
                 'Văn Miếu': 'Văn Miếu – Quốc Tử Giám',

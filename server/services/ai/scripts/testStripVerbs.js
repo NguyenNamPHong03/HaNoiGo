@@ -25,8 +25,8 @@ const testCases = [
         description: 'Strip "Xem" verb'
     },
     {
-        input: 'Hồ Gươm',
-        expected: 'Hồ Gươm',
+        input: 'Hồ Hoàn Kiếm',
+        expected: 'Hồ Hoàn Kiếm',
         description: 'No verb - keep as is'
     }
 ];
