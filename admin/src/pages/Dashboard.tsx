@@ -6,7 +6,6 @@ const Dashboard: React.FC = () => {
     { name: 'Total Places', value: '0', icon: '📍', color: 'text-blue-600', bgColor: 'bg-blue-50' },
     { name: 'Total Users', value: '0', icon: '👥', color: 'text-green-600', bgColor: 'bg-green-50' },
     { name: 'Total Reviews', value: '0', icon: '⭐', color: 'text-purple-600', bgColor: 'bg-purple-50' },
-    { name: 'AI Queries Today', value: '0', icon: '🤖', color: 'text-orange-600', bgColor: 'bg-orange-50' },
   ];
 
   const recentActivities = [

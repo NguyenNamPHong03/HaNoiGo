@@ -1,5 +1,10 @@
 import express from 'express';
 import {
+    getDashboardStats,
+    getRecentActivities,
+    getSystemStatus
+} from '../controllers/dashboardController.js';
+import {
     bulkRefreshGoogleData,
     bulkUpdatePlaces,
     createPlace,
@@ -32,10 +37,10 @@ const router = express.Router();
 // Apply auth middleware to all admin routes (temporarily disabled for testing)
 // router.use(authenticateToken);
 
-// Admin dashboard
-router.get('/dashboard', (req, res) => {
-  res.json({ message: 'Admin dashboard data endpoint - to be implemented' });
-});
+// Dashboard routes
+router.get('/dashboard/stats', getDashboardStats);
+router.get('/dashboard/activities', getRecentActivities);
+router.get('/dashboard/system-status', getSystemStatus);
 
 // Test endpoint cho debugging
 router.get('/test', (req, res) => {

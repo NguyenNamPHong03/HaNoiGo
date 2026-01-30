@@ -296,4 +296,22 @@ export const uploadAPI = {
   }
 };
 
+// Dashboard API functions
+export const dashboardAPI = {
+  getStats: async () => {
+    const response = await api.get('/admin/dashboard/stats');
+    return response.data;
+  },
+
+  getActivities: async (limit: number = 10) => {
+    const response = await api.get(`/admin/dashboard/activities?limit=${limit}`);
+    return response.data;
+  },
+
+  getSystemStatus: async () => {
+    const response = await api.get('/admin/dashboard/system-status');
+    return response.data;
+  }
+};
+
 export default api;
